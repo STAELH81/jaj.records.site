@@ -39,6 +39,14 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     let isPoweredOff = false;
     let isRestoringSession = false;
     let isMailI18nReady = false;
+    let isApplyingPersistenceSnapshot = false;
+
+    function notifyPersistenceChange(kind) {
+        if (isApplyingPersistenceSnapshot) return;
+        window.dispatchEvent(new CustomEvent('aq:persistence-changed', {
+            detail: { kind, at: Date.now() }
+        }));
+    }
 
     function getSystemPopupMessages() {
         if (getCurrentLanguage() === 'en') {
@@ -107,14 +115,17 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     function saveSettings() {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings));
+        notifyPersistenceChange('settings');
     }
 
     function saveRecents() {
         localStorage.setItem(RECENTS_KEY, JSON.stringify(recentItems));
+        notifyPersistenceChange('recents');
     }
 
     function saveState() {
         localStorage.setItem(STATE_KEY, JSON.stringify({ isTempusUnlocked, isPoweredOff }));
+        notifyPersistenceChange('state');
     }
 
     function loadState() {
@@ -143,6 +154,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             });
         });
         localStorage.setItem(SESSION_KEY, JSON.stringify({ windows, currentIEPage }));
+        notifyPersistenceChange('session');
     }
 
     function restoreSessionState() {
@@ -610,6 +622,16 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     // --- DESKTOP ICON LAYOUT + SELECTION (Windows-like) ---
     const DESKTOP_LAYOUT_KEY = 'aquerty_desktop_layout_v2';
+    const DEFAULT_DESKTOP_LAYOUT = {
+        trash: { left: '15px', top: '15px' },
+        player: { left: '15px', top: '110px' },
+        internet: { left: '15px', top: '205px' },
+        tempus: { left: '15px', top: '300px' },
+        settings: { left: '110px', top: '15px' },
+        acc: { left: '110px', top: '110px' },
+        mines: { left: '110px', top: '205px' },
+        mail: { left: '110px', top: '300px' }
+    };
     const ICON_GRID_X = 95;
     const ICON_GRID_Y = 95;
     const ICON_GRID_OFFSET_X = 15;
@@ -640,6 +662,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             layout[key] = { left: el.style.left, top: el.style.top };
         });
         localStorage.setItem(DESKTOP_LAYOUT_KEY, JSON.stringify(layout));
+        notifyPersistenceChange('desktop-layout');
     }
 
     function loadDesktopLayout() {
@@ -651,20 +674,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
 
     function applyDefaultDesktopLayoutIfMissing() {
-        const defaults = {
-            trash: { left: '15px', top: '15px' },
-            player: { left: '15px', top: '110px' },
-            internet: { left: '15px', top: '205px' },
-            tempus: { left: '15px', top: '300px' },
-            settings: { left: '110px', top: '15px' },
-            acc: { left: '110px', top: '110px' },
-            mines: { left: '110px', top: '205px' },
-            mail: { left: '110px', top: '300px' }
-        };
         const saved = loadDesktopLayout();
         getDesktopIcons().forEach((el) => {
             const key = el.dataset.desktopIcon;
-            const pos = saved[key] || defaults[key] || { left: el.style.left || '15px', top: el.style.top || '15px' };
+            const pos = saved[key] || DEFAULT_DESKTOP_LAYOUT[key] || { left: el.style.left || '15px', top: el.style.top || '15px' };
             el.style.left = pos.left;
             el.style.top = pos.top;
         });
@@ -1819,6 +1832,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         updateModeButtons();
         playSystemSound('click');
         savePlayerState();
+        notifyPersistenceChange('player-preferences');
     }
 
     function toggleRepeatOne() {
@@ -1826,6 +1840,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         updateModeButtons();
         playSystemSound('click');
         savePlayerState();
+        notifyPersistenceChange('player-preferences');
     }
 
     function getPlayableTrackIndices() {
@@ -2144,6 +2159,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     volumeSlider.oninput = () => {
         player.volume = Number(volumeSlider.value);
         savePlayerState();
+        notifyPersistenceChange('player-preferences');
     };
     seekBarContainer.addEventListener('click', (e) => {
         if (!player.duration) return;
@@ -2156,11 +2172,13 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     playerSkinSelect.addEventListener('change', (e) => {
         applyPlayerSkin(e.target.value);
         savePlayerState();
+        notifyPersistenceChange('player-preferences');
         playSystemSound('click');
     });
     playerNightModeToggle.addEventListener('change', (e) => {
         setPlayerNightMode(e.target.checked);
         savePlayerState();
+        notifyPersistenceChange('player-preferences');
         playSystemSound('click');
     });
     document.addEventListener('click', (e) => {
@@ -2199,6 +2217,156 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     player.addEventListener('pause', () => { savePlayerState(); syncMobileNowPlaying(); syncMobileTransportPlayButton(); syncMobileVolumePanel(); renderMobileTrackList(); });
     player.addEventListener('play', () => { syncMobileNowPlaying(); syncMobileTransportPlayButton(); syncMobileVolumePanel(); renderMobileTrackList(); });
     window.addEventListener('beforeunload', savePlayerState);
+
+    // --- AQ-NEO PROFILE PERSISTENCE BRIDGE (Phase 3) ---
+    function readJSONStorage(key, fallback) {
+        try {
+            const raw = localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : fallback;
+        } catch (_) {
+            return fallback;
+        }
+    }
+
+    function getCloudPlayerPreferences() {
+        return {
+            volume: Number.isFinite(player.volume) ? player.volume : 0.3,
+            isShuffleEnabled: !!isShuffleEnabled,
+            isRepeatOneEnabled: !!isRepeatOneEnabled,
+            playerSkin: typeof playerSkin === 'string' ? playerSkin : 'classic',
+            isPlayerNightMode: !!isPlayerNightMode
+        };
+    }
+
+    function exportAQProfileSnapshot() {
+        return {
+            version: 1,
+            settings: { ...appSettings },
+            recents: [...recentItems],
+            state: {
+                isTempusUnlocked: !!isTempusUnlocked
+            },
+            desktopLayout: loadDesktopLayout(),
+            session: readJSONStorage(SESSION_KEY, { windows: [], currentIEPage: 'info' }),
+            player: getCloudPlayerPreferences()
+        };
+    }
+
+    function getDefaultAQProfileSnapshot() {
+        return {
+            version: 1,
+            settings: { ...defaultSettings },
+            recents: [],
+            state: { isTempusUnlocked: false },
+            desktopLayout: JSON.parse(JSON.stringify(DEFAULT_DESKTOP_LAYOUT)),
+            session: { windows: [], currentIEPage: 'info' },
+            player: {
+                volume: 0.3,
+                isShuffleEnabled: false,
+                isRepeatOneEnabled: false,
+                playerSkin: 'classic',
+                isPlayerNightMode: false
+            }
+        };
+    }
+
+    function resetWindowsBeforeSessionRestore() {
+        document.querySelectorAll('.window').forEach((win) => {
+            win.style.display = 'none';
+            win.style.zIndex = 10;
+        });
+        document.querySelectorAll('.task-item').forEach((task) => {
+            task.style.display = 'none';
+            task.classList.remove('active');
+        });
+    }
+
+    function applyAQProfileSnapshot(snapshot) {
+        if (!snapshot || typeof snapshot !== 'object') return false;
+
+        isApplyingPersistenceSnapshot = true;
+        try {
+            const safeSettings = snapshot.settings && typeof snapshot.settings === 'object'
+                ? snapshot.settings
+                : {};
+            appSettings = { ...defaultSettings, ...safeSettings };
+            recentItems = Array.isArray(snapshot.recents)
+                ? snapshot.recents.filter((item) => typeof item === 'string').slice(0, MAX_RECENTS)
+                : [];
+
+            isTempusUnlocked = !!snapshot.state?.isTempusUnlocked;
+
+            const desktopLayout = snapshot.desktopLayout && typeof snapshot.desktopLayout === 'object'
+                ? snapshot.desktopLayout
+                : DEFAULT_DESKTOP_LAYOUT;
+            const session = snapshot.session && typeof snapshot.session === 'object'
+                ? snapshot.session
+                : { windows: [], currentIEPage: 'info' };
+            const playerPrefs = snapshot.player && typeof snapshot.player === 'object'
+                ? snapshot.player
+                : {};
+
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings));
+            localStorage.setItem(RECENTS_KEY, JSON.stringify(recentItems));
+            localStorage.setItem(STATE_KEY, JSON.stringify({
+                isTempusUnlocked,
+                isPoweredOff: false
+            }));
+            localStorage.setItem(DESKTOP_LAYOUT_KEY, JSON.stringify(desktopLayout));
+            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+
+            const currentPlayerState = loadPlayerState();
+            localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify({
+                ...currentPlayerState,
+                volume: typeof playerPrefs.volume === 'number' ? playerPrefs.volume : 0.3,
+                isShuffleEnabled: !!playerPrefs.isShuffleEnabled,
+                isRepeatOneEnabled: !!playerPrefs.isRepeatOneEnabled,
+                playerSkin: typeof playerPrefs.playerSkin === 'string' ? playerPrefs.playerSkin : 'classic',
+                isPlayerNightMode: !!playerPrefs.isPlayerNightMode
+            }));
+
+            isPoweredOff = false;
+            document.getElementById('power-screen')?.classList.remove('show');
+            document.getElementById('ie-tempus-btn').style.display = isTempusUnlocked ? 'inline-block' : 'none';
+
+            applyVisualSettings();
+            updateWallpaperUnlockState();
+            applyWallpaper();
+            applyDefaultDesktopLayoutIfMissing();
+            renderRecents();
+
+            isShuffleEnabled = !!playerPrefs.isShuffleEnabled;
+            isRepeatOneEnabled = !!playerPrefs.isRepeatOneEnabled;
+            applyPlayerSkin(typeof playerPrefs.playerSkin === 'string' ? playerPrefs.playerSkin : 'classic');
+            setPlayerNightMode(!!playerPrefs.isPlayerNightMode);
+            player.volume = typeof playerPrefs.volume === 'number'
+                ? Math.max(0, Math.min(1, playerPrefs.volume))
+                : 0.3;
+            volumeSlider.value = String(player.volume);
+            updateModeButtons();
+
+            resetWindowsBeforeSessionRestore();
+            currentIEPage = 'info';
+            ieHistory = ['info'];
+            ieHistoryIndex = 0;
+            setIEPage('info', true);
+            restoreSessionState();
+            updateMobilePortNav();
+            syncMobileQuickSettings();
+            syncMobileNowPlaying();
+            syncMobileVolumePanel();
+
+            return true;
+        } finally {
+            isApplyingPersistenceSnapshot = false;
+        }
+    }
+
+    window.AQPersistence = {
+        exportSnapshot: exportAQProfileSnapshot,
+        applySnapshot: applyAQProfileSnapshot,
+        getDefaultSnapshot: getDefaultAQProfileSnapshot
+    };
 
     // --- HORLOGE BARRE DES TÂCHES ---
     function updateClock() {

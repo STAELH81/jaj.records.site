@@ -1,3 +1,4 @@
+import './cloud-sync.js';
 const IDENTITY_MODULE_URL = 'https://esm.sh/@netlify/identity@2.0.0';
 let identityModulePromise = null;
 
@@ -200,12 +201,17 @@ function renderRecentAccounts() {
         card.append(button);
         recentRoot.append(card);
 
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
             if (busy) return;
             closeInlineForms();
 
             if (isCurrent && currentIdentityUser) {
-                enterSession(sessionFromUser(currentIdentityUser));
+                setBusy(true);
+                try {
+                    await enterSession(sessionFromUser(currentIdentityUser));
+                } finally {
+                    setBusy(false);
+                }
                 return;
             }
 
@@ -263,11 +269,17 @@ function updateDesktopSessionUI(session) {
     }
 }
 
-function enterSession(session) {
+async function enterSession(session) {
     currentSession = session;
     window.JAJSession = session;
     if (session?.type === 'user') rememberAccount(session);
     updateDesktopSessionUI(session);
+
+    if (window.AQCloudSync) {
+        setStatus(session?.type === 'user' ? 'Synchronisation du profil AQ-NEO…' : 'Chargement de la session locale…');
+        await window.AQCloudSync.activate(session);
+    }
+
     window.dispatchEvent(new CustomEvent('jaj:session-changed', { detail: session }));
     hideWelcome();
 }
@@ -298,13 +310,14 @@ async function doLogin(email, password) {
     setBusy(true);
     setStatus('Connexion à AQ-NET…');
     try {
+        await window.AQCloudSync?.flush?.();
         const { login } = await getIdentityApi();
         const user = await login(email.trim(), password);
         currentIdentityUser = user;
         const session = sessionFromUser(user);
         renderRecentAccounts();
         setStatus('Session ouverte.', 'success');
-        enterSession(session);
+        await enterSession(session);
     } catch (error) {
         console.error('[JAJ Auth] login failed', error);
         setStatus(identityErrorMessage(error, 'Connexion impossible.'), 'error');
@@ -332,9 +345,14 @@ function identityErrorMessage(error, fallback) {
     return raw ? `${fallback} ${raw}` : fallback;
 }
 
-guestBtn?.addEventListener('click', () => {
+guestBtn?.addEventListener('click', async () => {
     if (busy) return;
-    enterSession(makeGuestSession());
+    setBusy(true);
+    try {
+        await enterSession(makeGuestSession());
+    } finally {
+        setBusy(false);
+    }
 });
 
 otherToggle?.addEventListener('click', () => {
@@ -379,6 +397,7 @@ signupForm?.addEventListener('submit', async (event) => {
     const provisionalMail = `${slugify(displayName)}.${shortToken(4)}@aquerty.fr`;
 
     try {
+        await window.AQCloudSync?.flush?.();
         const { signup, login } = await getIdentityApi();
         await signup(email, password, {
             full_name: displayName,
@@ -392,7 +411,7 @@ signupForm?.addEventListener('submit', async (event) => {
             const session = sessionFromUser(user);
             renderRecentAccounts();
             setStatus('Compte créé.', 'success');
-            enterSession(session);
+            await enterSession(session);
         } catch (loginError) {
             setStatus(
                 'Compte créé. Vérifie ton e-mail pour le confirmer, puis reconnecte-toi.',
@@ -409,7 +428,8 @@ signupForm?.addEventListener('submit', async (event) => {
     }
 });
 
-switchUserBtn?.addEventListener('click', () => {
+switchUserBtn?.addEventListener('click', async () => {
+    await window.AQCloudSync?.flush?.();
     showWelcome('Choisis une autre session.');
     if (typeof window.toggleStartMenu === 'function') window.toggleStartMenu(false);
 });
@@ -418,11 +438,13 @@ logoutBtn?.addEventListener('click', async () => {
     if (busy) return;
     setBusy(true);
     try {
+        await window.AQCloudSync?.flush?.();
         const { logout } = await getIdentityApi();
         await logout();
     } catch (error) {
         console.warn('[JAJ Auth] logout warning', error);
     } finally {
+        window.AQCloudSync?.deactivate?.();
         currentIdentityUser = null;
         currentSession = null;
         window.JAJSession = null;

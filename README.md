@@ -33,3 +33,22 @@ Real Netlify Identity login/signup needs the Netlify environment. Test on the de
 
 - `phase-1-jaj-cleanup`: JAJ Records rebrand / timer removal / code split.
 - `phase-2-accounts`: AQ-NEO welcome screen + Netlify Identity accounts.
+
+
+## Phase 3 — account profile synchronization
+
+Authenticated AQ-NEO sessions now synchronize their desktop profile through a Netlify Function and Netlify Blobs.
+
+Synchronized data:
+- desktop settings and wallpaper
+- icon positions
+- recent apps
+- Tempus unlock state
+- open window layout / AQ-Navigator page
+- AQ-Player preferences (volume, shuffle, repeat, skin, night mode)
+
+Guest sessions stay local to the current browser session.
+
+The API endpoint is `/api/aq-sync`. It derives the storage key from the authenticated Netlify Identity user on the server, so the browser cannot choose another user's profile key.
+
+Production uses a global strongly-consistent Blob store. Deploy previews and local Netlify environments use deploy-scoped storage so test data cannot overwrite production profiles.

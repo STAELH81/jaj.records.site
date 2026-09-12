@@ -238,12 +238,27 @@
 
 .aq-account-badge {
     display: inline-block;
-    margin-left: 6px;
+    margin-left: 5px;
     padding: 1px 4px;
-    border: 1px solid #f2d56f;
-    color: #fff0a8;
+    border: 1px solid rgba(255,255,255,.58);
+    color: #eef4ff;
     font-size: 8px;
     vertical-align: 2px;
+}
+
+.aq-account-badge[data-role="artist"] {
+    border-color: #f2d56f;
+    color: #fff0a8;
+}
+
+.aq-account-badge[data-role="admin"] {
+    border-color: #ff9999;
+    color: #ffd8d8;
+}
+
+.aq-account-badge[data-role="user"] {
+    border-color: #b9d1ff;
+    color: #e5efff;
 }
 
 .aq-account-arrow {

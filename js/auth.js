@@ -79,8 +79,16 @@ function buildAquertyMail(user) {
     return `${slugify(getDisplayName(user))}.${idPart || 'neo'}@aquerty.fr`;
 }
 
+function normalizeRoles(user) {
+    return Array.isArray(user?.app_metadata?.roles)
+        ? user.app_metadata.roles.map((role) => String(role).trim().toLowerCase()).filter(Boolean)
+        : [];
+}
+
 function sessionFromUser(user) {
-    const roles = Array.isArray(user?.app_metadata?.roles) ? user.app_metadata.roles : [];
+    const roles = normalizeRoles(user);
+    const isAdmin = roles.includes('admin');
+    const isArtist = isAdmin || roles.includes('artist');
     return {
         type: 'user',
         id: user.id,
@@ -88,7 +96,9 @@ function sessionFromUser(user) {
         displayName: getDisplayName(user),
         aquertyMail: buildAquertyMail(user),
         roles,
-        isArtist: roles.includes('artist') || roles.includes('admin')
+        isArtist,
+        isAdmin,
+        primaryRole: isAdmin ? 'admin' : (isArtist ? 'artist' : 'user')
     };
 }
 
@@ -114,6 +124,8 @@ function rememberAccount(session) {
         displayName: session.displayName,
         aquertyMail: session.aquertyMail,
         isArtist: !!session.isArtist,
+        isAdmin: !!session.isAdmin,
+        primaryRole: session.primaryRole || (session.isArtist ? 'artist' : 'user'),
         lastUsed: Date.now()
     });
     saveRecentAccounts(next);
@@ -156,6 +168,8 @@ function renderRecentAccounts() {
                 displayName: session.displayName,
                 aquertyMail: session.aquertyMail,
                 isArtist: session.isArtist,
+                isAdmin: session.isAdmin,
+                primaryRole: session.primaryRole || (session.isArtist ? 'artist' : 'user'),
                 lastUsed: Date.now()
             });
         }
@@ -180,10 +194,10 @@ function renderRecentAccounts() {
 
         const title = document.createElement('strong');
         title.textContent = account.displayName || account.email;
-        if (account.isArtist) {
+        if (account.isArtist || account.isAdmin) {
             const badge = document.createElement('span');
             badge.className = 'aq-account-badge';
-            badge.textContent = 'ARTIST';
+            badge.textContent = account.isAdmin ? 'ADMIN' : 'ARTIST';
             title.appendChild(badge);
         }
 
@@ -254,16 +268,41 @@ function makeGuestSession() {
         displayName: 'Invité',
         aquertyMail: `guest-${guestId}@aquerty.fr`,
         roles: [],
-        isArtist: false
+        isArtist: false,
+        isAdmin: false,
+        primaryRole: 'guest'
     };
 }
 
 function updateDesktopSessionUI(session) {
+    const sessionName = document.getElementById('aq-session-name');
+    const sessionAvatar = document.getElementById('aq-session-avatar');
+    const sessionRole = document.getElementById('aq-session-role');
+
     if (sessionSummary) {
         sessionSummary.textContent = session
-            ? `${session.displayName} · ${session.aquertyMail}`
+            ? session.aquertyMail
             : 'Session : aucune';
     }
+
+    if (sessionName) {
+        sessionName.textContent = session?.displayName || 'Aucune session';
+    }
+
+    if (sessionAvatar) {
+        sessionAvatar.textContent = avatarInitial(session?.displayName || '?');
+    }
+
+    if (sessionRole) {
+        const role = session?.primaryRole || (session?.type === 'guest' ? 'guest' : 'none');
+        sessionRole.dataset.role = role;
+        sessionRole.textContent =
+            role === 'admin' ? 'ADMIN' :
+            role === 'artist' ? 'ARTIST' :
+            role === 'user' ? 'USER' :
+            role === 'guest' ? 'GUEST' : 'OFFLINE';
+    }
+
     if (logoutBtn) {
         logoutBtn.style.display = session?.type === 'user' ? '' : 'none';
     }
@@ -482,6 +521,22 @@ window.AQAuth = {
     showWelcome,
     getSession: () => currentSession,
     getIdentityUser: () => currentIdentityUser
+};
+
+window.AQPermissions = {
+    hasRole(role) {
+        const wanted = String(role || '').toLowerCase();
+        return !!currentSession?.roles?.includes(wanted);
+    },
+    isArtist() {
+        return !!currentSession?.isArtist;
+    },
+    isAdmin() {
+        return !!currentSession?.isAdmin;
+    },
+    canPublish() {
+        return !!currentSession?.isArtist;
+    }
 };
 
 await initializeIdentity();

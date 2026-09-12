@@ -428,7 +428,8 @@ signupForm?.addEventListener('submit', async (event) => {
     }
 });
 
-switchUserBtn?.addEventListener('click', () => {
+switchUserBtn?.addEventListener('click', async () => {
+    await window.AQCloudSync?.flush?.();
     showWelcome('Choisis une autre session.');
     if (typeof window.toggleStartMenu === 'function') window.toggleStartMenu(false);
 });

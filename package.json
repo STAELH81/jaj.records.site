@@ -1,0 +1,11 @@
+{
+  "name": "jaj-records-aq-neo",
+  "private": true,
+  "version": "0.3.0",
+  "description": "JAJ Records / Aquerty AQ-NEO web desktop",
+  "dependencies": {
+    "@netlify/blobs": "latest",
+    "@netlify/functions": "latest",
+    "@netlify/identity": "latest"
+  }
+}

@@ -89,13 +89,44 @@ function normalizeRoleList(value) {
 }
 
 function normalizeRoles(user) {
-    // Use ONE authoritative role source, never merge multiple copies.
-    // Netlify Identity currently exposes current roles on user.roles.
-    // Metadata variants are fallback shapes only; merging them can resurrect stale roles.
     if (Array.isArray(user?.roles)) return normalizeRoleList(user.roles);
     if (Array.isArray(user?.app_metadata?.roles)) return normalizeRoleList(user.app_metadata.roles);
     if (Array.isArray(user?.appMetadata?.roles)) return normalizeRoleList(user.appMetadata.roles);
     return [];
+}
+
+async function refreshUserFromServer(user) {
+    if (!user?.id) return user;
+
+    try {
+        const response = await fetch('/api/aq-me', {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (!response.ok) return user;
+
+        const live = await response.json();
+        const liveRoles = normalizeRoleList(live?.roles);
+
+        return {
+            ...user,
+            roles: liveRoles,
+            app_metadata: {
+                ...(user.app_metadata || {}),
+                roles: liveRoles
+            },
+            appMetadata: {
+                ...(user.appMetadata || {}),
+                roles: liveRoles
+            }
+        };
+    } catch (error) {
+        console.warn('[JAJ Auth] live role refresh failed', error);
+        return user;
+    }
 }
 
 function rankRoles(roles) {
@@ -271,6 +302,8 @@ function renderRecentAccounts() {
             if (isCurrent && currentIdentityUser) {
                 setBusy(true);
                 try {
+                    currentIdentityUser = await refreshUserFromServer(currentIdentityUser);
+                    renderRecentAccounts();
                     await enterSession(sessionFromUser(currentIdentityUser));
                 } finally {
                     setBusy(false);
@@ -400,8 +433,8 @@ async function doLogin(email, password) {
         await window.AQCloudSync?.flush?.();
         const { login } = await getIdentityApi();
         const user = await login(email.trim(), password);
-        currentIdentityUser = user;
-        const session = sessionFromUser(user);
+        currentIdentityUser = await refreshUserFromServer(user);
+        const session = sessionFromUser(currentIdentityUser);
         renderRecentAccounts();
         setStatus('Session ouverte.', 'success');
         await enterSession(session);
@@ -494,8 +527,8 @@ signupForm?.addEventListener('submit', async (event) => {
 
         try {
             const user = await login(email, password);
-            currentIdentityUser = user;
-            const session = sessionFromUser(user);
+            currentIdentityUser = await refreshUserFromServer(user);
+            const session = sessionFromUser(currentIdentityUser);
             renderRecentAccounts();
             setStatus('Compte créé.', 'success');
             await enterSession(session);
@@ -550,6 +583,7 @@ async function initializeIdentity() {
         const callback = await handleAuthCallback();
         if (callback?.user) currentIdentityUser = callback.user;
         currentIdentityUser = (await getUser()) || currentIdentityUser;
+        currentIdentityUser = await refreshUserFromServer(currentIdentityUser);
     } catch (error) {
         // Guest mode remains fully usable if Identity isn't enabled or the CDN is unreachable.
         console.info('[JAJ Auth] Identity unavailable in this environment', error);

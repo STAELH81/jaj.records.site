@@ -79,26 +79,51 @@ function buildAquertyMail(user) {
     return `${slugify(getDisplayName(user))}.${idPart || 'neo'}@aquerty.fr`;
 }
 
+function normalizeRoleList(value) {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(
+        value
+            .map((role) => String(role).trim().toLowerCase())
+            .filter(Boolean)
+    )];
+}
+
 function normalizeRoles(user) {
-    // @netlify/identity exposes Identity roles directly on user.roles.
-    // Keep metadata fallbacks for compatibility with older / alternate user shapes.
-    const sources = [
-        user?.roles,
-        user?.app_metadata?.roles,
-        user?.appMetadata?.roles
-    ];
-    const roles = sources
-        .filter(Array.isArray)
-        .flat()
-        .map((role) => String(role).trim().toLowerCase())
-        .filter(Boolean);
-    return [...new Set(roles)];
+    // Use ONE authoritative role source, never merge multiple copies.
+    // Netlify Identity currently exposes current roles on user.roles.
+    // Metadata variants are fallback shapes only; merging them can resurrect stale roles.
+    if (Array.isArray(user?.roles)) return normalizeRoleList(user.roles);
+    if (Array.isArray(user?.app_metadata?.roles)) return normalizeRoleList(user.app_metadata.roles);
+    if (Array.isArray(user?.appMetadata?.roles)) return normalizeRoleList(user.appMetadata.roles);
+    return [];
+}
+
+function rankRoles(roles) {
+    const priority = ['admin', 'artist'];
+    return [...roles].sort((a, b) => {
+        const ai = priority.indexOf(a);
+        const bi = priority.indexOf(b);
+        if (ai !== -1 || bi !== -1) {
+            if (ai === -1) return 1;
+            if (bi === -1) return -1;
+            return ai - bi;
+        }
+        return a.localeCompare(b);
+    });
+}
+
+function rolesForDisplay(session) {
+    if (!session) return [];
+    if (session.type === 'guest') return ['guest'];
+    const roles = rankRoles(normalizeRoleList(session.roles));
+    return roles.length ? roles : ['user'];
 }
 
 function sessionFromUser(user) {
     const roles = normalizeRoles(user);
     const isAdmin = roles.includes('admin');
-    const isArtist = isAdmin || roles.includes('artist');
+    const isArtist = roles.includes('artist');
+    const ranked = rankRoles(roles);
     return {
         type: 'user',
         id: user.id,
@@ -108,7 +133,7 @@ function sessionFromUser(user) {
         roles,
         isArtist,
         isAdmin,
-        primaryRole: isAdmin ? 'admin' : (isArtist ? 'artist' : 'user')
+        primaryRole: ranked[0] || 'user'
     };
 }
 
@@ -133,9 +158,10 @@ function rememberAccount(session) {
         email: session.email,
         displayName: session.displayName,
         aquertyMail: session.aquertyMail,
+        roles: normalizeRoleList(session.roles),
         isArtist: !!session.isArtist,
         isAdmin: !!session.isAdmin,
-        primaryRole: session.primaryRole || (session.isArtist ? 'artist' : 'user'),
+        primaryRole: session.primaryRole || rankRoles(normalizeRoleList(session.roles))[0] || 'user',
         lastUsed: Date.now()
     });
     saveRecentAccounts(next);
@@ -171,17 +197,21 @@ function renderRecentAccounts() {
 
     if (currentIdentityUser) {
         const session = sessionFromUser(currentIdentityUser);
-        const already = recent.some((item) => String(item.email).toLowerCase() === currentEmail);
-        if (!already) {
-            recent.unshift({
-                email: session.email,
-                displayName: session.displayName,
-                aquertyMail: session.aquertyMail,
-                isArtist: session.isArtist,
-                isAdmin: session.isAdmin,
-                primaryRole: session.primaryRole || (session.isArtist ? 'artist' : 'user'),
-                lastUsed: Date.now()
-            });
+        const freshAccount = {
+            email: session.email,
+            displayName: session.displayName,
+            aquertyMail: session.aquertyMail,
+            roles: [...session.roles],
+            isArtist: session.isArtist,
+            isAdmin: session.isAdmin,
+            primaryRole: session.primaryRole,
+            lastUsed: Date.now()
+        };
+        const existingIndex = recent.findIndex((item) => String(item.email).toLowerCase() === currentEmail);
+        if (existingIndex >= 0) {
+            recent[existingIndex] = { ...recent[existingIndex], ...freshAccount };
+        } else {
+            recent.unshift(freshAccount);
         }
     }
 
@@ -204,12 +234,21 @@ function renderRecentAccounts() {
 
         const title = document.createElement('strong');
         title.textContent = account.displayName || account.email;
-        if (account.isArtist || account.isAdmin) {
+
+        let accountRoles = normalizeRoleList(account.roles);
+        if (!accountRoles.length) {
+            // Migrate old locally remembered account cards that predate exact role storage.
+            if (account.isAdmin) accountRoles = ['admin'];
+            else if (account.isArtist) accountRoles = ['artist'];
+        }
+        const displayRoles = accountRoles.length ? rankRoles(accountRoles) : ['user'];
+        displayRoles.forEach((role) => {
             const badge = document.createElement('span');
             badge.className = 'aq-account-badge';
-            badge.textContent = account.isAdmin ? 'ADMIN' : 'ARTIST';
+            badge.dataset.role = role;
+            badge.textContent = role.toUpperCase();
             title.appendChild(badge);
-        }
+        });
 
         const sub = document.createElement('small');
         sub.textContent = isCurrent
@@ -304,16 +343,12 @@ function updateDesktopSessionUI(session) {
     }
 
     if (sessionRole) {
-        const role = session?.primaryRole || (session?.type === 'guest' ? 'guest' : 'none');
-        sessionRole.dataset.role = role;
-        const hasAdminRole = !!session?.roles?.includes('admin');
-        const hasArtistRole = !!session?.roles?.includes('artist');
-        sessionRole.textContent =
-            hasAdminRole && hasArtistRole ? 'ADMIN + ARTIST' :
-            hasAdminRole ? 'ADMIN' :
-            hasArtistRole ? 'ARTIST' :
-            role === 'user' ? 'USER' :
-            role === 'guest' ? 'GUEST' : 'OFFLINE';
+        const displayRoles = rolesForDisplay(session);
+        const primaryRole = displayRoles[0] || 'none';
+        sessionRole.dataset.role = primaryRole;
+        sessionRole.textContent = displayRoles.length
+            ? displayRoles.map((role) => role.toUpperCase()).join(' + ')
+            : 'OFFLINE';
     }
 
     if (logoutBtn) {
@@ -542,13 +577,16 @@ window.AQPermissions = {
         return !!currentSession?.roles?.includes(wanted);
     },
     isArtist() {
-        return !!currentSession?.isArtist;
+        return !!currentSession?.roles?.includes('artist');
     },
     isAdmin() {
-        return !!currentSession?.isAdmin;
+        return !!currentSession?.roles?.includes('admin');
     },
     canPublish() {
-        return !!currentSession?.isArtist;
+        return !!currentSession && (
+            currentSession.roles?.includes('artist') ||
+            currentSession.roles?.includes('admin')
+        );
     }
 };
 

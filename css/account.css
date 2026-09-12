@@ -417,3 +417,27 @@ body.aq-session-pending #lite-exit-fab {
         font-size: 9px;
     }
 }
+
+/* Phase 3 — per-account cloud sync state */
+.start-cloud-status {
+    margin-top: 2px;
+    font-size: 9px;
+    font-weight: normal;
+    opacity: 0.88;
+}
+
+.start-cloud-status[data-state="syncing"] {
+    color: #fff2a8;
+}
+
+.start-cloud-status[data-state="synced"] {
+    color: #dfffd5;
+}
+
+.start-cloud-status[data-state="error"] {
+    color: #ffd6d6;
+}
+
+.start-cloud-status[data-state="local"] {
+    color: #dce8ff;
+}

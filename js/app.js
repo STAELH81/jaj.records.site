@@ -2346,6 +2346,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             updateModeButtons();
 
             resetWindowsBeforeSessionRestore();
+            currentIEPage = 'info';
+            ieHistory = ['info'];
+            ieHistoryIndex = 0;
+            setIEPage('info', true);
             restoreSessionState();
             updateMobilePortNav();
             syncMobileQuickSettings();

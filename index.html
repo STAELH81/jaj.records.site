@@ -450,6 +450,10 @@
                     <div style="flex-grow:1;"></div>
                     <input id="mail-search" placeholder="Rechercher..." style="border:2px inset #fff; padding:4px; font-size:12px; width: 220px;">
                 </div>
+                <div class="mail-account-strip">
+                    <span>Adresse AQ-Mail :</span>
+                    <strong id="mail-current-address">guest@aquerty.fr</strong>
+                </div>
                 <div class="mail-split">
                     <div class="mail-list" id="mail-list"></div>
                     <div class="mail-view" id="mail-view">
@@ -524,9 +528,18 @@
 </div>
 <div id="start-menu">
     <div class="start-menu-header">
-        <div>JAJ Records // Aquerty AQ-NEO</div>
-        <div id="aq-session-summary" class="start-session-summary">Session : aucune</div>
-        <div id="aq-cloud-status" class="start-cloud-status" aria-live="polite">Cloud : hors ligne</div>
+        <div class="start-menu-brand">JAJ Records // Aquerty AQ-NEO</div>
+        <div class="start-session-card">
+            <div id="aq-session-avatar" class="start-session-avatar" aria-hidden="true">?</div>
+            <div class="start-session-copy">
+                <div class="start-session-name-row">
+                    <strong id="aq-session-name">Aucune session</strong>
+                    <span id="aq-session-role" class="start-session-role" data-role="none">OFFLINE</span>
+                </div>
+                <div id="aq-session-summary" class="start-session-summary">Session : aucune</div>
+                <div id="aq-cloud-status" class="start-cloud-status" aria-live="polite">Cloud : hors ligne</div>
+            </div>
+        </div>
     </div>
     <div class="start-menu-section">
         <div class="start-menu-title">Recents</div>

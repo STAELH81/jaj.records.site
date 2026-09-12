@@ -476,7 +476,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         stopBootSound();
         bootAudio = new Audio('medias/musique/startup.mp3');
         bootAudio.preload = 'metadata';
-        bootAudio.volume = (appSettings.masterVolume ?? 0.6);
+        // Startup is intentionally softer than the rest of AQ-NEO system audio.
+        bootAudio.volume = Math.max(0, Math.min(1, (appSettings.masterVolume ?? 0.6) * 0.35));
         const metadataLoaded = await new Promise((resolve) => {
             let settled = false;
             const settle = (value) => {
@@ -2648,6 +2649,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         return window.JAJSession?.aquertyMail || 'guest@aquerty.fr';
     }
 
+    function updateMailAccountStrip() {
+        const addressEl = document.getElementById('mail-current-address');
+        if (addressEl) addressEl.textContent = getAquertySessionMail();
+    }
+
     let mailData = [
         { id: 'm1', folder: 'inbox', from: 'updates@aquerty.local', to: getAquertySessionMail(), subject: '', date: '2026-04-24 11:02', unread: true, body: '' },
         { id: 'm2', folder: 'inbox', from: 'support@aquerty.local', to: getAquertySessionMail(), subject: '', date: '2026-04-24 11:18', unread: true, body: '' },
@@ -2822,6 +2828,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     mailSendEl.addEventListener('click', mailSend);
     window.addEventListener('jaj:session-changed', (event) => {
         const sessionMail = event.detail?.aquertyMail || getAquertySessionMail();
+        updateMailAccountStrip();
         mailData.forEach((message) => {
             if (message.id === 'm1' || message.id === 'm2') message.to = sessionMail;
             if (message.id === 'm3') message.from = sessionMail;
@@ -2834,6 +2841,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     isMailI18nReady = true;
     updateMailTranslations();
+    updateMailAccountStrip();
     mailRenderFolders();
     mailRenderList();
     mailRenderView();

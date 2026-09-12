@@ -441,3 +441,110 @@ body.aq-session-pending #lite-exit-fab {
 .start-cloud-status[data-state="local"] {
     color: #dce8ff;
 }
+
+/* Phase 3.5 — AQ-ID / account polish */
+.start-menu-brand {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: .2px;
+    margin-bottom: 5px;
+}
+
+.start-session-card {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding-top: 5px;
+    border-top: 1px solid rgba(255,255,255,.28);
+}
+
+.start-session-avatar {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 4px;
+    background: linear-gradient(145deg, rgba(255,255,255,.9), rgba(255,255,255,.15)), #8aa9e8;
+    color: #153477;
+    box-shadow: 0 0 0 1px #244582, 1px 1px 2px rgba(0,0,0,.32);
+    font-size: 17px;
+    font-weight: bold;
+    text-shadow: 0 1px rgba(255,255,255,.55);
+}
+
+.start-session-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.start-session-name-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    min-width: 0;
+}
+
+.start-session-name-row strong {
+    min-width: 0;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+}
+
+.start-session-role {
+    display: inline-block;
+    padding: 1px 4px;
+    border: 1px solid rgba(255,255,255,.52);
+    background: rgba(17,49,113,.42);
+    color: #edf4ff;
+    font-size: 7px;
+    line-height: 12px;
+    letter-spacing: .6px;
+}
+
+.start-session-role[data-role="artist"] {
+    color: #fff0a8;
+    border-color: #f2d56f;
+}
+
+.start-session-role[data-role="admin"] {
+    color: #ffd8d8;
+    border-color: #ff9999;
+}
+
+.start-session-role[data-role="guest"] {
+    color: #dce8ff;
+}
+
+.mail-account-strip {
+    box-sizing: border-box;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 7px;
+    border-top: 1px solid #fff;
+    border-bottom: 1px solid #aca899;
+    background: #f2f2ea;
+    color: #333;
+    font-size: 10px;
+}
+
+.mail-account-strip strong {
+    color: #0054e3;
+    font-family: "Courier New", monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.global-dark .mail-account-strip {
+    background: #20242b;
+    border-top-color: #4b5360;
+    border-bottom-color: #111;
+    color: #ddd;
+}

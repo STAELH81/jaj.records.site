@@ -1,10 +1,12 @@
-import {
-    signup,
-    login,
-    logout,
-    getUser,
-    handleAuthCallback
-} from 'https://esm.sh/@netlify/identity@2.0.0';
+const IDENTITY_MODULE_URL = 'https://esm.sh/@netlify/identity@2.0.0';
+let identityModulePromise = null;
+
+function getIdentityApi() {
+    if (!identityModulePromise) {
+        identityModulePromise = import(IDENTITY_MODULE_URL);
+    }
+    return identityModulePromise;
+}
 
 const RECENT_ACCOUNTS_KEY = 'jaj_recent_accounts_v1';
 const GUEST_SESSION_KEY = 'jaj_guest_session_v1';
@@ -296,6 +298,7 @@ async function doLogin(email, password) {
     setBusy(true);
     setStatus('Connexion à AQ-NET…');
     try {
+        const { login } = await getIdentityApi();
         const user = await login(email.trim(), password);
         currentIdentityUser = user;
         const session = sessionFromUser(user);
@@ -376,6 +379,7 @@ signupForm?.addEventListener('submit', async (event) => {
     const provisionalMail = `${slugify(displayName)}.${shortToken(4)}@aquerty.fr`;
 
     try {
+        const { signup, login } = await getIdentityApi();
         await signup(email, password, {
             full_name: displayName,
             display_name: displayName,
@@ -414,6 +418,7 @@ logoutBtn?.addEventListener('click', async () => {
     if (busy) return;
     setBusy(true);
     try {
+        const { logout } = await getIdentityApi();
         await logout();
     } catch (error) {
         console.warn('[JAJ Auth] logout warning', error);
@@ -432,16 +437,12 @@ logoutBtn?.addEventListener('click', async () => {
 
 async function initializeIdentity() {
     try {
+        const { handleAuthCallback, getUser } = await getIdentityApi();
         const callback = await handleAuthCallback();
         if (callback?.user) currentIdentityUser = callback.user;
-    } catch (error) {
-        // Normal when Identity isn't enabled yet or when running on a plain local server.
-        console.info('[JAJ Auth] no auth callback', error);
-    }
-
-    try {
         currentIdentityUser = (await getUser()) || currentIdentityUser;
     } catch (error) {
+        // Guest mode remains fully usable if Identity isn't enabled or the CDN is unreachable.
         console.info('[JAJ Auth] Identity unavailable in this environment', error);
     }
 

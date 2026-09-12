@@ -80,9 +80,19 @@ function buildAquertyMail(user) {
 }
 
 function normalizeRoles(user) {
-    return Array.isArray(user?.app_metadata?.roles)
-        ? user.app_metadata.roles.map((role) => String(role).trim().toLowerCase()).filter(Boolean)
-        : [];
+    // @netlify/identity exposes Identity roles directly on user.roles.
+    // Keep metadata fallbacks for compatibility with older / alternate user shapes.
+    const sources = [
+        user?.roles,
+        user?.app_metadata?.roles,
+        user?.appMetadata?.roles
+    ];
+    const roles = sources
+        .filter(Array.isArray)
+        .flat()
+        .map((role) => String(role).trim().toLowerCase())
+        .filter(Boolean);
+    return [...new Set(roles)];
 }
 
 function sessionFromUser(user) {
@@ -296,9 +306,12 @@ function updateDesktopSessionUI(session) {
     if (sessionRole) {
         const role = session?.primaryRole || (session?.type === 'guest' ? 'guest' : 'none');
         sessionRole.dataset.role = role;
+        const hasAdminRole = !!session?.roles?.includes('admin');
+        const hasArtistRole = !!session?.roles?.includes('artist');
         sessionRole.textContent =
-            role === 'admin' ? 'ADMIN' :
-            role === 'artist' ? 'ARTIST' :
+            hasAdminRole && hasArtistRole ? 'ADMIN + ARTIST' :
+            hasAdminRole ? 'ADMIN' :
+            hasArtistRole ? 'ARTIST' :
             role === 'user' ? 'USER' :
             role === 'guest' ? 'GUEST' : 'OFFLINE';
     }

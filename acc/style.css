@@ -1,0 +1,88 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: #0c0c0c;
+    color: #dcdcdc;
+    font-family: Consolas, "Lucida Console", "Courier New", monospace;
+    font-size: 15px;
+    line-height: 1.35;
+    overflow: hidden;
+}
+  
+  #terminal {
+    padding: 14px 16px;
+    white-space: pre-wrap;
+    height: 100vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+  
+  input {
+    background: transparent;
+    border: none;
+    color: #dcdcdc;
+    font-family: inherit;
+    font-size: inherit;
+    outline: none;
+    width: 100%;
+    border-right: 1px solid #dcdcdc;
+    animation: blink 1s step-end infinite;
+  }
+  
+  ::selection {
+    background: #3b78ff;
+    color: #fff;
+  }
+  
+  iframe, video, img {
+    margin-top: 10px;
+    border: 1px solid #666;
+    max-width: 100%;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0c0c0c;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: #4f4f4f;
+    border-radius: 0;
+    border: 1px solid #666;
+  }
+  
+  @keyframes blink {
+    from, to { border-color: transparent; }
+    50% { border-color: #dcdcdc; }
+  }
+  
+  .log-entry {
+    margin: 10px 0;
+    border-bottom: 1px solid #3a3a3a;
+    padding-bottom: 5px;
+  }
+
+.prompt {
+  color: #bdbdbd;
+}
+.out-info {
+  color: #dcdcdc;
+}
+.out-warn {
+  color: #e2b714;
+}
+.out-error {
+  color: #ff6b6b;
+}
+.out-security {
+  color: #ff9f43;
+}
+
+.preview-frame {
+  width: 100%;
+  height: 280px;
+  border: 1px solid #666;
+  background: #000;
+  margin-top: 10px;
+}

@@ -52,3 +52,20 @@ Guest sessions stay local to the current browser session.
 The API endpoint is `/api/aq-sync`. It derives the storage key from the authenticated Netlify Identity user on the server, so the browser cannot choose another user's profile key.
 
 Production uses a global strongly-consistent Blob store. Deploy previews and local Netlify environments use deploy-scoped storage so test data cannot overwrite production profiles.
+
+
+## Artist role
+
+Netlify Identity roles are read from `app_metadata.roles`.
+
+Supported roles:
+- `user` — normal JAJ/AQ-NEO account
+- `artist` — artist account; shows an ARTIST badge and enables the future publishing permission hook
+- `admin` — admin account; implicitly has artist publishing permission
+
+The frontend exposes:
+- `window.AQPermissions.isArtist()`
+- `window.AQPermissions.isAdmin()`
+- `window.AQPermissions.canPublish()`
+
+No Publisher UI is included in this patch yet.

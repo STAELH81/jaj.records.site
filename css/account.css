@@ -238,12 +238,27 @@
 
 .aq-account-badge {
     display: inline-block;
-    margin-left: 6px;
+    margin-left: 5px;
     padding: 1px 4px;
-    border: 1px solid #f2d56f;
-    color: #fff0a8;
+    border: 1px solid rgba(255,255,255,.58);
+    color: #eef4ff;
     font-size: 8px;
     vertical-align: 2px;
+}
+
+.aq-account-badge[data-role="artist"] {
+    border-color: #f2d56f;
+    color: #fff0a8;
+}
+
+.aq-account-badge[data-role="admin"] {
+    border-color: #ff9999;
+    color: #ffd8d8;
+}
+
+.aq-account-badge[data-role="user"] {
+    border-color: #b9d1ff;
+    color: #e5efff;
 }
 
 .aq-account-arrow {
@@ -522,21 +537,25 @@ body.aq-session-pending #lite-exit-fab {
 
 .mail-account-strip {
     box-sizing: border-box;
-    min-height: 24px;
+    height: 18px;
+    min-height: 18px;
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 4px 7px;
-    border-top: 1px solid #fff;
+    gap: 4px;
+    padding: 1px 6px;
     border-bottom: 1px solid #aca899;
     background: #f2f2ea;
-    color: #333;
-    font-size: 10px;
+    color: #555;
+    font-size: 8px;
+    line-height: 16px;
+    overflow: hidden;
 }
 
 .mail-account-strip strong {
     color: #0054e3;
     font-family: "Courier New", monospace;
+    font-size: 8px;
+    font-weight: normal;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

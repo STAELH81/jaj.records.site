@@ -1,0 +1,419 @@
+/* JAJ Records / AQ-NEO account welcome screen — Phase 2 */
+
+:root {
+    --aq-login-blue: #365fbd;
+    --aq-login-blue-deep: #1e48a2;
+    --aq-login-blue-light: #6f94e3;
+    --aq-login-line: #91b0f1;
+    --aq-login-cream: #fff6dc;
+}
+
+.aq-welcome {
+    position: fixed;
+    inset: 0;
+    z-index: 4800;
+    display: none;
+    flex-direction: column;
+    background:
+        radial-gradient(circle at 28% 35%, rgba(255,255,255,0.10), transparent 30%),
+        linear-gradient(90deg, #567dd2 0%, #5d82d6 48%, #557bd1 100%);
+    color: #fff;
+    font-family: Tahoma, "Trebuchet MS", sans-serif;
+    user-select: none;
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+
+.aq-welcome.is-visible {
+    display: flex;
+}
+
+.aq-welcome.is-ready {
+    opacity: 1;
+}
+
+.aq-welcome-topbar,
+.aq-welcome-footer {
+    flex: 0 0 32px;
+    background: linear-gradient(to bottom, #073a9d 0%, #0a43b6 55%, #06348e 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.35);
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.25);
+}
+
+.aq-welcome-footer {
+    flex-basis: 38px;
+    border-bottom: 0;
+    border-top: 2px solid #e67835;
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #dce9ff;
+}
+
+.aq-welcome-main {
+    flex: 1;
+    min-height: 0;
+    width: min(1120px, 94vw);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(310px, 0.9fr) 1px minmax(360px, 1.1fr);
+    gap: 34px;
+    align-items: center;
+    padding: 34px 0;
+    box-sizing: border-box;
+}
+
+.aq-welcome-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    padding-right: 12px;
+}
+
+.aq-welcome-logo {
+    width: min(260px, 72%);
+    max-height: 112px;
+    object-fit: contain;
+    object-position: right center;
+    margin-bottom: 22px;
+    filter: drop-shadow(0 2px 1px rgba(0,0,0,0.2));
+}
+
+.aq-welcome-brand-copy {
+    max-width: 430px;
+}
+
+.aq-welcome-kicker {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #dce8ff;
+    margin-bottom: 4px;
+}
+
+.aq-welcome-brand h1 {
+    margin: 0;
+    font-size: clamp(26px, 3.4vw, 44px);
+    font-weight: 400;
+    letter-spacing: -1px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+}
+
+.aq-welcome-brand h1 span {
+    font-weight: 700;
+}
+
+.aq-welcome-brand p {
+    font-size: 15px;
+    margin: 10px 0 0;
+    color: #fff;
+}
+
+.aq-welcome-divider {
+    align-self: stretch;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.28) 20%, rgba(255,255,255,0.28) 80%, transparent);
+}
+
+.aq-account-zone {
+    width: min(500px, 100%);
+}
+
+.aq-auth-status {
+    min-height: 18px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: #fff2c5;
+}
+
+.aq-auth-status.error {
+    color: #ffe0e0;
+}
+
+.aq-auth-status.success {
+    color: #e3ffd8;
+}
+
+.aq-account-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.aq-account-card {
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    overflow: hidden;
+}
+
+.aq-account-card.active,
+.aq-account-card:hover {
+    border-color: rgba(255,255,255,0.78);
+    background: linear-gradient(90deg, rgba(42,92,187,0.88), rgba(76,119,209,0.72));
+    box-shadow:
+        inset 0 0 0 1px rgba(26,61,139,0.65),
+        0 1px 0 rgba(255,255,255,0.15);
+}
+
+.aq-account-card.current {
+    border-color: rgba(255,239,177,0.82);
+}
+
+.aq-account-select {
+    width: 100%;
+    min-height: 66px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    display: grid;
+    grid-template-columns: 52px 1fr 24px;
+    gap: 10px;
+    align-items: center;
+    text-align: left;
+    cursor: pointer;
+    padding: 7px 10px;
+    font: inherit;
+}
+
+.aq-account-select:focus-visible {
+    outline: 2px dotted #fff;
+    outline-offset: -4px;
+}
+
+.aq-avatar {
+    width: 46px;
+    height: 46px;
+    border: 2px solid #fff;
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px #234487, 1px 2px 3px rgba(0,0,0,0.35);
+    display: grid;
+    place-items: center;
+    background:
+        linear-gradient(145deg, rgba(255,255,255,0.7), rgba(255,255,255,0.08)),
+        #3d66b9;
+    font-size: 23px;
+    font-weight: bold;
+    color: #102c6b;
+    text-shadow: 0 1px rgba(255,255,255,0.55);
+}
+
+.aq-avatar-guest {
+    background:
+        linear-gradient(145deg, rgba(255,255,255,0.85), rgba(255,255,255,0.12)),
+        #88a8e8;
+}
+
+.aq-avatar-create {
+    background:
+        linear-gradient(145deg, rgba(255,255,255,0.85), rgba(255,255,255,0.12)),
+        #80bc6a;
+    color: #1e5722;
+}
+
+.aq-account-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.aq-account-copy strong {
+    font-size: 17px;
+    font-weight: 400;
+    text-shadow: 1px 1px rgba(0,0,0,0.28);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aq-account-copy small {
+    font-size: 10px;
+    color: #e7efff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aq-account-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 4px;
+    border: 1px solid #f2d56f;
+    color: #fff0a8;
+    font-size: 8px;
+    vertical-align: 2px;
+}
+
+.aq-account-arrow {
+    font-family: Arial, sans-serif;
+    font-size: 28px;
+    color: #fff;
+    opacity: 0;
+    transform: translateX(-3px);
+    transition: 100ms ease;
+}
+
+.aq-account-card:hover .aq-account-arrow,
+.aq-account-card.active .aq-account-arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.aq-inline-form {
+    margin: -2px 10px 10px 72px;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: rgba(18,53,128,0.58);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18);
+}
+
+.aq-inline-form[hidden] {
+    display: none;
+}
+
+.aq-inline-form label {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 7px;
+    font-size: 10px;
+}
+
+.aq-inline-form input {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    font: 11px Tahoma, sans-serif;
+    padding: 4px 5px;
+    border: 2px inset #fff;
+    background: #fff;
+    color: #111;
+}
+
+.aq-inline-form input:focus {
+    outline: 1px solid #f3a24a;
+}
+
+.aq-inline-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.aq-mini-btn {
+    min-width: 72px;
+    padding: 4px 8px;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #526791;
+    border-bottom: 2px solid #526791;
+    background: #d8e4ff;
+    color: #17336b;
+    font: bold 10px Tahoma, sans-serif;
+    cursor: pointer;
+}
+
+.aq-mini-btn:active {
+    border-top-color: #526791;
+    border-left-color: #526791;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+}
+
+.aq-mini-btn-primary {
+    background: #f1f5ff;
+}
+
+.aq-form-note {
+    margin: 3px 0 7px;
+    color: #e9f0ff;
+    font-size: 9px;
+    line-height: 1.4;
+}
+
+.start-session-summary {
+    margin-top: 2px;
+    font-size: 9px;
+    font-weight: normal;
+    opacity: 0.9;
+}
+
+body.aq-session-pending #desktop,
+body.aq-session-pending #taskbar,
+body.aq-session-pending #mobile-port-nav,
+body.aq-session-pending #mobile-app,
+body.aq-session-pending #lite-exit-fab {
+    pointer-events: none;
+}
+
+@media (max-width: 760px) {
+    .aq-welcome-main {
+        width: min(94vw, 520px);
+        grid-template-columns: 1fr;
+        gap: 18px;
+        align-content: center;
+        overflow-y: auto;
+        padding: 24px 0;
+    }
+
+    .aq-welcome-brand {
+        align-items: center;
+        text-align: center;
+        padding-right: 0;
+    }
+
+    .aq-welcome-logo {
+        width: min(210px, 58vw);
+        margin-bottom: 10px;
+        object-position: center;
+    }
+
+    .aq-welcome-brand h1 {
+        font-size: 28px;
+    }
+
+    .aq-welcome-brand p {
+        font-size: 12px;
+    }
+
+    .aq-welcome-divider {
+        display: none;
+    }
+
+    .aq-account-zone {
+        width: 100%;
+    }
+
+    .aq-account-select {
+        min-height: 58px;
+        grid-template-columns: 46px 1fr 20px;
+    }
+
+    .aq-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 19px;
+    }
+
+    .aq-account-copy strong {
+        font-size: 15px;
+    }
+
+    .aq-inline-form {
+        margin-left: 10px;
+    }
+
+    .aq-inline-form label {
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+
+    .aq-welcome-footer {
+        padding: 0 12px;
+        font-size: 9px;
+    }
+}

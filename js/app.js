@@ -484,12 +484,19 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         return hideDelay;
     }
 
+    function markBootComplete() {
+        window.__AQ_BOOT_DONE__ = true;
+        window.dispatchEvent(new CustomEvent('aq:boot-complete'));
+    }
+
     async function runBootSequence() {
+        window.__AQ_BOOT_DONE__ = false;
         const boot = document.getElementById('boot-screen');
         const progressBar = document.querySelector('.boot-progress-bar');
         if (!appSettings.bootEnabled) {
             stopBootSound();
             boot.style.display = 'none';
+            markBootComplete();
             return;
         }
         addSystemLog('Demarrage du systeme.');
@@ -506,6 +513,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         setTimeout(() => {
             boot.style.display = 'none';
             addSystemLog('Demarrage termine.');
+            markBootComplete();
         }, hideDelayMs + 500);
     }
 
@@ -1678,25 +1686,27 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     if (!hasSavedSession) setIEPage('info');
 
     // --- PLAYLIST ---
+    // Dual est maintenant une archive sortie : plus aucun verrou temporel.
+    // Les masters absents du repo sont marques "unavailable" au lieu d'etre faux-verrouilles.
     let myTracks = [
-        { title: "Just Not Enough For It (Remastered)", file: "09.mp3", status: "locked", sourceFolder: "locked" },
+        { title: "Just Not Enough For It (Remastered)", file: "09.mp3", status: "unavailable" },
         { title: "Feelings Of Nostalgia", file: "01.mp3", status: "full" },
-        { title: "The Lobby", file: "02.mp3", status: "locked", sourceFolder: "locked" },
+        { title: "The Lobby", file: "02.mp3", status: "unavailable" },
         { title: "LRJR_3", file: "03.mp3", status: "full" },
         { title: "Reverie", file: "04_prev.mp3", status: "snippet" },
         { title: "Warsaw", file: "05.mp3", status: "full" },
-        { title: "Just Not Enough For It (Speech Intro)", file: "11.mp3", status: "locked", sourceFolder: "locked" },
+        { title: "Just Not Enough For It (Speech Intro)", file: "11.mp3", status: "unavailable" },
         { title: "LRJR_1 / Figured Out", file: "15_prev.mp3", status: "snippet" },
-        { title: "Cloudy Awakening", file: "06.mp3", status: "locked", sourceFolder: "locked" },
+        { title: "Cloudy Awakening", file: "06.mp3", status: "unavailable" },
         { title: "LRJR_2", file: "07.mp3", status: "full" },
         { title: "The Red Willow Hotel's Lounge", file: "08.mp3", status: "full" },
-        { title: "Inconsistent Use Of Tabs", file: "14.mp3", status: "locked", sourceFolder: "locked" },
+        { title: "Inconsistent Use Of Tabs", file: "14.mp3", status: "unavailable" },
         { title: "The Emergency", file: "10.mp3", status: "full" },
-        { title: "Huxley", file: "16.mp3", status: "locked", sourceFolder: "locked" },
+        { title: "Huxley", file: "16.mp3", status: "unavailable" },
         { title: "LRJR_4", file: "12.mp3", status: "full" },
         { title: "Loosing", file: "13.mp3", status: "full" },
-        { title: "Feelings Of Nostalgia (Alt)", file: "17.mp3", status: "locked", sourceFolder: "locked" },
-        { title: "LRJR_5 / Gender Mess", file: "18.mp3", status: "locked", sourceFolder: "locked" }
+        { title: "Feelings Of Nostalgia (Alt)", file: "17.mp3", status: "unavailable" },
+        { title: "LRJR_5 / Gender Mess", file: "18.mp3", status: "unavailable" }
     ];
 
     const playlist = document.getElementById('playlist');
@@ -1821,7 +1831,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     function getPlayableTrackIndices() {
         return myTracks
             .map((track, index) => ({ track, index }))
-            .filter((entry) => entry.track.status !== 'locked')
+            .filter((entry) => entry.track.status !== 'locked' && entry.track.status !== 'unavailable')
             .map((entry) => entry.index);
     }
 
@@ -1933,14 +1943,20 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             const row = document.createElement('div');
             row.className = 'mobile-track-item';
             if (track.status === 'locked') row.classList.add('locked');
+            if (track.status === 'unavailable') row.classList.add('unavailable');
             if (index === currentTrackIndex) row.classList.add('active');
             const trackNum = String(index + 1).padStart(2, '0');
             const lockedTag = getCurrentLanguage() === 'en' ? '[LOCKED]' : '[LOCK]';
             const snippetTag = getCurrentLanguage() === 'en' ? '[PREVIEW]' : '[PREVIEW]';
-            const tag = track.status === 'locked' ? ` ${lockedTag}` : (track.status === 'snippet' ? ` ${snippetTag}` : '');
+            const unavailableTag = getCurrentLanguage() === 'en' ? '[ARCHIVE N/A]' : '[ARCHIVE INDISPO]';
+            const tag = track.status === 'locked'
+                ? ` ${lockedTag}`
+                : (track.status === 'snippet'
+                    ? ` ${snippetTag}`
+                    : (track.status === 'unavailable' ? ` ${unavailableTag}` : ''));
             row.textContent = `${trackNum}. ${track.title}${tag}`;
             row.addEventListener('click', () => {
-                if (track.status === 'locked') return;
+                if (track.status === 'locked' || track.status === 'unavailable') return;
                 playTrackAtIndex(index, true);
                 renderMobileTrackList();
             });
@@ -2018,7 +2034,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     function playTrackAtIndex(index, shouldNotify = true) {
         const track = myTracks[index];
-        if (!track || track.status === 'locked') return;
+        if (!track || track.status === 'locked' || track.status === 'unavailable') return;
         const folder = getTrackFolder(track);
         currentTrackIndex = index;
         document.querySelectorAll('#playlist li').forEach((el, liIndex) => {
@@ -2075,16 +2091,18 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         myTracks.forEach((track, index) => {
             let li = document.createElement('li');
             let trackNum = (index + 1).toString().padStart(2, '0');
-            if (track.status !== 'locked') {
+            if (track.status !== 'locked' && track.status !== 'unavailable') {
                 let folder = getTrackFolder(track);
                 li.setAttribute('data-src', folder + track.file);
             }
-            li.innerHTML = `<span>${trackNum}. ${track.title}</span>` + 
+            li.innerHTML = `<span>${trackNum}. ${track.title}</span>` +
                (track.status === 'locked' ? ' <span style="color:#ff4444; font-size:9px;">[CHIFFRE]</span>' : '') +
-               (track.status === 'snippet' ? ' <span style="color:#245edb; font-size:9px;">[PREVIEW]</span>' : '');
-            if(track.status === 'locked') li.className = "locked";
+               (track.status === 'snippet' ? ' <span style="color:#245edb; font-size:9px;">[PREVIEW]</span>' : '') +
+               (track.status === 'unavailable' ? ' <span style="color:#777; font-size:9px;">[ARCHIVE INDISPO]</span>' : '');
+            if (track.status === 'locked') li.className = "locked";
+            if (track.status === 'unavailable') li.className = "unavailable";
             li.onclick = () => {
-                if(track.status === 'locked') return;
+                if (track.status === 'locked' || track.status === 'unavailable') return;
                 playTrackAtIndex(index, true);
             };
             playlist.appendChild(li);
@@ -2457,10 +2475,15 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     let mailFolder = 'inbox';
     let mailSelectedId = null;
+
+    function getAquertySessionMail() {
+        return window.JAJSession?.aquertyMail || 'guest@aquerty.fr';
+    }
+
     let mailData = [
-        { id: 'm1', folder: 'inbox', from: 'updates@aquerty.local', to: 'you@aq-neo', subject: '', date: '2026-04-24 11:02', unread: true, body: '' },
-        { id: 'm2', folder: 'inbox', from: 'support@aquerty.local', to: 'you@aq-neo', subject: '', date: '2026-04-24 11:18', unread: true, body: '' },
-        { id: 'm3', folder: 'sent', from: 'you@aq-neo', to: 'support@aquerty.local', subject: '', date: '2026-04-24 11:21', unread: false, body: '' }
+        { id: 'm1', folder: 'inbox', from: 'updates@aquerty.local', to: getAquertySessionMail(), subject: '', date: '2026-04-24 11:02', unread: true, body: '' },
+        { id: 'm2', folder: 'inbox', from: 'support@aquerty.local', to: getAquertySessionMail(), subject: '', date: '2026-04-24 11:18', unread: true, body: '' },
+        { id: 'm3', folder: 'sent', from: getAquertySessionMail(), to: 'support@aquerty.local', subject: '', date: '2026-04-24 11:21', unread: false, body: '' }
     ];
 
     function updateMailTranslations() {
@@ -2588,7 +2611,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         mailData.unshift({
             id: `s_${Date.now()}`,
             folder: 'sent',
-            from: 'you@aq-neo',
+            from: getAquertySessionMail(),
             to: mailToEl.value || 'support@aquerty.local',
             subject: mailSubjectEl.value || tUI().mailNoSubject,
             date: `${yyyy}-${mm}-${dd} ${hh}:${mi}`,
@@ -2629,6 +2652,18 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         });
     });
     mailSendEl.addEventListener('click', mailSend);
+    window.addEventListener('jaj:session-changed', (event) => {
+        const sessionMail = event.detail?.aquertyMail || getAquertySessionMail();
+        mailData.forEach((message) => {
+            if (message.id === 'm1' || message.id === 'm2') message.to = sessionMail;
+            if (message.id === 'm3') message.from = sessionMail;
+        });
+        if (isMailI18nReady) {
+            mailRenderList();
+            mailRenderView();
+        }
+    });
+
     isMailI18nReady = true;
     updateMailTranslations();
     mailRenderFolders();

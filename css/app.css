@@ -1102,3 +1102,13 @@
             display: none !important;
         }
     
+/* Dual archive: released tracks whose master file is not present in this repo */
+#win-player li.unavailable,
+.mobile-track-item.unavailable {
+    color: #777;
+    font-style: italic;
+    cursor: default;
+}
+#win-player li.unavailable:hover {
+    background: inherit;
+}

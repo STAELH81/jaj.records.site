@@ -6,6 +6,7 @@
     <title>JAJ Records | Aquerty AQ-NEO</title>
     <link rel="icon" type="image/png" href="medias/img/aquertylogoimg.png">
     <link rel="stylesheet" href="css/app.css">
+    <link rel="stylesheet" href="css/account.css">
 </head>
 <body>
 <div id="boot-screen">
@@ -16,6 +17,100 @@
         <div class="boot-subtitle" id="boot-hint" style="margin-top:-6px;">Astuce: l experience est meilleure sur PC.</div>
         <div class="boot-progress"><div class="boot-progress-bar"></div></div>
     </div>
+</div>
+
+<div id="account-welcome" class="aq-welcome" aria-hidden="true">
+    <div class="aq-welcome-topbar"></div>
+    <main class="aq-welcome-main">
+        <section class="aq-welcome-brand" aria-label="Aquerty AQ-NEO">
+            <img src="medias/img/aquertylogo.png" class="aq-welcome-logo" alt="Aquerty">
+            <div class="aq-welcome-brand-copy">
+                <div class="aq-welcome-kicker">JAJ RECORDS NETWORK</div>
+                <h1>Bienvenue sur <span>AQ-NEO</span></h1>
+                <p>Pour commencer, choisissez votre session.</p>
+            </div>
+        </section>
+
+        <div class="aq-welcome-divider" aria-hidden="true"></div>
+
+        <section class="aq-account-zone" aria-label="Choix du compte">
+            <div id="aq-auth-status" class="aq-auth-status" role="status" aria-live="polite"></div>
+
+            <div class="aq-account-stack">
+                <div class="aq-account-card aq-account-card-guest" id="aq-guest-card">
+                    <button type="button" class="aq-account-select" id="aq-guest-btn">
+                        <span class="aq-avatar aq-avatar-guest">G</span>
+                        <span class="aq-account-copy">
+                            <strong>Invité</strong>
+                            <small>Entrer sans compte</small>
+                        </span>
+                        <span class="aq-account-arrow">›</span>
+                    </button>
+                </div>
+
+                <div id="aq-recent-accounts"></div>
+
+                <div class="aq-account-card" id="aq-other-card">
+                    <button type="button" class="aq-account-select" id="aq-other-toggle">
+                        <span class="aq-avatar">?</span>
+                        <span class="aq-account-copy">
+                            <strong>Autre compte</strong>
+                            <small>Adresse e-mail + mot de passe</small>
+                        </span>
+                        <span class="aq-account-arrow">›</span>
+                    </button>
+                    <form id="aq-login-form" class="aq-inline-form" hidden>
+                        <label>
+                            <span>E-mail</span>
+                            <input type="email" id="aq-login-email" autocomplete="username" required>
+                        </label>
+                        <label>
+                            <span>Mot de passe</span>
+                            <input type="password" id="aq-login-password" autocomplete="current-password" required minlength="6">
+                        </label>
+                        <div class="aq-inline-actions">
+                            <button type="button" class="aq-mini-btn" id="aq-login-cancel">Annuler</button>
+                            <button type="submit" class="aq-mini-btn aq-mini-btn-primary">Connexion ›</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="aq-account-card aq-account-card-create" id="aq-create-card">
+                    <button type="button" class="aq-account-select" id="aq-create-toggle">
+                        <span class="aq-avatar aq-avatar-create">+</span>
+                        <span class="aq-account-copy">
+                            <strong>Créer un compte</strong>
+                            <small>Sauvegarde AQ-NEO et identité JAJ</small>
+                        </span>
+                        <span class="aq-account-arrow">›</span>
+                    </button>
+                    <form id="aq-signup-form" class="aq-inline-form" hidden>
+                        <label>
+                            <span>Nom affiché</span>
+                            <input type="text" id="aq-signup-name" autocomplete="nickname" required maxlength="32">
+                        </label>
+                        <label>
+                            <span>E-mail réel</span>
+                            <input type="email" id="aq-signup-email" autocomplete="email" required>
+                        </label>
+                        <label>
+                            <span>Mot de passe</span>
+                            <input type="password" id="aq-signup-password" autocomplete="new-password" required minlength="8">
+                        </label>
+                        <p class="aq-form-note">Ton adresse <strong>@aquerty.fr</strong> est fictive et sera générée automatiquement.</p>
+                        <div class="aq-inline-actions">
+                            <button type="button" class="aq-mini-btn" id="aq-signup-cancel">Annuler</button>
+                            <button type="submit" class="aq-mini-btn aq-mini-btn-primary">Créer ›</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer class="aq-welcome-footer">
+        <span>JAJ Records // Aquerty AQ-NEO</span>
+        <span id="aq-welcome-network">AQ-NET · prêt</span>
+    </footer>
 </div>
 
 <div id="desktop">
@@ -428,7 +523,10 @@
     <div class="tray-row"><span>Ping</span><span id="tray-net-ping">12ms</span></div>
 </div>
 <div id="start-menu">
-    <div class="start-menu-header">JAJ Records // Aquerty AQ-NEO</div>
+    <div class="start-menu-header">
+        <div>JAJ Records // Aquerty AQ-NEO</div>
+        <div id="aq-session-summary" class="start-session-summary">Session : aucune</div>
+    </div>
     <div class="start-menu-section">
         <div class="start-menu-title">Recents</div>
         <div id="recent-list"></div>
@@ -439,6 +537,8 @@
             <button class="retro-btn" onclick="openWindow('win-settings', 'task-settings'); toggleStartMenu(false);">Panneau de config</button>
             <button class="retro-btn" onclick="shutdownSystem()">Eteindre</button>
             <button class="retro-btn" onclick="restartSystem()">Restart</button>
+            <button class="retro-btn" id="aq-switch-user-btn" type="button">Changer d'utilisateur</button>
+            <button class="retro-btn" id="aq-logout-btn" type="button" style="display:none;">Déconnexion</button>
         </div>
     </div>
 </div>
@@ -501,6 +601,7 @@
 <button id="lite-exit-fab" class="retro-btn" type="button" style="display:none; position:fixed; right:10px; bottom:10px; z-index:9000;">Quitter lite</button>
 
 <script src="js/app.js"></script>
+<script type="module" src="js/auth.js"></script>
 
 </body>
 </html>

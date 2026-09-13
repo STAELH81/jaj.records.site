@@ -1889,3 +1889,115 @@ body:not(.theme-win95):not(.theme-neo2000) textarea {
     mix-blend-mode: soft-light;
     opacity: .76;
 }
+
+
+/* --- AQ-NEO XP shutdown reference composition --- */
+#shutdown-overlay,
+#shutdown-overlay.closing,
+#shutdown-overlay.powered-off {
+    background:
+        radial-gradient(ellipse at center, rgba(76,82,91,.16) 0%, transparent 58%),
+        #262a30;
+    font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+#shutdown-overlay::before,
+#shutdown-overlay::after {
+    display: none;
+}
+
+.shutdown-dialog,
+#shutdown-overlay.powered-off .shutdown-dialog {
+    width: min(620px, calc(100vw - 34px));
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    text-align: center;
+    filter: saturate(.7) contrast(1.03);
+}
+
+.shutdown-logo {
+    display: block;
+    width: min(230px, 52vw);
+    max-height: 105px;
+    margin: 0 auto 16px;
+    object-fit: contain;
+    filter: grayscale(.15) contrast(1.08);
+}
+
+.shutdown-brand {
+    display: none;
+}
+
+.shutdown-title {
+    color: #fff;
+    font: normal 25px/1.2 Tahoma, "MS Sans Serif", Arial, sans-serif;
+    text-align: center;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.shutdown-detail {
+    min-height: 18px;
+    margin: 8px auto 0;
+    color: #e5e6e8;
+    font: normal 12px/1.2 Tahoma, "MS Sans Serif", Arial, sans-serif;
+    text-align: center;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.shutdown-progress {
+    width: 180px;
+    height: 10px;
+    margin: 16px auto 0;
+    padding: 1px;
+    border: 1px solid #7b8087;
+    background: #15171b;
+    box-shadow:
+        inset 1px 1px 0 #050607,
+        1px 1px 0 rgba(255,255,255,.08);
+}
+
+#shutdown-progress-bar,
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    height: 100%;
+    background: repeating-linear-gradient(
+        to right,
+        #c9cdd2 0 8px,
+        #c9cdd2 8px,
+        transparent 8px,
+        transparent 11px
+    );
+}
+
+#shutdown-overlay.powered-off .shutdown-progress {
+    display: none;
+}
+
+#shutdown-overlay .power-btn {
+    margin: 18px auto 0;
+    padding: 4px 14px;
+    border-radius: 0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #666;
+    border-bottom: 2px solid #666;
+    background: #d4d0c8;
+    color: #000;
+    box-shadow: none;
+    font: bold 10px Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+#shutdown-overlay .shutdown-dialog::before {
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,.018) 0,
+            rgba(255,255,255,.018) 1px,
+            rgba(0,0,0,.040) 1px,
+            rgba(0,0,0,.040) 3px
+        ),
+        radial-gradient(ellipse at center, transparent 66%, rgba(0,0,0,.14) 100%);
+    mix-blend-mode: soft-light;
+    opacity: .60;
+}

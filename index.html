@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="medias/img/aquertylogoimg.png">
     <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/account.css">
+    <link rel="stylesheet" href="css/myspace.css">
 </head>
 <body>
 <div id="boot-screen">
@@ -147,6 +148,10 @@
         <div class="desktop-icon" data-desktop-icon="mail" data-open-win="win-mail" data-open-task="task-mail">
             <img src="medias/img/mailimg.png" class="window-icon-img" alt="Mail.exe" onerror="this.src='medias/img/exeimg.png'">
             <span>AQ-Mail</span>
+        </div>
+        <div class="desktop-icon" data-desktop-icon="myspace" data-open-win="win-myspace" data-open-task="task-myspace">
+            <img src="medias/img/myspaceimg.png" class="window-icon-img" alt="AQ-MySpace" onerror="this.src='medias/img/internetimg.png'">
+            <span>AQ-MySpace</span>
         </div>
     </div>
     <div id="icon-marquee" aria-hidden="true"></div>
@@ -475,6 +480,58 @@
         </div>
     </div>
 
+    <div class="window" style="width: 880px; height: 560px; top: 35px; left: 150px; display: none;" id="win-myspace">
+        <div class="title-bar">
+            <span>AQ-MySpace // JAJ Network</span>
+            <div class="window-controls">
+                <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-myspace', 'task-myspace')">_</button>
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-myspace', 'task-myspace')">X</button>
+            </div>
+        </div>
+        <div id="myspace-root" class="myspace-shell">
+            <div class="myspace-top">
+                <div class="myspace-brand-row">
+                    <img src="medias/img/myspaceimg.png" alt="AQ-MySpace" onerror="this.style.display='none'">
+                    <div class="myspace-brand">
+                        AQ-MySpace
+                        <small>JAJ Records Social Network // powered by AQ-NET</small>
+                    </div>
+                    <div id="myspace-session-pill">Aucune session</div>
+                </div>
+                <nav class="myspace-nav" aria-label="Navigation AQ-MySpace">
+                    <button class="myspace-nav-btn active" type="button" data-tab="feed">Home</button>
+                    <button class="myspace-nav-btn" type="button" data-tab="profile">My Profile</button>
+                    <button class="myspace-nav-btn" type="button" data-tab="forums">Forums</button>
+                </nav>
+            </div>
+            <div class="myspace-main">
+                <aside class="myspace-sidebar">
+                    <div class="myspace-box">
+                        <div class="myspace-box-title orange">My AQ-ID</div>
+                        <div class="myspace-box-body myspace-self-card">
+                            <div id="myspace-self-avatar" class="myspace-avatar">?</div>
+                            <div id="myspace-self-name" class="myspace-self-name">Hors ligne</div>
+                            <div id="myspace-self-mail" class="myspace-self-mail">Lecture seule</div>
+                            <div id="myspace-self-roles"></div>
+                        </div>
+                    </div>
+                    <div class="myspace-box">
+                        <div class="myspace-box-title">AQ-NET status</div>
+                        <div class="myspace-box-body">
+                            <div><strong>Network:</strong> online</div>
+                            <div style="margin-top:4px;"><strong>Label:</strong> JAJ Records</div>
+                            <div style="margin-top:4px;"><strong>Client:</strong> AQ-NEO</div>
+                        </div>
+                    </div>
+                </aside>
+                <main class="myspace-content">
+                    <div id="myspace-status" class="myspace-status" style="display:none;" role="status" aria-live="polite"></div>
+                    <div id="myspace-content"></div>
+                </main>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <div id="taskbar">
@@ -489,6 +546,7 @@
         <div class="task-item active" id="task-acc" style="display: none;" onclick="toggleWindow('win-acc', 'task-acc')">AQ-ACC</div>
         <div class="task-item active" id="task-ms" style="display: none;" onclick="toggleWindow('win-ms', 'task-ms')">AQ-Mines</div>
         <div class="task-item active" id="task-mail" style="display: none;" onclick="toggleWindow('win-mail', 'task-mail')">AQ-Mail</div>
+        <div class="task-item active" id="task-myspace" style="display: none;" onclick="toggleWindow('win-myspace', 'task-myspace')">AQ-MySpace</div>
     </div>
     <div id="sys-tray">
         <div id="tray-icons">
@@ -570,6 +628,7 @@
     <button class="mobile-port-btn" data-open-win="win-ie" data-open-task="task-ie">Navigator</button>
     <button class="mobile-port-btn" data-open-win="win-settings" data-open-task="task-settings">Settings</button>
     <button class="mobile-port-btn" data-open-win="win-tempus" data-open-task="task-tempus">Tempus</button>
+    <button class="mobile-port-btn" data-open-win="win-myspace" data-open-task="task-myspace">MySpace</button>
 </div>
 <div id="mobile-app">
     <div class="mobile-shell">
@@ -616,6 +675,7 @@
 
 <script src="js/app.js"></script>
 <script type="module" src="js/auth.js"></script>
+<script type="module" src="js/myspace.js"></script>
 
 </body>
 </html>

@@ -1597,3 +1597,140 @@ body:not(.theme-win95):not(.theme-neo2000) select,
 body:not(.theme-win95):not(.theme-neo2000) textarea {
     border-radius: 0;
 }
+
+
+/* --- AQ-NEO XP-era power screen ---
+   Full-screen old-system presentation: no blur, no floating modern card,
+   classic navy panel + bevels + segmented progress. */
+#shutdown-overlay,
+#shutdown-overlay.closing,
+#shutdown-overlay.powered-off {
+    background: #1f3763;
+    background-image:
+        linear-gradient(
+            to bottom,
+            #0f2349 0,
+            #0f2349 36px,
+            #294b7f 36px,
+            #294b7f calc(100% - 40px),
+            #0d2248 calc(100% - 40px),
+            #0d2248 100%
+        );
+    color: #fff;
+    backdrop-filter: none;
+    transition: none;
+}
+
+#shutdown-overlay::before {
+    content: "Aquerty AQ-NEO";
+    position: fixed;
+    top: 10px;
+    left: 18px;
+    color: #fff;
+    font: bold 11px Tahoma, Arial, sans-serif;
+    text-shadow: 1px 1px 0 #07152e;
+}
+
+#shutdown-overlay::after {
+    content: "JAJ Records // Aquerty System";
+    position: fixed;
+    left: 18px;
+    bottom: 12px;
+    color: #d7e0ef;
+    font: 10px Tahoma, Arial, sans-serif;
+}
+
+.shutdown-dialog,
+#shutdown-overlay.powered-off .shutdown-dialog {
+    width: min(460px, calc(100vw - 36px));
+    padding: 16px 18px 14px;
+    border: 2px solid #8ba8d3;
+    border-top-color: #c4d6ef;
+    border-left-color: #c4d6ef;
+    border-right-color: #10294f;
+    border-bottom-color: #10294f;
+    border-radius: 0;
+    background: #33588d;
+    box-shadow:
+        inset 1px 1px 0 rgba(255,255,255,.16),
+        2px 2px 0 rgba(0,0,0,.28);
+    color: #fff;
+    text-align: left;
+}
+
+.shutdown-brand {
+    margin-bottom: 10px;
+    padding: 0 0 5px;
+    border-bottom: 1px solid #8da9cf;
+    color: #e5edf8;
+    font: bold 10px Tahoma, Arial, sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.shutdown-title {
+    color: #fff;
+    font: bold 18px Tahoma, Arial, sans-serif;
+    text-shadow: 1px 1px 0 #16345d;
+}
+
+.shutdown-detail {
+    margin-top: 7px;
+    color: #f0f4fa;
+    font: 11px Tahoma, Arial, sans-serif;
+    text-shadow: 1px 1px 0 #17365f;
+}
+
+.shutdown-progress {
+    height: 14px;
+    margin: 13px 0 8px;
+    padding: 2px;
+    border: 2px inset #d4d0c8;
+    background: #0c1f3e;
+    box-shadow: none;
+}
+
+#shutdown-progress-bar,
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    height: 100%;
+    background: repeating-linear-gradient(
+        to right,
+        #5ba0ee 0 12px,
+        #5ba0ee 12px,
+        transparent 12px,
+        transparent 15px
+    );
+    transition: width .16s linear;
+}
+
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    background: #6581aa;
+}
+
+#shutdown-overlay .power-btn {
+    min-width: 82px;
+    margin: 12px auto 0;
+    border-radius: 0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #666;
+    border-bottom: 2px solid #666;
+    background: #d4d0c8;
+    color: #000;
+    box-shadow: none;
+    text-shadow: none;
+    font: bold 10px Tahoma, Arial, sans-serif;
+}
+
+#shutdown-overlay .power-btn:active {
+    border-top-color: #666;
+    border-left-color: #666;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+}
+
+.aq-window-shutting-down {
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity .10s linear !important;
+}

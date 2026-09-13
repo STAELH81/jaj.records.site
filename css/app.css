@@ -1113,3 +1113,168 @@
 #win-player li.unavailable:hover {
     background: inherit;
 }
+
+
+/* --- PHASE 3.6: AQ-NEO POLISH --- */
+.window {
+    max-width: calc(100vw - 8px);
+    max-height: calc(100vh - 38px);
+}
+
+.title-bar {
+    min-height: 25px;
+    box-sizing: border-box;
+    gap: 8px;
+}
+
+.title-bar > span:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.window-controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 3px;
+}
+
+.window-controls .retro-btn {
+    min-width: 22px;
+    min-height: 19px;
+    padding: 1px 5px;
+    line-height: 14px;
+}
+
+.window-close-btn {
+    background: #e81123 !important;
+    color: #fff !important;
+    border-top-color: #ff8c96 !important;
+    border-left-color: #ff8c96 !important;
+    border-right-color: #7f0812 !important;
+    border-bottom-color: #7f0812 !important;
+}
+
+.window-close-btn:hover {
+    filter: brightness(1.08);
+}
+
+.retro-btn:active,
+.tray-icon:active,
+#start-btn:active {
+    transform: translateY(1px);
+}
+
+.retro-btn:focus-visible,
+.tray-icon:focus-visible,
+#start-btn:focus-visible,
+.desktop-icon:focus-visible,
+.mobile-port-btn:focus-visible,
+.mobile-btn:focus-visible,
+.mail-folder:focus-visible {
+    outline: 2px dotted #fff;
+    outline-offset: 2px;
+}
+
+.window .retro-btn:focus-visible,
+#start-menu .retro-btn:focus-visible,
+.tray-panel .retro-btn:focus-visible,
+.mail-folder:focus-visible {
+    outline-color: #000080;
+}
+
+#start-btn {
+    border: 0;
+    font-family: inherit;
+}
+
+.task-area {
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.task-area::-webkit-scrollbar {
+    display: none;
+}
+
+.task-item {
+    flex: 0 1 130px;
+    min-width: 72px;
+}
+
+#sys-tray {
+    flex: 0 0 auto;
+}
+
+#start-menu {
+    width: min(360px, calc(100vw - 8px));
+    max-height: calc(100vh - 38px);
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+input,
+textarea,
+select,
+.ie-content,
+.mail-view,
+#log-list {
+    user-select: text;
+}
+
+input,
+textarea,
+select,
+button {
+    font-family: inherit;
+}
+
+@media (max-width: 800px) {
+    #win-mail {
+        min-width: 0;
+    }
+
+    .mail-split {
+        grid-template-columns: minmax(150px, 42%) minmax(0, 1fr);
+    }
+
+    .mail-toolbar {
+        min-width: 0;
+    }
+
+    #mail-search {
+        min-width: 90px;
+        width: min(220px, 35vw) !important;
+    }
+}
+
+body.mobile-mode .window,
+body.desktop-lite-mode #win-player,
+#win-player.player-night-fullscreen {
+    max-width: none;
+    max-height: none;
+}
+
+body.mobile-mode #win-settings .window-content {
+    overflow-y: auto;
+}
+
+body.mobile-mode #win-settings .window-content > div {
+    grid-template-columns: 1fr !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}

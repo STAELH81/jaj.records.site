@@ -163,6 +163,7 @@ const COMMANDS = [
 ];
 
 let sessionId = null;
+let activeAccName = null;
 let accessLevel = 0; // 1 user, 2 admin
 let cwd = "\\ACC";
 
@@ -792,7 +793,7 @@ function showSessionBanner() {
   document.body.dataset.accMode = role.toLowerCase();
   writeLine("");
   writeText(ASCII_LOGO + "\n");
-  writeLine(`[SESSION] ACC-ID ${sessionId || "LOCAL"} // ${role}${accIdentity?.displayName ? " // " + accIdentity.displayName : ""}`);
+  writeLine(`[SESSION] ACC-ID ${sessionId || "LOCAL"} // ${role}${activeAccName ? " // " + activeAccName : ""}`);
   writeLine("");
   persistSave();
   shellLoop();
@@ -815,6 +816,7 @@ async function promptAdminPassword() {
       writeLine("");
       writeLine(t().granted);
       accessLevel = 2;
+      activeAccName = accIdentity?.displayName || activeAccName;
       showSessionBanner();
     }
   });
@@ -861,6 +863,7 @@ async function promptAccId() {
       }
 
       sessionId = String(checked.data.accId);
+      activeAccName = checked.data.displayName || null;
       if (checked.data.mode === "user") {
         accessLevel = 1;
         writeLine("");
@@ -893,6 +896,7 @@ async function bootFlow() {
   if (!aqSession || aqSession.type === "guest" || !accIdentity?.authenticated) {
     accessLevel = 1;
     sessionId = "GUEST";
+    activeAccName = "Invité";
     showSessionBanner();
     return;
   }
@@ -900,12 +904,14 @@ async function bootFlow() {
   if (accIdentity.role !== "admin") {
     accessLevel = 1;
     sessionId = String(accIdentity.accId || "USER");
+    activeAccName = accIdentity.displayName || null;
     showSessionBanner();
     return;
   }
 
   accessLevel = 0;
   sessionId = null;
+  activeAccName = accIdentity.displayName || null;
   await typedLine(`${t().adminPrompt} [ID ACC: ${accIdentity.accId}]`, 12);
   await promptAccId();
 }

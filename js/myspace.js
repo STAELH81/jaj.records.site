@@ -211,7 +211,7 @@ async function loadFeed() {
         if (!posts.length) {
             const welcome = document.createElement('div');
             welcome.className = 'myspace-box';
-            welcome.innerHTML = '<div class="myspace-box-title">JAJ Network</div>';
+            welcome.innerHTML = '<div class="myspace-box-title">Réseau JAJ</div>';
             const body = document.createElement('div');
             body.className = 'myspace-box-body';
             body.textContent = 'Bienvenue sur AQ-MySpace. Le feed est vide : sois la première personne à poster quelque chose.';
@@ -526,7 +526,7 @@ async function loadForums() {
 
     const create = document.createElement('div');
     create.className = 'myspace-box';
-    create.innerHTML = `<div class="myspace-box-title orange">${isAdmin() ? 'Créer un topic' : 'Demander un topic'}</div>`;
+    create.innerHTML = `<div class="myspace-box-title orange">${isAdmin() ? 'Créer un sujet' : 'Demander un sujet'}</div>`;
     const createBody = document.createElement('div');
     createBody.className = 'myspace-box-body';
 
@@ -538,12 +538,12 @@ async function loadForums() {
         explain.className = 'myspace-status';
         explain.style.marginBottom = '8px';
         explain.textContent = isAdmin()
-            ? 'Compte ADMIN : tu peux créer directement un topic public.'
-            : 'Pour éviter le bazar, les membres proposent un topic. Un ADMIN doit l’approuver avant sa publication.';
+            ? 'Compte ADMIN : tu peux créer directement un sujet public.'
+            : 'Pour éviter le bazar, les membres proposent un sujet. Un ADMIN doit l’approuver avant sa publication.';
 
         const title = document.createElement('input');
         title.maxLength = 90;
-        title.placeholder = 'Titre du topic';
+        title.placeholder = 'Titre du sujet';
 
         const body = document.createElement('textarea');
         body.maxLength = 2000;
@@ -588,7 +588,7 @@ async function loadForums() {
         form.append(explain, title, body, actions);
         createBody.appendChild(form);
     } else {
-        createBody.textContent = 'Connecte-toi pour demander un topic ou répondre aux discussions.';
+        createBody.textContent = 'Connecte-toi pour demander un sujet ou répondre aux discussions.';
     }
 
     create.appendChild(createBody);
@@ -606,7 +606,7 @@ async function loadForums() {
             if (!requests.length) {
                 const empty = document.createElement('div');
                 empty.className = 'myspace-box-body';
-                empty.textContent = 'Aucune demande de topic.';
+                empty.textContent = 'Aucune demande de sujet.';
                 moderation.appendChild(empty);
             } else {
                 requests.forEach((request) => {
@@ -688,7 +688,7 @@ async function loadForums() {
         if (!topics.length) {
             const empty = document.createElement('div');
             empty.className = 'myspace-empty';
-            empty.textContent = 'Aucun topic pour le moment.';
+            empty.textContent = 'Aucun sujet pour le moment.';
             box.appendChild(empty);
         } else {
             topics.forEach((topic) => {
@@ -742,7 +742,7 @@ async function openTopic(topicId) {
         topicBox.className = 'myspace-box';
         const title = document.createElement('div');
         title.className = 'myspace-thread-title';
-        title.textContent = data.topic.title || 'Topic';
+        title.textContent = data.topic.title || 'Sujet';
 
         const head = document.createElement('div');
         head.className = 'myspace-post-head';
@@ -814,7 +814,7 @@ async function openTopic(topicId) {
             content.appendChild(replyForm);
         }
     } catch (error) {
-        setStatus('Topic indisponible : ' + error.message, 'error');
+        setStatus('Sujet indisponible : ' + error.message, 'error');
     }
 }
 

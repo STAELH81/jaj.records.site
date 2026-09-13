@@ -1011,3 +1011,241 @@ body.global-dark .mail-account-strip {
     position: relative;
     z-index: 1;
 }
+
+
+/* --- AQ-NEO XP reference composition ---
+   Inspired by the sparse WinXP welcome composition, but kept in AQ's
+   graphite/charcoal palette. */
+.aq-welcome {
+    background:
+        radial-gradient(ellipse at center, rgba(73,79,89,.18) 0%, transparent 58%),
+        #282c33;
+    font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+.aq-welcome-topbar {
+    flex: 0 0 4px;
+    background: #111317;
+    border: 0;
+    box-shadow: none;
+}
+
+.aq-welcome-footer {
+    flex: 0 0 34px;
+    padding: 0 22px;
+    background: #171a1f;
+    border: 0;
+    border-top: 1px solid #4b5058;
+    box-shadow: none;
+    color: #c9ccd2;
+    font-size: 10px;
+}
+
+.aq-welcome-main {
+    width: min(980px, 92vw);
+    grid-template-columns: minmax(300px, .9fr) 1px minmax(350px, 1.1fr);
+    gap: 34px;
+    padding: 22px 0 30px;
+}
+
+.aq-welcome-brand {
+    align-items: flex-end;
+    justify-content: center;
+    text-align: right;
+    padding-right: 22px;
+}
+
+.aq-welcome-logo {
+    width: min(230px, 70%);
+    max-height: 96px;
+    margin: 0 0 14px;
+    object-position: right center;
+    filter: grayscale(.18) contrast(1.08);
+}
+
+.aq-welcome-kicker {
+    display: none;
+}
+
+.aq-welcome-brand h1 {
+    margin: 0;
+    color: #fff;
+    font: normal 28px/1.1 Tahoma, "MS Sans Serif", Arial, sans-serif;
+    letter-spacing: -1px;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.aq-welcome-brand h1 span {
+    font-weight: bold;
+}
+
+.aq-welcome-brand p {
+    margin: 8px 0 0;
+    max-width: 360px;
+    color: #f1f1f1;
+    font: bold 14px/1.25 Tahoma, "MS Sans Serif", Arial, sans-serif;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.aq-welcome-divider {
+    width: 1px;
+    background: #666b73;
+    box-shadow: 1px 0 0 #17191d;
+}
+
+.aq-account-zone {
+    width: min(440px, 100%);
+}
+
+.aq-auth-status {
+    margin: 0 0 4px;
+    color: #f0f0f0;
+    font-size: 10px;
+}
+
+.aq-account-stack {
+    gap: 2px;
+}
+
+.aq-account-card,
+.aq-account-card.active,
+.aq-account-card:hover,
+.aq-account-card.current {
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.aq-account-card {
+    border: 1px solid transparent;
+    background: transparent;
+}
+
+.aq-account-card.active,
+.aq-account-card:hover {
+    border-color: #9ca2aa;
+    background: #3d424a;
+}
+
+.aq-account-card.current {
+    border-color: #c0c4c9;
+}
+
+.aq-account-select {
+    min-height: 58px;
+    grid-template-columns: 46px minmax(0, 1fr) 16px;
+    gap: 9px;
+    padding: 5px 7px;
+}
+
+.aq-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 2px;
+    border: 2px solid #d7d7d7;
+    background: #8d9299;
+    box-shadow:
+        1px 1px 0 #0b0c0e,
+        inset 1px 1px 0 rgba(255,255,255,.5);
+    color: #17191d;
+    font-size: 20px;
+}
+
+.aq-avatar-guest {
+    background: #a7abb0;
+}
+
+.aq-avatar-create {
+    background: #8b9987;
+    color: #182016;
+}
+
+.aq-account-copy {
+    gap: 2px;
+}
+
+.aq-account-copy strong {
+    color: #fff;
+    font: normal 18px/1.1 Tahoma, "MS Sans Serif", Arial, sans-serif;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.aq-account-copy small {
+    color: #d6d8dc;
+    font-size: 10px;
+}
+
+.aq-account-arrow {
+    color: #fff;
+    font-size: 20px;
+    opacity: 0;
+}
+
+.aq-account-card:hover .aq-account-arrow,
+.aq-account-card.active .aq-account-arrow {
+    opacity: 1;
+}
+
+.aq-inline-form {
+    margin: 2px 6px 8px 56px;
+    padding: 8px;
+    border: 1px solid #686d74;
+    background: #333840;
+    box-shadow: none;
+}
+
+.aq-inline-form label {
+    grid-template-columns: 82px 1fr;
+    font-size: 10px;
+}
+
+.aq-inline-form input {
+    padding: 3px 4px;
+    border: 2px inset #d4d0c8;
+    background: #fff;
+    color: #000;
+}
+
+.aq-mini-btn,
+.aq-mini-btn-primary {
+    min-width: 70px;
+    padding: 3px 7px;
+    border-radius: 0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #666;
+    border-bottom: 2px solid #666;
+    background: #d4d0c8;
+    color: #000;
+    font: bold 10px Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+.aq-welcome::after {
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,.020) 0,
+            rgba(255,255,255,.020) 1px,
+            rgba(0,0,0,.038) 1px,
+            rgba(0,0,0,.038) 3px
+        ),
+        radial-gradient(ellipse at center, transparent 64%, rgba(0,0,0,.15) 100%);
+    mix-blend-mode: soft-light;
+    opacity: .58;
+}
+
+@media (max-width: 760px) {
+    .aq-welcome-main {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .aq-welcome-brand {
+        align-items: center;
+        text-align: center;
+        padding-right: 0;
+    }
+
+    .aq-welcome-logo {
+        object-position: center;
+    }
+}

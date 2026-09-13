@@ -582,6 +582,7 @@ async function execOne(segment, inputLines) {
       persistSave();
     }
   } else if (cmd === "dir" || cmd === "ls") {
+    if (!requireLevel(2)) return [];
     emit(t().directoryOf + promptString().replace(">", ""));
     emit("");
     const list = knownListForCwd();
@@ -657,6 +658,7 @@ async function execOne(segment, inputLines) {
     emit(`${t().userLabel} ${role}`);
     emit(`${t().sessionLabel} ${sessionId || "?"}`);
   } else if (cmd === "ipconfig") {
+    if (!requireLevel(2)) return [];
     emit(t().netConfig);
     emit("");
     emit(t().ethernet);
@@ -665,6 +667,7 @@ async function execOne(segment, inputLines) {
     emit("   Subnet Mask . . . . . . . . . . . : 255.255.255.0");
     emit("   Default Gateway . . . . . . . . . : 192.168.1.1");
   } else if (cmd === "ping") {
+    if (!requireLevel(2)) return [];
     const host = args[0] || "aquerty.internal";
     emit(t().pinging(host));
     for (let i = 0; i < 4; i++) emit(t().reply(8 + i));
@@ -672,6 +675,7 @@ async function execOne(segment, inputLines) {
     emit(t().pingStats);
     emit(t().pingPackets);
   } else if (cmd === "tracert" || cmd === "tracert.") {
+    if (!requireLevel(2)) return [];
     const host = args[0] || "aquerty.internal";
     emit(t().tracing(host));
     emit("");
@@ -681,6 +685,7 @@ async function execOne(segment, inputLines) {
     emit("");
     emit(t().traceComplete);
   } else if (cmd === "history") {
+    if (!requireLevel(2)) return [];
     history.slice(-40).forEach(emit);
   } else {
     emit(t().unrecognizedA(tokens[0]));

@@ -1,12 +1,29 @@
 import './cloud-sync.js';
-const IDENTITY_MODULE_URL = 'https://esm.sh/@netlify/identity@2.0.0';
-let identityModulePromise = null;
+const AUTH_API_PATH = '/api/aq-auth';
 
-function getIdentityApi() {
-    if (!identityModulePromise) {
-        identityModulePromise = import(IDENTITY_MODULE_URL);
+async function authApi(method = 'GET', payload = null) {
+    const options = {
+        method,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' }
+    };
+
+    if (payload) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(payload);
     }
-    return identityModulePromise;
+
+    const response = await fetch(AUTH_API_PATH, options);
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        const error = new Error(data?.message || data?.error || `AQ Auth failed (${response.status})`);
+        error.status = response.status;
+        throw error;
+    }
+
+    return data;
 }
 
 const RECENT_ACCOUNTS_KEY = 'jaj_recent_accounts_v1';
@@ -96,36 +113,13 @@ function normalizeRoles(user) {
 }
 
 async function refreshUserFromServer(user) {
-    if (!user?.id) return user;
-
     try {
-        const response = await fetch('/api/aq-me', {
-            method: 'GET',
-            credentials: 'same-origin',
-            cache: 'no-store',
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (!response.ok) return user;
-
-        const live = await response.json();
-        const liveRoles = normalizeRoleList(live?.roles);
-
-        return {
-            ...user,
-            roles: liveRoles,
-            app_metadata: {
-                ...(user.app_metadata || {}),
-                roles: liveRoles
-            },
-            appMetadata: {
-                ...(user.appMetadata || {}),
-                roles: liveRoles
-            }
-        };
+        const result = await authApi('GET');
+        if (!result?.authenticated || !result?.user) return user || null;
+        return result.user;
     } catch (error) {
-        console.warn('[JAJ Auth] live role refresh failed', error);
-        return user;
+        console.warn('[JAJ Auth] live user refresh failed', error);
+        return user || null;
     }
 }
 
@@ -431,9 +425,13 @@ async function doLogin(email, password) {
     setStatus('Connexion à AQ-NET…');
     try {
         await window.AQCloudSync?.flush?.();
-        const { login } = await getIdentityApi();
-        const user = await login(email.trim(), password);
-        currentIdentityUser = await refreshUserFromServer(user);
+        const result = await authApi('POST', {
+            action: 'login',
+            email: email.trim(),
+            password
+        });
+        currentIdentityUser = result?.user || null;
+        if (!currentIdentityUser) throw new Error('Session AQ-NEO introuvable après connexion.');
         const session = sessionFromUser(currentIdentityUser);
         renderRecentAccounts();
         setStatus('Session ouverte.', 'success');
@@ -518,21 +516,21 @@ signupForm?.addEventListener('submit', async (event) => {
 
     try {
         await window.AQCloudSync?.flush?.();
-        const { signup, login } = await getIdentityApi();
-        await signup(email, password, {
-            full_name: displayName,
-            display_name: displayName,
-            aquerty_mail: provisionalMail
+        const result = await authApi('POST', {
+            action: 'signup',
+            email,
+            password,
+            displayName,
+            aquertyMail: provisionalMail
         });
 
-        try {
-            const user = await login(email, password);
-            currentIdentityUser = await refreshUserFromServer(user);
+        if (result?.authenticated && result?.user) {
+            currentIdentityUser = result.user;
             const session = sessionFromUser(currentIdentityUser);
             renderRecentAccounts();
             setStatus('Compte créé.', 'success');
             await enterSession(session);
-        } catch (loginError) {
+        } else {
             setStatus(
                 'Compte créé. Vérifie ton e-mail pour le confirmer, puis reconnecte-toi.',
                 'success'
@@ -559,8 +557,7 @@ logoutBtn?.addEventListener('click', async () => {
     setBusy(true);
     try {
         await window.AQCloudSync?.flush?.();
-        const { logout } = await getIdentityApi();
-        await logout();
+        await authApi('POST', { action: 'logout' });
     } catch (error) {
         console.warn('[JAJ Auth] logout warning', error);
     } finally {
@@ -579,14 +576,12 @@ logoutBtn?.addEventListener('click', async () => {
 
 async function initializeIdentity() {
     try {
-        const { handleAuthCallback, getUser } = await getIdentityApi();
-        const callback = await handleAuthCallback();
-        if (callback?.user) currentIdentityUser = callback.user;
-        currentIdentityUser = (await getUser()) || currentIdentityUser;
-        currentIdentityUser = await refreshUserFromServer(currentIdentityUser);
+        const result = await authApi('GET');
+        currentIdentityUser = result?.authenticated ? (result.user || null) : null;
     } catch (error) {
-        // Guest mode remains fully usable if Identity isn't enabled or the CDN is unreachable.
+        // Guest mode remains fully usable if Identity isn't enabled or AQ Auth is unavailable.
         console.info('[JAJ Auth] Identity unavailable in this environment', error);
+        currentIdentityUser = null;
     }
 
     renderRecentAccounts();

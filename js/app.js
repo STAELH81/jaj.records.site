@@ -95,7 +95,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         logs: { labelKey: 'logs', action: () => openWindow('win-logs', 'task-logs') },
         commandCenter: { labelKey: 'AQ-ACC', action: () => openWindow('win-acc', 'task-acc') },
         minesweeper: { labelKey: 'AQ-Mines', action: () => openWindow('win-ms', 'task-ms') },
-        mail: { labelKey: 'AQ-Mail', action: () => openWindow('win-mail', 'task-mail') }
+        mail: { labelKey: 'AQ-Mail', action: () => openWindow('win-mail', 'task-mail') },
+        myspace: { labelKey: 'AQ-MySpace', action: () => openWindow('win-myspace', 'task-myspace') }
     };
 
     function loadPersistedData() {
@@ -643,7 +644,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         settings: { left: '110px', top: '15px' },
         acc: { left: '110px', top: '110px' },
         mines: { left: '110px', top: '205px' },
-        mail: { left: '110px', top: '300px' }
+        mail: { left: '110px', top: '300px' },
+        myspace: { left: '205px', top: '15px' }
     };
     const ICON_GRID_X = 95;
     const ICON_GRID_Y = 95;
@@ -1596,13 +1598,15 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             'win-logs': 'logs',
             'win-acc': 'commandCenter',
             'win-ms': 'minesweeper',
-            'win-mail': 'mail'
+            'win-mail': 'mail',
+            'win-myspace': 'myspace'
         };
         if (!isRestoringSession) {
             if (winToRecent[winId]) addRecentItem(winToRecent[winId]);
             if (winId === 'win-player') triggerContextualPopup('openPlayer');
             if (winId === 'win-ie') triggerContextualPopup('openInternet');
             if (winId === 'win-tempus') triggerContextualPopup('openTempus');
+            if (winId === 'win-myspace') window.dispatchEvent(new Event('aq:myspace-open'));
         }
         if (!isRestoringSession) addSystemLog(`Fenetre ouverte: ${winId}`);
         if (winId === 'win-player') updatePlayerNightEffects();

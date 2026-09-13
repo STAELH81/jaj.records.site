@@ -14,7 +14,7 @@
         <img src="medias/img/aquertylogo.png" class="boot-logo" alt="Aquerty logo" onerror="this.style.display='none'">
         <div class="boot-title">Starting Aquerty AQ-NEO...</div>
         <div class="boot-subtitle" id="boot-subtitle">Veuillez patienter</div>
-        <div class="boot-subtitle" id="boot-hint" style="margin-top:-6px;">Astuce: l experience est meilleure sur PC.</div>
+        <div class="boot-subtitle" id="boot-hint" style="margin-top:-6px;">Astuce : l’expérience est meilleure sur PC.</div>
         <div class="boot-progress"><div class="boot-progress-bar"></div></div>
     </div>
 </div>
@@ -134,7 +134,7 @@
         </div>
         <div class="desktop-icon" data-desktop-icon="settings" data-open-win="win-settings" data-open-task="task-settings">
             <img src="medias/img/settingsimg.png" class="window-icon-img" alt="Settings">
-            <span>Parametres</span>
+            <span>Paramètres</span>
         </div>
         <div class="desktop-icon" data-desktop-icon="acc" data-open-win="win-acc" data-open-task="task-acc">
             <img src="medias/img/cmdimg.png" class="window-icon-img" alt="AQ-ACC" onerror="this.src='medias/img/exeimg.png'">
@@ -154,15 +154,15 @@
     <div class="window player-skin-classic" style="width: 760px; height: 460px; top: 20px; left: 120px; display: none;" id="win-player">
         <div class="title-bar">
             <span>AQ-Player | JAJ Records / Dual - Cha</span>
-            <div style="display:flex; gap:3px;">
+            <div class="window-controls">
                 <button class="retro-btn" id="player-cfg-btn" onclick="togglePlayerSettingsPanel()">CFG</button>
                 <button class="retro-btn" id="player-exit-night-btn" style="display:none;" onclick="setPlayerNightMode(false); savePlayerState();">NUIT OFF</button>
-                <button class="retro-btn" onclick="toggleWindow('win-player', 'task-player')">_</button>
-                <button class="retro-btn" style="background:#e81123; color:white;" onclick="closeWindow('win-player', 'task-player')">X</button>
+                <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-player', 'task-player')">_</button>
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-player', 'task-player')">X</button>
             </div>
         </div>
         <div id="player-settings-panel">
-            <div class="setting-title" id="player-settings-title">Parametres Player</div>
+            <div class="setting-title" id="player-settings-title">Paramètres Player</div>
             <label class="setting-row" id="player-skin-label">Skin:
                 <select id="player-skin-select" style="margin-left:auto; font-size:11px;">
                     <option value="classic">Classic XP</option>
@@ -171,7 +171,7 @@
                     <option value="rose">Rose OG</option>
                 </select>
             </label>
-            <label class="setting-row"><input type="checkbox" id="player-night-mode"><span id="player-night-label"> Mode plein ecran nuit</span></label>
+            <label class="setting-row"><input type="checkbox" id="player-night-mode"><span id="player-night-label"> Mode plein écran nuit</span></label>
             <div style="font-size:10px; color:#555;" id="player-settings-hint">Astuce: clique hors du panneau pour le fermer.</div>
         </div>
         <div class="player-content">
@@ -206,16 +206,16 @@
                 <div class="seek-bar-container" id="seek-bar-container"><div id="seek-bar"></div></div>
                 <div class="volume-container"><span>VOL</span><input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.3"></div>
             </div>
-            <div id="now-playing" style="font-size:10px; color:#0054e3; font-weight:bold; margin-top:5px;">PRET</div>
+            <div id="now-playing" style="font-size:10px; color:#0054e3; font-weight:bold; margin-top:5px;">PRÊT</div>
         </div>
     </div>
 
     <div class="window" style="width: 450px; height: 400px; top: 80px; left: 700px; display: none;" id="win-ie">
         <div class="title-bar">
             <span>AQ-Navigator</span>
-            <div style="display:flex; gap:3px;">
-                <button class="retro-btn" onclick="toggleWindow('win-ie', 'task-ie')">_</button>
-                <button class="retro-btn" style="background:#e81123; color:white;" onclick="closeWindow('win-ie', 'task-ie')">X</button>
+            <div class="window-controls">
+                <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-ie', 'task-ie')">_</button>
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-ie', 'task-ie')">X</button>
             </div>
         </div>
         <div class="ie-toolbar">
@@ -233,7 +233,7 @@
             <div class="ie-content" id="ie-content-box">
                 <h2 style="color:#000080; font-size:16px;">JAJ Records</h2>
                 <hr>
-                <p><strong>Bienvenue sur le reseau JAJ Records.</strong></p>
+                <p><strong>Bienvenue sur le réseau JAJ Records.</strong></p>
                 <p>
                     AQ-NEO sert maintenant de portail du label : musique, archives, applications et experiences web.
                     Le contenu lie a <strong>Dual</strong> reste disponible comme une archive du catalogue.
@@ -252,8 +252,8 @@
     <div class="window" style="width: 380px; min-height: 150px; top: 300px; left: 400px; display: none;" id="win-tempus">
         <div class="title-bar">
             <span>Sécurité - tempus_perit.exe</span>
-            <div style="display:flex; gap:3px;">
-                <button class="retro-btn" style="background:#e81123; color:white;" onclick="closeWindow('win-tempus', 'task-tempus')">X</button>
+            <div class="window-controls">
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-tempus', 'task-tempus')">X</button>
             </div>
         </div>
         <div style="padding: 20px; background: var(--xp-beige); font-size: 12px; height: calc(100% - 25px); box-sizing: border-box;">
@@ -269,9 +269,9 @@
     <div class="window" style="width: 420px; height: 260px; top: 120px; left: 460px; display: none;" id="win-trash">
         <div class="title-bar">
             <span>Corbeille</span>
-            <div style="display:flex; gap:3px;">
-                <button class="retro-btn" onclick="toggleWindow('win-trash', 'task-trash')">_</button>
-                <button class="retro-btn" style="background:#e81123; color:white;" onclick="closeWindow('win-trash', 'task-trash')">X</button>
+            <div class="window-controls">
+                <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-trash', 'task-trash')">_</button>
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-trash', 'task-trash')">X</button>
             </div>
         </div>
         <div class="window-content" style="padding:10px; font-size:12px; background: var(--xp-beige);">
@@ -282,41 +282,41 @@
                 <li>notes_session_2003.doc</li>
                 <li>cover_test_backup.psd</li>
             </ul>
-            <p style="font-size:10px; color:#555;">Tu peux editer cette liste facilement dans la fenetre Corbeille.</p>
+            <p style="font-size:10px; color:#555;">Tu peux éditer cette liste facilement dans la fenêtre Corbeille.</p>
         </div>
     </div>
 
     <div class="window" style="width: 470px; height: 340px; top: 90px; left: 540px; display: none;" id="win-settings">
         <div class="title-bar">
             <span>Panneau de configuration</span>
-            <div style="display:flex; gap:3px;">
-                <button class="retro-btn" onclick="toggleWindow('win-settings', 'task-settings')">_</button>
-                <button class="retro-btn" style="background:#e81123; color:white;" onclick="closeWindow('win-settings', 'task-settings')">X</button>
+            <div class="window-controls">
+                <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-settings', 'task-settings')">_</button>
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-settings', 'task-settings')">X</button>
             </div>
         </div>
         <div class="window-content" style="padding:10px; background: var(--xp-beige); font-size:12px;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div style="border:1px solid var(--xp-gray); padding:8px; background:#fff;">
-                    <div class="setting-title">Parametres PC</div>
+                    <div class="setting-title">Paramètres PC</div>
                     <label class="setting-row"><input type="checkbox" id="pc-setting-boot"> Activer le boot</label>
                     <label class="setting-row"><input type="checkbox" id="pc-setting-crt"> Effet CRT</label>
-                    <label class="setting-row">Theme:
+                    <label class="setting-row">Thème :
                         <select id="pc-setting-theme" style="margin-left:auto; font-size:11px;">
                             <option value="xp">Aquerty Classic</option>
                             <option value="win95">Aquerty Legacy</option>
                             <option value="neo2000">Aquerty Neo2000</option>
                         </select>
                     </label>
-                    <label class="setting-row"><input type="checkbox" id="pc-setting-dark"> Theme noir global</label>
-                    <label class="setting-row">Mode d affichage:
+                    <label class="setting-row"><input type="checkbox" id="pc-setting-dark"> Thème noir global</label>
+                    <label class="setting-row">Mode d’affichage :
                         <select id="pc-setting-client-mode" style="margin-left:auto; font-size:11px;">
                             <option value="auto">Auto</option>
                             <option value="desktop">Forcer PC/Tablette</option>
                             <option value="mobile">Forcer Mobile</option>
                         </select>
                     </label>
-                    <label class="setting-row"><input type="checkbox" id="pc-setting-lite-enabled"> Mode lite (player simplifie)</label>
-                    <label class="setting-row">Fond d ecran:
+                    <label class="setting-row"><input type="checkbox" id="pc-setting-lite-enabled"> Mode lite (player simplifié)</label>
+                    <label class="setting-row">Fond d’écran :
                         <select id="pc-setting-wallpaper" style="margin-left:auto; font-size:11px;">
                             <option id="wallpaper-opt-xp-default" value="xp-default">XP Bliss Aquerty</option>
                             <option id="wallpaper-opt-teal-grid" value="teal-grid">Teal Grid</option>
@@ -325,20 +325,20 @@
                             <option id="wallpaper-opt-aurora-blue" value="aurora-blue">Aurora Blue</option>
                             <option id="wallpaper-opt-pixel-night" value="pixel-night">Pixel Night</option>
                             <option id="wallpaper-opt-silver-fog" value="silver-fog">Silver Fog</option>
-                            <option id="wallpaper-opt-tempus-secret" value="tempus-secret" disabled>Tempus Secret (verrouille)</option>
+                            <option id="wallpaper-opt-tempus-secret" value="tempus-secret" disabled>Tempus Secret (verrouillé)</option>
                         </select>
                     </label>
                 </div>
                 <div style="border:1px solid var(--xp-gray); padding:8px; background:#fff;">
-                    <div class="setting-title" id="settings-experience-title">Parametres Experience</div>
-                    <label class="setting-row"><input type="checkbox" id="exp-setting-sounds"> Sons systeme</label>
-                    <label class="setting-row"><input type="checkbox" id="exp-setting-boot-sound"> Son de demarrage</label>
+                    <div class="setting-title" id="settings-experience-title">Paramètres Expérience</div>
+                    <label class="setting-row"><input type="checkbox" id="exp-setting-sounds"> Sons système</label>
+                    <label class="setting-row"><input type="checkbox" id="exp-setting-boot-sound"> Son de démarrage</label>
                     <label class="setting-row"><input type="checkbox" id="exp-setting-ambient"> Bruit de fond</label>
-                    <label class="setting-row"><input type="checkbox" id="exp-setting-popups"> Popups systeme</label>
-                    <label class="setting-row"><input type="checkbox" id="exp-setting-icon-anim"> Animation icones</label>
-                    <label class="setting-row"><input type="checkbox" id="exp-setting-screensaver"> Ecran de veille</label>
-                    <label class="setting-row"><input type="checkbox" id="exp-setting-grid-snap"> Aligner les icones sur la grille</label>
-                    <label class="setting-row"><button class="retro-btn" id="exp-arrange-icons-btn" type="button">Ranger les icones</button></label>
+                    <label class="setting-row"><input type="checkbox" id="exp-setting-popups"> Popups système</label>
+                    <label class="setting-row"><input type="checkbox" id="exp-setting-icon-anim"> Animation icônes</label>
+                    <label class="setting-row"><input type="checkbox" id="exp-setting-screensaver"> Écran de veille</label>
+                    <label class="setting-row"><input type="checkbox" id="exp-setting-grid-snap"> Aligner les icônes sur la grille</label>
+                    <label class="setting-row"><button class="retro-btn" id="exp-arrange-icons-btn" type="button">Ranger les icônes</button></label>
                     <label class="setting-row">Langue:
                         <select id="ui-language-setting" style="margin-left:auto; font-size:11px;">
                             <option value="fr">Français</option>
@@ -347,12 +347,12 @@
                     </label>
                     <label class="setting-row">Mode popup:
                         <select id="exp-setting-popup-mode" style="margin-left:auto; font-size:11px;">
-                            <option value="random">Aleatoire</option>
+                            <option value="random">Aléatoire</option>
                             <option value="contextual">Contextuel</option>
                             <option value="mixed">Mixte</option>
                         </select>
                     </label>
-                    <label class="setting-row">Frequence:
+                    <label class="setting-row">Fréquence :
                         <select id="exp-setting-popup-frequency" style="margin-left:auto; font-size:11px;">
                             <option value="low">Faible</option>
                             <option value="normal">Normal</option>
@@ -367,9 +367,9 @@
     <div class="window" style="width: 520px; height: 320px; top: 130px; left: 250px; display: none;" id="win-logs">
         <div class="title-bar">
             <span>Visionneur de logs</span>
-            <div style="display:flex; gap:3px;">
-                <button class="retro-btn" onclick="toggleWindow('win-logs', 'task-logs')">_</button>
-                <button class="retro-btn" style="background:#e81123; color:white;" onclick="closeWindow('win-logs', 'task-logs')">X</button>
+            <div class="window-controls">
+                <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-logs', 'task-logs')">_</button>
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-logs', 'task-logs')">X</button>
             </div>
         </div>
         <div class="log-window-content">
@@ -384,9 +384,9 @@
     <div class="window" style="width: 700px; height: 460px; top: 70px; left: 210px; display: none;" id="win-acc">
         <div class="title-bar">
             <span>AQ-ACC</span>
-            <div style="display:flex; gap:3px;">
-                <button class="retro-btn" onclick="toggleWindow('win-acc', 'task-acc')">_</button>
-                <button class="retro-btn" style="background:#e81123; color:white;" onclick="closeWindow('win-acc', 'task-acc')">X</button>
+            <div class="window-controls">
+                <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-acc', 'task-acc')">_</button>
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-acc', 'task-acc')">X</button>
             </div>
         </div>
         <iframe class="cmd-frame" src="acc/index.html" title="Aquerty Command Center"></iframe>
@@ -395,9 +395,9 @@
     <div class="window" style="width: 360px; height: 470px; top: 90px; left: 330px; display: none;" id="win-ms">
         <div class="title-bar">
             <span>AQ-Mines</span>
-            <div style="display:flex; gap:3px;">
-                <button class="retro-btn" onclick="toggleWindow('win-ms', 'task-ms')">_</button>
-                <button class="retro-btn" style="background:#e81123; color:white;" onclick="closeWindow('win-ms', 'task-ms')">X</button>
+            <div class="window-controls">
+                <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-ms', 'task-ms')">_</button>
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-ms', 'task-ms')">X</button>
             </div>
         </div>
         <div id="minesweeper-root">
@@ -406,7 +406,7 @@
         <div class="ms-face" id="ms-face" title="Nouvelle partie">:)</div>
         <div class="ms-counter" id="ms-time">000</div>
             </div>
-            <div id="ms-grid" aria-label="Grille demineur"></div>
+            <div id="ms-grid" aria-label="Grille démineur"></div>
             <div style="display:flex; gap:6px; align-items:center; justify-content:space-between;">
                 <div style="font-size:11px; color:#333;" id="ms-help-text">Clic droit = drapeau</div>
                 <select id="ms-difficulty" style="font-size:11px;">
@@ -421,9 +421,9 @@
     <div class="window" style="width: 760px; height: 480px; top: 70px; left: 170px; display: none;" id="win-mail">
         <div class="title-bar">
             <span>AQ-Mail</span>
-            <div style="display:flex; gap:3px;">
-                <button class="retro-btn" onclick="toggleWindow('win-mail', 'task-mail')">_</button>
-                <button class="retro-btn" style="background:#e81123; color:white;" onclick="closeWindow('win-mail', 'task-mail')">X</button>
+            <div class="window-controls">
+                <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-mail', 'task-mail')">_</button>
+                <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-mail', 'task-mail')">X</button>
             </div>
         </div>
         <div id="mail-root">
@@ -478,7 +478,7 @@
 </div>
 
 <div id="taskbar">
-    <div id="start-btn">MENU</div>
+    <button id="start-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="start-menu">MENU</button>
     <div class="task-area">
         <div class="task-item active" id="task-player" style="display: none;" onclick="toggleWindow('win-player', 'task-player')">AQ-Player...</div>
         <div class="task-item active" id="task-ie" style="display: none;" onclick="toggleWindow('win-ie', 'task-ie')">AQ-Navigator...</div>
@@ -508,7 +508,7 @@
 <div id="tray-sound-panel" class="tray-panel" role="dialog" aria-label="Panneau son">
     <div class="tray-panel-title">Son</div>
     <div class="tray-row">
-        <span>Systeme</span>
+        <span>Système</span>
         <input type="checkbox" id="tray-toggle-system-sounds">
     </div>
     <div class="tray-row">
@@ -542,15 +542,15 @@
         </div>
     </div>
     <div class="start-menu-section">
-        <div class="start-menu-title">Recents</div>
+        <div class="start-menu-title">Récents</div>
         <div id="recent-list"></div>
     </div>
     <div class="start-menu-section">
-        <div class="start-menu-title">Systeme</div>
+        <div class="start-menu-title">Système</div>
         <div class="start-menu-actions">
             <button class="retro-btn" onclick="openWindow('win-settings', 'task-settings'); toggleStartMenu(false);">Panneau de config</button>
-            <button class="retro-btn" onclick="shutdownSystem()">Eteindre</button>
-            <button class="retro-btn" onclick="restartSystem()">Restart</button>
+            <button class="retro-btn" onclick="shutdownSystem()">Éteindre</button>
+            <button class="retro-btn" onclick="restartSystem()">Redémarrer</button>
             <button class="retro-btn" id="aq-switch-user-btn" type="button">Changer d'utilisateur</button>
             <button class="retro-btn" id="aq-logout-btn" type="button" style="display:none;">Déconnexion</button>
         </div>
@@ -561,7 +561,7 @@
 </div>
 <div id="shutdown-overlay">
     <div>
-        <div style="font-size:24px; margin-bottom:20px;">Aquerty AQ-NEO est eteint</div>
+        <div style="font-size:24px; margin-bottom:20px;">Aquerty AQ-NEO est éteint</div>
         <button class="retro-btn power-btn" onclick="powerOnSystem()">Allumer</button>
     </div>
 </div>
@@ -575,10 +575,10 @@
     <div class="mobile-shell">
         <div class="mobile-card">
             <div class="mobile-title" id="mobile-lite-title">JAJ Records // Aquerty Mobile Lite</div>
-            <div class="mobile-sub" id="mobile-lite-subtitle">Version mobile simplifiee: tracks + reglages essentiels.</div>
+            <div class="mobile-sub" id="mobile-lite-subtitle">Version mobile simplifiée : tracks + réglages essentiels.</div>
         </div>
         <div class="mobile-card">
-            <div class="mobile-title" id="mobile-now-playing">PRET</div>
+            <div class="mobile-title" id="mobile-now-playing">PRÊT</div>
             <div id="mobile-player-controls">
                 <button class="mobile-btn" id="mobile-prev-btn" type="button">PREV</button>
                 <button class="mobile-btn" id="mobile-play-btn" type="button">PLAY / PAUSE</button>
@@ -590,9 +590,9 @@
             <div id="mobile-track-list"></div>
         </div>
         <div class="mobile-card">
-            <div class="mobile-title" id="mobile-quick-title">Reglages rapides</div>
+            <div class="mobile-title" id="mobile-quick-title">Réglages rapides</div>
             <label style="display:flex; justify-content:space-between; margin:8px 0;">
-                <span id="mobile-quick-sounds-label">Sons systeme</span>
+                <span id="mobile-quick-sounds-label">Sons système</span>
                 <input type="checkbox" id="mobile-setting-sounds">
             </label>
             <label style="display:flex; justify-content:space-between; margin:8px 0;">

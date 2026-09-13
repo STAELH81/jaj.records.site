@@ -59,7 +59,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         }
         return [
             { title: 'System Message', text: 'Le disque C: est presque plein. Pensez a liberer de l espace.' },
-            { title: 'Network', text: 'Connexion reseau interrompue. Reessayez dans quelques instants.' },
+            { title: 'Network', text: 'Connexion réseau interrompue. Réessayez dans quelques instants.' },
             { title: 'Printer', text: 'Aucune imprimante detectee sur le port LPT1.' },
             { title: 'Reminder', text: 'N oubliez pas de sauvegarder votre travail regulierement.' }
         ];
@@ -287,7 +287,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const container = document.getElementById('recent-list');
         container.innerHTML = '';
         if (recentItems.length === 0) {
-            container.innerHTML = '<p class="start-menu-empty">Aucun element recent</p>';
+            container.innerHTML = '<p class="start-menu-empty">Aucun élément récent</p>';
             return;
         }
         recentItems.forEach((key) => {
@@ -311,9 +311,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     function toggleStartMenu(forceState) {
         if (isPoweredOff) return;
         const menu = document.getElementById('start-menu');
+        const startBtn = document.getElementById('start-btn');
         const wasOpen = menu.classList.contains('open');
         const nextState = typeof forceState === 'boolean' ? forceState : !menu.classList.contains('open');
         menu.classList.toggle('open', nextState);
+        startBtn?.setAttribute('aria-expanded', String(nextState));
         if (wasOpen !== nextState) playSystemSound('click');
     }
 
@@ -369,6 +371,16 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             if (menu.classList.contains('open') && !menu.contains(e.target) && e.target.id !== 'start-btn') {
                 toggleStartMenu(false);
             }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            const menu = document.getElementById('start-menu');
+            if (menu?.classList.contains('open')) {
+                toggleStartMenu(false);
+                document.getElementById('start-btn')?.focus();
+            }
+            document.querySelectorAll('.tray-panel.open').forEach((panel) => panel.classList.remove('open'));
+            toggleMobileVolumePanel(false);
         });
         document.getElementById('pc-setting-boot').addEventListener('change', (e) => { updateSetting('bootEnabled', e.target.checked); playSystemSound('click'); });
         document.getElementById('pc-setting-crt').addEventListener('change', (e) => { updateSetting('crtEnabled', e.target.checked); playSystemSound('click'); });
@@ -840,6 +852,15 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
         const clickState = { icon: null, at: 0 };
         getDesktopIcons().forEach((icon) => {
+            icon.setAttribute('role', 'button');
+            icon.tabIndex = 0;
+            icon.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                const winId = icon.dataset.openWin;
+                const taskId = icon.dataset.openTask;
+                if (winId && taskId) openWindow(winId, taskId);
+            });
             icon.addEventListener('click', () => {
                 const winId = icon.dataset.openWin;
                 const taskId = icon.dataset.openTask;
@@ -865,69 +886,69 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         fr: {
             bootSubtitle: 'Veuillez patienter',
             menuLabel: 'MENU',
-            recents: 'Recents',
-            system: 'Systeme',
+            recents: 'Récents',
+            system: 'Système',
             settingsTitle: 'Panneau de configuration',
-            settingsPC: 'Parametres PC',
-            settingsExp: 'Parametres Experience',
+            settingsPC: 'Paramètres PC',
+            settingsExp: 'Paramètres Expérience',
             logsWindow: 'Visionneur de logs',
             trashLabel: 'Corbeille',
             playerTask: 'AQ-Player...',
-            playerCfg: 'Reglages',
-            playerSettingsTitle: 'Parametres Player',
+            playerCfg: 'Réglages',
+            playerSettingsTitle: 'Paramètres Player',
             playerSkinLabel: 'Skin:',
-            playerNightLabel: 'Mode plein ecran nuit',
+            playerNightLabel: 'Mode plein écran nuit',
             playerSettingsHint: 'Astuce: clique hors du panneau pour le fermer.',
             minesTask: 'AQ-Mines',
             logsSession: 'Logs techniques de session',
             clear: 'Vider',
             enableBoot: 'Activer le boot',
             crtEffect: 'Effet CRT',
-            theme: 'Theme:',
-            systemSounds: 'Sons systeme',
-            bootSound: 'Son de demarrage',
+            theme: 'Thème :',
+            systemSounds: 'Sons système',
+            bootSound: 'Son de démarrage',
             ambient: 'Bruit de fond',
-            popups: 'Popups systeme',
-            iconAnim: 'Animation icones',
-            screensaver: 'Ecran de veille',
-            snap: 'Aligner les icones sur la grille',
-            arrange: 'Ranger les icones',
+            popups: 'Popups système',
+            iconAnim: 'Animation icônes',
+            screensaver: 'Écran de veille',
+            snap: 'Aligner les icônes sur la grille',
+            arrange: 'Ranger les icônes',
             language: 'Langue:',
             popupMode: 'Mode popup:',
-            popupFreq: 'Frequence:',
-            popupModeRandom: 'Aleatoire',
+            popupFreq: 'Fréquence :',
+            popupModeRandom: 'Aléatoire',
             popupModeContext: 'Contextuel',
             popupModeMixed: 'Mixte',
             popupFreqLow: 'Faible',
             popupFreqNormal: 'Normal',
             popupFreqHigh: 'Relou',
-            restart: 'Redemarrer',
-            shutdown: 'Eteindre',
+            restart: 'Redémarrer',
+            shutdown: 'Éteindre',
             trayLogsTitle: 'Ouvrir les logs',
             trayLogsAlt: 'Logs',
             traySoundTitle: 'Son',
             traySoundAlt: 'Son',
-            trayNetworkTitle: 'Reseau',
-            trayNetworkAlt: 'Reseau',
+            trayNetworkTitle: 'Réseau',
+            trayNetworkAlt: 'Réseau',
             traySoundPanelTitle: 'Son',
-            trayNetworkPanelTitle: 'Reseau',
+            trayNetworkPanelTitle: 'Réseau',
             trayPanelSoundAria: 'Panneau son',
-            trayPanelNetworkAria: 'Panneau reseau',
-            trayStatus: 'Etat',
-            trayConnected: 'Connecte',
-            traySystem: 'Systeme',
+            trayPanelNetworkAria: 'Panneau réseau',
+            trayStatus: 'État',
+            trayConnected: 'Connecté',
+            traySystem: 'Système',
             trayBoot: 'Boot',
             trayVolume: 'Volume',
-            trashDeleted: 'Elements supprimes :',
-            trashHint: 'Tu peux editer cette liste facilement dans la fenetre Corbeille.',
+            trashDeleted: 'Éléments supprimés :',
+            trashHint: 'Tu peux éditer cette liste facilement dans la fenêtre Corbeille.',
             msFaceTitle: 'Nouvelle partie',
-            msGridAria: 'Grille demineur',
+            msGridAria: 'Grille démineur',
             msHelp: 'Clic droit = drapeau',
-            msDiffBeginner: 'Debutant (9x9, 10)',
-            msDiffIntermediate: 'Intermediaire (16x16, 40)',
+            msDiffBeginner: 'Débutant (9x9, 10)',
+            msDiffIntermediate: 'Intermédiaire (16x16, 40)',
             msDiffExpert: 'Expert (16x30, 99)',
             ieHome: 'Accueil',
-            ieMenu: ['Fichier', 'Edition', 'Affichage', 'Favoris', 'Outils'],
+            ieMenu: ['Fichier', 'Édition', 'Affichage', 'Favoris', 'Outils'],
             ieAddress: 'Adresse :',
             tempusTask: 'Sécurité - tempus_pe...',
             settingsTask: 'Panneau de config...',
@@ -936,10 +957,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             sent: 'Sent',
             trash: 'Trash',
             mailNew: 'Nouveau',
-            mailReply: 'Repondre',
+            mailReply: 'Répondre',
             mailDelete: 'Supprimer',
             mailSearch: 'Rechercher...',
-            mailSelect: 'Selectionne un mail.',
+            mailSelect: 'Sélectionne un mail.',
             mailNoMessages: 'Aucun message.',
             mailComposeTitle: 'Nouveau message',
             mailTo: 'A',
@@ -953,10 +974,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             ieInfoAddress: 'http://www.jaj-records.com/home.html',
             ieTempusTitle: 'Index of /tempus_perit/index_files/',
             ieVol: 'VOL:',
-            wallpaper: 'Fond d ecran:',
-            darkTheme: 'Theme noir global',
-            tempusUnlockPending: 'Ouverture de la page... Vous avez debloque un nouveau fond d ecran !',
-            secretWallpaperLocked: 'Tempus Secret (verrouille)',
+            wallpaper: 'Fond d’écran :',
+            darkTheme: 'Thème noir global',
+            tempusUnlockPending: 'Ouverture de la page... Vous avez débloqué un nouveau fond d’écran !',
+            secretWallpaperLocked: 'Tempus Secret (verrouillé)',
             secretWallpaperUnlocked: 'Tempus Secret'
         },
         en: {
@@ -1203,15 +1224,15 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             secretWallpaperOption.textContent = isTempusUnlocked ? t.secretWallpaperUnlocked : t.secretWallpaperLocked;
         }
         const mobileNow = document.getElementById('mobile-now-playing');
-        if (mobileNow && mobileNow.textContent === 'PRET') {
-            mobileNow.textContent = selected === 'en' ? 'READY' : 'PRET';
+        if (mobileNow && mobileNow.textContent === 'PRÊT') {
+            mobileNow.textContent = selected === 'en' ? 'READY' : 'PRÊT';
         }
         const mobilePlayBtn = document.getElementById('mobile-play-btn');
         if (mobilePlayBtn) mobilePlayBtn.textContent = selected === 'en' ? 'PLAY / PAUSE' : 'LECTURE / PAUSE';
         setText('mobile-lite-title', selected === 'en' ? 'Aquerty Mobile Lite' : 'Aquerty Mobile Lite');
-        setText('mobile-lite-subtitle', selected === 'en' ? 'Simplified mode: tracks + essential settings.' : 'Version simplifiee: tracks + reglages essentiels.');
-        setText('mobile-quick-title', selected === 'en' ? 'Quick settings' : 'Reglages rapides');
-        setText('mobile-quick-sounds-label', selected === 'en' ? 'System sounds' : 'Sons systeme');
+        setText('mobile-lite-subtitle', selected === 'en' ? 'Simplified mode: tracks + essential settings.' : 'Version simplifiée : tracks + réglages essentiels.');
+        setText('mobile-quick-title', selected === 'en' ? 'Quick settings' : 'Réglages rapides');
+        setText('mobile-quick-sounds-label', selected === 'en' ? 'System sounds' : 'Sons système');
         setText('mobile-quick-volume-label', selected === 'en' ? 'Volume' : 'Volume');
         setText('mobile-quick-language-label', selected === 'en' ? 'Language' : 'Langue');
         setText('mobile-exit-lite-btn', selected === 'en' ? 'Exit lite mode' : 'Quitter le mode lite');
@@ -1395,7 +1416,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 content: `
                 <h2 style="color:#000080; font-size:16px;">JAJ Records</h2>
                 <hr>
-                <p><strong>${isEn ? 'Welcome to the JAJ Records network.' : 'Bienvenue sur le reseau JAJ Records.'}</strong></p>
+                <p><strong>${isEn ? 'Welcome to the JAJ Records network.' : 'Bienvenue sur le réseau JAJ Records.'}</strong></p>
                 <p>
                     ${isEn
                         ? 'AQ-NEO is now the label portal for music, archives, apps and web experiments. The original Dual experience remains available as part of the catalogue.'
@@ -1438,7 +1459,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 <p>
                     ${isEn ? "Sound-wise, it's a mix of classic hip-hop, techno and ambient." : "Niveau son, c'est un melange de hip-hop classique, techno et ambient."}
                 </p>
-                <p><strong>${isEn ? 'System key:' : 'Cle systeme :'}</strong> <span style="color:#000080; font-weight:bold;">NdZkLa</span></p>
+                <p><strong>${isEn ? 'System key:' : 'Clé système :'}</strong> <span style="color:#000080; font-weight:bold;">NdZkLa</span></p>
             `
             },
             tempus: {
@@ -1508,6 +1529,38 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
 
     // --- GESTION DES FENÊTRES ---
+    function constrainWindowToDesktop(win) {
+        if (!win) return;
+        if (
+            document.body.classList.contains('mobile-mode') ||
+            document.body.classList.contains('desktop-lite-mode') ||
+            win.classList.contains('player-night-fullscreen')
+        ) return;
+
+        const desktopRoot = document.getElementById('desktop');
+        if (!desktopRoot || win.style.display === 'none') return;
+
+        const availableWidth = Math.max(250, desktopRoot.clientWidth - 8);
+        const availableHeight = Math.max(150, desktopRoot.clientHeight - 8);
+
+        if (win.offsetWidth > availableWidth) win.style.width = availableWidth + 'px';
+        if (win.offsetHeight > availableHeight) win.style.height = availableHeight + 'px';
+
+        const maxLeft = Math.max(0, desktopRoot.clientWidth - win.offsetWidth);
+        const maxTop = Math.max(0, desktopRoot.clientHeight - win.offsetHeight);
+        const left = Number.isFinite(parseFloat(win.style.left)) ? parseFloat(win.style.left) : win.offsetLeft;
+        const top = Number.isFinite(parseFloat(win.style.top)) ? parseFloat(win.style.top) : win.offsetTop;
+
+        win.style.left = Math.max(0, Math.min(maxLeft, left)) + 'px';
+        win.style.top = Math.max(0, Math.min(maxTop, top)) + 'px';
+    }
+
+    function constrainVisibleWindows() {
+        document.querySelectorAll('.window').forEach((win) => {
+            if (win.style.display !== 'none') constrainWindowToDesktop(win);
+        });
+    }
+
     function stopAudioInWindow(winId) {
         const win = document.getElementById(winId);
         if (!win) return;
@@ -1524,6 +1577,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (!isRestoringSession) playSystemSound('open');
         win.style.display = 'block';
         task.style.display = 'block';
+        constrainWindowToDesktop(win);
         document.querySelectorAll('.window').forEach(w => w.style.zIndex = 10);
         if (document.body.classList.contains('mobile-mode') && !document.body.classList.contains('mobile-lite-mode')) {
             document.querySelectorAll('.window').forEach((w) => {
@@ -1573,6 +1627,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const task = document.getElementById(taskId);
         if (win.style.display === 'none') {
             win.style.display = 'block';
+            constrainWindowToDesktop(win);
             task.classList.add('active');
             document.querySelectorAll('.window').forEach(w => w.style.zIndex = 10);
             win.style.zIndex = 100;
@@ -1605,7 +1660,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             let taskEl = document.getElementById(taskId);
             if(taskEl) taskEl.classList.add('active');
         });
-        win.addEventListener('mouseup', saveSessionState);
+        win.addEventListener('mouseup', () => {
+            constrainWindowToDesktop(win);
+            saveSessionState();
+        });
     });
 
     // --- DRAG AND DROP ---
@@ -1614,18 +1672,27 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const titleBar = el.querySelector(".title-bar");
         titleBar.onmousedown = (e) => {
             e = e || window.event;
+            if (e.target.closest('button, input, select, textarea, a')) return;
             pos3 = e.clientX; pos4 = e.clientY;
             document.onmouseup = () => {
                 document.onmouseup = null;
                 document.onmousemove = null;
+                constrainWindowToDesktop(el);
                 saveSessionState();
             };
             document.onmousemove = (e) => {
                 e = e || window.event;
                 pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
                 pos3 = e.clientX; pos4 = e.clientY;
-                el.style.top = (el.offsetTop - pos2) + "px";
-                el.style.left = (el.offsetLeft - pos1) + "px";
+
+                const desktopRoot = document.getElementById('desktop');
+                const nextLeft = el.offsetLeft - pos1;
+                const nextTop = el.offsetTop - pos2;
+                const maxLeft = Math.max(0, (desktopRoot?.clientWidth || window.innerWidth) - el.offsetWidth);
+                const maxTop = Math.max(0, (desktopRoot?.clientHeight || window.innerHeight) - el.offsetHeight);
+
+                el.style.left = Math.max(0, Math.min(maxLeft, nextLeft)) + "px";
+                el.style.top = Math.max(0, Math.min(maxTop, nextTop)) + "px";
             };
         };
     }
@@ -1912,7 +1979,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     function syncMobileNowPlaying() {
         const target = document.getElementById('mobile-now-playing');
         if (!target) return;
-        target.textContent = statusDisplay.innerText || (getCurrentLanguage() === 'en' ? 'READY' : 'PRET');
+        target.textContent = statusDisplay.innerText || (getCurrentLanguage() === 'en' ? 'READY' : 'PRÊT');
     }
 
     function syncMobileQuickSettings() {
@@ -1982,7 +2049,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     function setupMobileLite() {
         applyClientMode();
-        window.addEventListener('resize', applyClientMode);
+        window.addEventListener('resize', () => {
+            applyClientMode();
+            requestAnimationFrame(constrainVisibleWindows);
+        });
         document.querySelectorAll('#mobile-port-nav .mobile-port-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const winId = btn.getAttribute('data-open-win');
@@ -2670,7 +2740,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                     : 'Ton environnement AQ-NEO est pret.\n\n- Player: OK\n- ACC: OK\n- Demineur: OK\n\nBon test.'
             },
             m2: {
-                subject: isEn ? 'Ticket #1042 - Audio settings' : 'Ticket #1042 - Parametres audio',
+                subject: isEn ? 'Ticket #1042 - Audio settings' : 'Ticket #1042 - Paramètres audio',
                 body: isEn
                     ? 'We received your request.\n\nTip: adjust the master volume with the Sound icon (bottom right).'
                     : 'On a bien recu ta demande.\n\nConseil: regle le volume master via l icone Son (en bas a droite).'

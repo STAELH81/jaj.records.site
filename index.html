@@ -215,41 +215,53 @@
         </div>
     </div>
 
-    <div class="window" style="width: 450px; height: 400px; top: 80px; left: 700px; display: none;" id="win-ie">
+    <div class="window" style="width: 680px; height: 500px; top: 55px; left: 560px; display: none;" id="win-ie">
         <div class="title-bar">
-            <span>AQ-Navigator</span>
+            <span>AQ-Navigator // AQ-NET</span>
             <div class="window-controls">
                 <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-ie', 'task-ie')">_</button>
                 <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-ie', 'task-ie')">X</button>
             </div>
         </div>
-        <div class="ie-toolbar">
-            <button class="retro-btn" style="padding: 2px 6px;" id="ie-back-btn" onclick="goIEBack()">&lt;</button>
-            <button class="retro-btn" style="padding: 2px 6px;" id="ie-forward-btn" onclick="goIEForward()">&gt;</button>
-            <button class="retro-btn" style="padding: 2px 6px;" onclick="setIEPage('info')">Accueil</button>
-            <button class="retro-btn" style="padding: 2px 6px; display: none;" id="ie-tempus-btn" onclick="setIEPage('tempus')">index_files</button>
-            <span>Fichier</span><span>Edition</span><span>Affichage</span><span>Favoris</span><span>Outils</span>
-        </div>
-        <div class="ie-address-bar">
-            <span style="color:#666; margin-right:5px;">Adresse :</span>
-            <span id="ie-address">http://www.jaj-records.com/home.html</span>
-        </div>
-        <div class="window-content" style="height: calc(100% - 65px);">
-            <div class="ie-content" id="ie-content-box">
-                <h2 style="color:#000080; font-size:16px;">JAJ Records</h2>
-                <hr>
-                <p><strong>Bienvenue sur le réseau JAJ Records.</strong></p>
-                <p>
-                    AQ-NEO sert maintenant de portail du label : musique, archives, applications et experiences web.
-                    Le contenu lie a <strong>Dual</strong> reste disponible comme une archive du catalogue.
-                </p>
-                <div style="border:1px solid #aca899; background:#f4f4f4; padding:10px; margin:12px 0;">
-                    <strong>Catalogue / Archives</strong>
-                    <p style="margin-bottom:0;">
-                        <a href="#" onclick="setIEPage('dual'); return false;">Dual - Cha (2026)</a>
-                    </p>
-                </div>
-                <p style="font-size:10px; color:#555;">JAJ Records // powered by Aquerty AQ-NEO</p>
+
+        <div class="navigator-shell">
+            <div class="navigator-menubar">
+                <span>Fichier</span><span>Édition</span><span>Affichage</span><span>Favoris</span><span>Outils</span><span>Aide</span>
+            </div>
+
+            <div class="navigator-toolbar">
+                <button class="retro-btn nav-tool-btn" id="ie-back-btn" type="button" onclick="goIEBack()" title="Précédente">◀</button>
+                <button class="retro-btn nav-tool-btn" id="ie-forward-btn" type="button" onclick="goIEForward()" title="Suivante">▶</button>
+                <button class="retro-btn nav-tool-btn" type="button" onclick="refreshIENavigator()" title="Actualiser">↻</button>
+                <button class="retro-btn nav-tool-btn" id="ie-home-btn" type="button" onclick="navigateAQ('aq://home')" title="Accueil">⌂</button>
+                <div class="navigator-toolbar-separator"></div>
+                <button class="retro-btn nav-text-btn" type="button" onclick="navigateAQ('aq://favorites')">Favoris</button>
+                <button class="retro-btn nav-text-btn" type="button" onclick="navigateAQ('aq://history')">Historique</button>
+                <button class="retro-btn nav-text-btn" type="button" onclick="toggleIEFavorite()">★ Ajouter</button>
+            </div>
+
+            <form class="navigator-address-row" id="ie-address-form">
+                <label for="ie-address-input">Adresse</label>
+                <input id="ie-address-input" type="text" value="aq://home" autocomplete="off" spellcheck="false">
+                <button class="retro-btn" type="submit">Aller</button>
+            </form>
+
+            <div class="navigator-linksbar">
+                <span class="navigator-links-label">Liens</span>
+                <button type="button" onclick="navigateAQ('aq://jaj')">JAJ Records</button>
+                <button type="button" onclick="navigateAQ('aq://artists')">Artistes</button>
+                <button type="button" onclick="navigateAQ('aq://myspace')">MySpace</button>
+                <button type="button" onclick="navigateAQ('aq://mail')">AQ-Mail</button>
+                <button type="button" onclick="navigateAQ('aq://archive/dual')">Dual</button>
+            </div>
+
+            <div class="navigator-page-wrap">
+                <div class="ie-content navigator-content" id="ie-content-box"></div>
+            </div>
+
+            <div class="navigator-statusbar">
+                <span id="ie-status">AQ-NET prêt.</span>
+                <span id="ie-zone">Zone : AQ-NET interne</span>
             </div>
         </div>
     </div>

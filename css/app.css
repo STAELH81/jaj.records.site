@@ -2544,3 +2544,21 @@ body.global-dark #win-ie .aq-page {
     border-radius: 0;
     box-shadow: none;
 }
+
+
+/* --- Navigator menu rendering hotfix --- */
+.navigator-dropdown {
+    opacity: 1;
+    overflow: hidden;
+    background: #d4d0c8 !important;
+}
+
+.navigator-dropdown button {
+    box-sizing: border-box;
+    background: #d4d0c8;
+}
+
+.navigator-dropdown button:hover {
+    background: #0a246a;
+    color: #fff;
+}

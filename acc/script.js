@@ -153,14 +153,20 @@ const FILE_INDEX = [
   "logs/security.html"
 ];
 
-const COMMANDS = [
+const USER_COMMANDS = [
   "help", "cls", "exit", "shutdown",
-  "cd", "dir", "ls", "type", "more", "find", "echo",
-  "start",
-  "ver", "date", "time",
-  "whoami", "ipconfig", "ping", "tracert",
-  "history"
+  "cd", "open", "type", "more", "find", "echo",
+  "start", "ver", "date", "time", "whoami"
 ];
+
+const ADMIN_COMMANDS = [
+  ...USER_COMMANDS,
+  "dir", "ls", "ipconfig", "ping", "tracert", "history"
+];
+
+function availableCommands() {
+  return accessLevel >= 2 ? ADMIN_COMMANDS : USER_COMMANDS;
+}
 
 let sessionId = null;
 let activeAccName = null;
@@ -545,7 +551,7 @@ async function execOne(segment, inputLines) {
 
   if (cmd === "help") {
     emit(t().commands);
-    emit(formatHelpColumns(COMMANDS, 14, 4));
+    emit(formatHelpColumns(availableCommands(), 14, 4));
     emit("");
     emit(t().usage);
     emit(t().helpOpen);
@@ -785,7 +791,7 @@ function getCompletion(value) {
     const hits = dirs.filter((d) => d.toLowerCase().startsWith(needle)).map((d) => `cd ${d}`);
     return cycle(t, hits);
   }
-  const hits = COMMANDS.filter((c) => c.toLowerCase().startsWith(t.toLowerCase()));
+  const hits = availableCommands().filter((c) => c.toLowerCase().startsWith(t.toLowerCase()));
   return cycle(t, hits);
 }
 

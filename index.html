@@ -160,7 +160,7 @@
         <div class="title-bar">
             <span>AQ-Player | JAJ Records / Dual - Cha</span>
             <div class="window-controls">
-                <button class="retro-btn" id="player-cfg-btn" onclick="togglePlayerSettingsPanel()">CFG</button>
+                <button class="retro-btn player-cfg-title-btn" id="player-cfg-btn" title="Réglages du lecteur" aria-label="Réglages du lecteur" onclick="togglePlayerSettingsPanel()">CFG</button>
                 <button class="retro-btn" id="player-exit-night-btn" style="display:none;" onclick="setPlayerNightMode(false); savePlayerState();">NUIT OFF</button>
                 <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-player', 'task-player')">_</button>
                 <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-player', 'task-player')">X</button>
@@ -217,7 +217,7 @@
 
     <div class="window" style="width: 680px; height: 500px; top: 55px; left: 560px; display: none;" id="win-ie">
         <div class="title-bar">
-            <span>AQ-Navigator // AQ-NET</span>
+            <span>AQ-Navigator</span>
             <div class="window-controls">
                 <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-ie', 'task-ie')">_</button>
                 <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-ie', 'task-ie')">X</button>
@@ -225,34 +225,77 @@
         </div>
 
         <div class="navigator-shell">
-            <div class="navigator-menubar">
-                <span>Fichier</span><span>Édition</span><span>Affichage</span><span>Favoris</span><span>Outils</span><span>Aide</span>
+            <div class="navigator-menubar" id="navigator-menubar">
+                <div class="navigator-menu">
+                    <button type="button" class="navigator-menu-button" data-menu="file">Fichier</button>
+                    <div class="navigator-dropdown" data-menu-panel="file">
+                        <button type="button" onclick="navigatorMenuAction('home')">Page d'accueil</button>
+                        <button type="button" onclick="navigatorMenuAction('open')">Ouvrir une adresse...</button>
+                        <div class="navigator-menu-separator"></div>
+                        <button type="button" onclick="navigatorMenuAction('print')">Imprimer...</button>
+                        <div class="navigator-menu-separator"></div>
+                        <button type="button" onclick="navigatorMenuAction('close')">Fermer</button>
+                    </div>
+                </div>
+                <div class="navigator-menu">
+                    <button type="button" class="navigator-menu-button" data-menu="edit">Édition</button>
+                    <div class="navigator-dropdown" data-menu-panel="edit">
+                        <button type="button" onclick="navigatorMenuAction('copy')">Copier</button>
+                        <button type="button" onclick="navigatorMenuAction('select-all')">Sélectionner tout</button>
+                    </div>
+                </div>
+                <div class="navigator-menu">
+                    <button type="button" class="navigator-menu-button" data-menu="view">Affichage</button>
+                    <div class="navigator-dropdown" data-menu-panel="view">
+                        <button type="button" onclick="navigatorMenuAction('refresh')">Actualiser</button>
+                        <button type="button" onclick="navigatorMenuAction('stop')">Arrêter</button>
+                        <div class="navigator-menu-separator"></div>
+                        <button type="button" onclick="navigatorMenuAction('fullscreen')">Plein écran</button>
+                    </div>
+                </div>
+                <div class="navigator-menu">
+                    <button type="button" class="navigator-menu-button" data-menu="favorites">Favoris</button>
+                    <div class="navigator-dropdown" data-menu-panel="favorites">
+                        <button type="button" onclick="navigatorMenuAction('favorite-add')">Ajouter aux favoris...</button>
+                        <button type="button" onclick="navigatorMenuAction('favorites')">Organiser les favoris...</button>
+                    </div>
+                </div>
+                <div class="navigator-menu">
+                    <button type="button" class="navigator-menu-button" data-menu="tools">Outils</button>
+                    <div class="navigator-dropdown" data-menu-panel="tools">
+                        <button type="button" onclick="navigatorMenuAction('settings')">Options Internet...</button>
+                    </div>
+                </div>
+                <div class="navigator-menu">
+                    <button type="button" class="navigator-menu-button" data-menu="help">Aide</button>
+                    <div class="navigator-dropdown navigator-dropdown-right" data-menu-panel="help">
+                        <button type="button" onclick="navigatorMenuAction('help')">Sommaire et index</button>
+                        <div class="navigator-menu-separator"></div>
+                        <button type="button" onclick="navigatorMenuAction('about')">À propos d'AQ-Navigator</button>
+                    </div>
+                </div>
             </div>
 
             <div class="navigator-toolbar">
                 <button class="retro-btn nav-tool-btn" id="ie-back-btn" type="button" onclick="goIEBack()" title="Précédente">◀</button>
                 <button class="retro-btn nav-tool-btn" id="ie-forward-btn" type="button" onclick="goIEForward()" title="Suivante">▶</button>
+                <button class="retro-btn nav-tool-btn" type="button" onclick="navigatorMenuAction('stop')" title="Arrêter">■</button>
                 <button class="retro-btn nav-tool-btn" type="button" onclick="refreshIENavigator()" title="Actualiser">↻</button>
-                <button class="retro-btn nav-tool-btn" id="ie-home-btn" type="button" onclick="navigateAQ('aq://home')" title="Accueil">⌂</button>
+                <button class="retro-btn nav-tool-btn" id="ie-home-btn" type="button" onclick="setIEPage('info')" title="Accueil">⌂</button>
                 <div class="navigator-toolbar-separator"></div>
-                <button class="retro-btn nav-text-btn" type="button" onclick="navigateAQ('aq://favorites')">Favoris</button>
-                <button class="retro-btn nav-text-btn" type="button" onclick="navigateAQ('aq://history')">Historique</button>
-                <button class="retro-btn nav-text-btn" type="button" onclick="toggleIEFavorite()">★ Ajouter</button>
+                <button class="retro-btn nav-text-btn" type="button" onclick="navigatorMenuAction('favorites')">Favoris</button>
+                <button class="retro-btn nav-text-btn" type="button" onclick="navigatorMenuAction('history')">Historique</button>
+                <button class="retro-btn nav-text-btn" type="button" onclick="navigatorMenuAction('favorite-add')">★ Ajouter</button>
             </div>
 
             <form class="navigator-address-row" id="ie-address-form">
-                <label for="ie-address-input">Adresse</label>
-                <input id="ie-address-input" type="text" value="aq://home" autocomplete="off" spellcheck="false">
+                <label for="ie-address-input">Adresse :</label>
+                <input id="ie-address-input" type="text" value="http://www.jaj-records.com/home.html" autocomplete="off" spellcheck="false">
                 <button class="retro-btn" type="submit">Aller</button>
             </form>
 
             <div class="navigator-linksbar">
                 <span class="navigator-links-label">Liens</span>
-                <button type="button" onclick="navigateAQ('aq://jaj')">JAJ Records</button>
-                <button type="button" onclick="navigateAQ('aq://artists')">Artistes</button>
-                <button type="button" onclick="navigateAQ('aq://myspace')">MySpace</button>
-                <button type="button" onclick="navigateAQ('aq://mail')">AQ-Mail</button>
-                <button type="button" onclick="navigateAQ('aq://archive/dual')">Dual</button>
             </div>
 
             <div class="navigator-page-wrap">
@@ -260,8 +303,8 @@
             </div>
 
             <div class="navigator-statusbar">
-                <span id="ie-status">AQ-NET prêt.</span>
-                <span id="ie-zone">Zone : AQ-NET interne</span>
+                <span id="ie-status">Terminé</span>
+                <span id="ie-zone">Internet</span>
             </div>
         </div>
     </div>
@@ -299,7 +342,6 @@
                 <li>notes_session_2003.doc</li>
                 <li>cover_test_backup.psd</li>
             </ul>
-            <p style="font-size:10px; color:#555;">Tu peux éditer cette liste facilement dans la fenêtre Corbeille.</p>
         </div>
     </div>
 

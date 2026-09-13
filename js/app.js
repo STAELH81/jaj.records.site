@@ -603,12 +603,29 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const titleEl = document.getElementById('shutdown-title');
         const detailEl = document.getElementById('shutdown-detail');
         const bar = document.getElementById('shutdown-progress-bar');
+        const powerBtn = document.getElementById('power-on-btn');
 
         if (titleEl) titleEl.textContent = title || '';
         if (detailEl) detailEl.textContent = detail || '';
         if (bar) bar.style.width = Math.max(0, Math.min(100, progress || 0)) + '%';
+        if (powerBtn) powerBtn.hidden = true;
         overlay?.classList.add('active', 'closing');
         overlay?.classList.remove('powered-off');
+    }
+
+    function showPoweredOffScreen() {
+        const overlay = document.getElementById('shutdown-overlay');
+        const titleEl = document.getElementById('shutdown-title');
+        const detailEl = document.getElementById('shutdown-detail');
+        const bar = document.getElementById('shutdown-progress-bar');
+        const powerBtn = document.getElementById('power-on-btn');
+
+        overlay?.classList.remove('closing');
+        overlay?.classList.add('powered-off', 'active');
+        if (titleEl) titleEl.textContent = 'Aquerty AQ-NEO est éteint';
+        if (detailEl) detailEl.textContent = 'Vous pouvez maintenant rallumer le système.';
+        if (bar) bar.style.width = '100%';
+        if (powerBtn) powerBtn.hidden = false;
     }
 
     async function closeAppsForPowerTransition() {
@@ -691,20 +708,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         saveState();
         addSystemLog('Arrêt du système.', 'warn');
 
-        const overlay = document.getElementById('shutdown-overlay');
-        overlay?.classList.remove('closing');
-        overlay?.classList.add('powered-off', 'active');
-
-        const titleEl = document.getElementById('shutdown-title');
-        const detailEl = document.getElementById('shutdown-detail');
-        const bar = document.getElementById('shutdown-progress-bar');
-        const powerBtn = document.getElementById('power-on-btn');
-
-        if (titleEl) titleEl.textContent = 'Aquerty AQ-NEO est éteint';
-        if (detailEl) detailEl.textContent = 'Vous pouvez maintenant rallumer le système.';
-        if (bar) bar.style.width = '100%';
-        if (powerBtn) powerBtn.hidden = false;
-
+        showPoweredOffScreen();
         powerTransitionRunning = false;
     }
 
@@ -1881,11 +1885,22 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     setupDesktopIconActivation();
     setupActivityListeners();
     renderRecents();
-    runBootSequence();
-    restartPopupLoop();
+
     const hasSavedSession = !!localStorage.getItem(SESSION_KEY);
     if (hasSavedSession) restoreSessionState();
-    if (isPoweredOff) document.getElementById('shutdown-overlay').classList.add('active');
+
+    if (isPoweredOff) {
+        // A reload while AQ-NEO is off must restore the FINAL powered-off screen,
+        // not the transient "Arrêt... Préparation" state from the markup.
+        stopBootSound();
+        const boot = document.getElementById('boot-screen');
+        if (boot) boot.style.display = 'none';
+        showPoweredOffScreen();
+        markBootComplete();
+    } else {
+        runBootSequence();
+        restartPopupLoop();
+    }
 
     // Initialiser la page IE d'accueil au chargement
     if (!hasSavedSession) setIEPage('info');

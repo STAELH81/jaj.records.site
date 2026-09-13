@@ -1,8 +1,18 @@
 // Aquerty Command Center — CMD-like shell (client-side)
 const terminal = document.getElementById('terminal');
 
-const ACC_STATE_KEY = 'aquerty_acc_state_v2';
+const ACC_STATE_KEY = 'aquerty_acc_state_v3';
 const SETTINGS_KEY = 'aquerty_settings_v1';
+const ACC_API = '/api/acc-auth';
+const IDENTITY_MODULE_URL = 'https://esm.sh/@netlify/identity@2.0.0';
+let identityModulePromise = null;
+let aqSession = null;
+let accIdentity = null;
+
+function getIdentityApi() {
+  if (!identityModulePromise) identityModulePromise = import(IDENTITY_MODULE_URL);
+  return identityModulePromise;
+}
 
 function getDesktopLang() {
   try {
@@ -21,11 +31,19 @@ const ACC_I18N = {
       "[NET] Connexion hub securise - Etablie",
       "[SEC] Chargement modules de chiffrement - OK"
     ],
-    enterSession: "Entrez l identifiant de session:",
-    enterPassword: "Entrer le mot de passe:",
-    granted: "Acces autorise",
-    denied: "Acces refuse.",
-    accessDenied: "Acces refuse.",
+    enterSession: "Entrez votre ID ACC :",
+    enterPassword: "Mot de passe AQ-NEO :",
+    granted: "Accès autorisé",
+    denied: "Accès refusé.",
+    accessDenied: "Accès refusé.",
+    invalidId: "ID non valable. Entrez un nombre entre 1 et 999.",
+    unknownId: "ID ACC inconnu.",
+    wrongAdminId: "Cet ID administrateur n'est pas associé à la session AQ-NEO active.",
+    adminRequired: "Une session AQ-NEO ADMIN est requise pour cet ID.",
+    authUnavailable: "Service d'identification ACC indisponible.",
+    sessionUser: "Session membre détectée : accès utilisateur direct.",
+    sessionGuest: "Session locale : accès utilisateur limité.",
+    adminPrompt: "Session ADMIN détectée : authentification ACC requise.",
     usageOpen: (m) => `Usage: ${m} <nom|chemin>`,
     fileNotFound: "Fichier introuvable",
     cannotDisplay: "Le systeme ne peut pas afficher ce fichier.",
@@ -41,7 +59,7 @@ const ACC_I18N = {
     empty: " <vide>",
     availableFiles: "Fichiers disponibles:",
     more: "Plus ?",
-    version: "Aquerty AQ-NEO [Build 0.9.5]",
+    version: "Aquerty AQ-NEO / AQ-ACC [Build 1.0.0]",
     date: "Date actuelle: ",
     time: "Heure actuelle: ",
     userLabel: "Utilisateur:",
@@ -57,8 +75,7 @@ const ACC_I18N = {
     unrecognizedA: (cmd) => `'${cmd}' n est pas reconnu en tant que commande interne ou externe,`,
     unrecognizedB: "programme executable ou fichier de commandes.",
     roleAdmin: "Administrateur",
-    roleDev: "Developpeur",
-    roleGuest: "Invite"
+    roleUser: "Utilisateur"
   },
   en: {
     intro: [
@@ -67,11 +84,19 @@ const ACC_I18N = {
       "[NET] Secure hub connection - Established",
       "[SEC] Encryption modules loading - OK"
     ],
-    enterSession: "Enter session ID:",
-    enterPassword: "Enter password:",
+    enterSession: "Enter your ACC ID:",
+    enterPassword: "AQ-NEO password:",
     granted: "Access granted",
     denied: "Access denied.",
     accessDenied: "Access is denied.",
+    invalidId: "Invalid ID. Enter a number between 1 and 999.",
+    unknownId: "Unknown ACC ID.",
+    wrongAdminId: "This administrator ID is not linked to the active AQ-NEO session.",
+    adminRequired: "An AQ-NEO ADMIN session is required for this ID.",
+    authUnavailable: "ACC identity service unavailable.",
+    sessionUser: "Member session detected: direct user access.",
+    sessionGuest: "Local session: limited user access.",
+    adminPrompt: "ADMIN session detected: ACC authentication required.",
     usageOpen: (m) => `Usage: ${m} <name|path>`,
     fileNotFound: "File Not Found",
     cannotDisplay: "The system cannot display this file.",
@@ -87,7 +112,7 @@ const ACC_I18N = {
     empty: " <empty>",
     availableFiles: "Available files:",
     more: "More?",
-    version: "Aquerty AQ-NEO [Build 0.9.5]",
+    version: "Aquerty AQ-NEO / AQ-ACC [Build 1.0.0]",
     date: "The current date is: ",
     time: "The current time is: ",
     userLabel: "User:",
@@ -103,8 +128,7 @@ const ACC_I18N = {
     unrecognizedA: (cmd) => `'${cmd}' is not recognized as an internal or external command,`,
     unrecognizedB: "operable program or batch file.",
     roleAdmin: "Administrator",
-    roleDev: "Developer",
-    roleGuest: "Guest"
+    roleUser: "User"
   }
 };
 
@@ -139,7 +163,7 @@ const COMMANDS = [
 ];
 
 let sessionId = null;
-let accessLevel = 0; // 1 guest, 2 dev, 3 admin
+let accessLevel = 0; // 1 user, 2 admin
 let cwd = "\\ACC";
 
 let currentInput = null;
@@ -147,18 +171,55 @@ let history = [];
 let historyCursor = 0;
 let completionState = null;
 
-function accessFromSessionId(id) {
-  const n = parseInt(id, 10);
-  if (Number.isNaN(n)) return 1;
-  if (n <= 99) return 3;
-  if (n <= 299) return 2;
-  return 1;
+async function fetchAccIdentity() {
+  try {
+    const response = await fetch(ACC_API, {
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "acc_identity_failed");
+    return data;
+  } catch (error) {
+    console.warn("[AQ-ACC] identity lookup failed", error);
+    return null;
+  }
 }
 
-function expectedPassword() {
-  if (accessLevel === 3) return "rootadmin";
-  if (accessLevel === 2) return `AQ-DEV-${sessionId}-dev`;
-  return `AQ-${sessionId}`;
+async function validateAccId(value) {
+  const response = await fetch(ACC_API, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ action: "validate_id", accId: String(value || "").trim() })
+  });
+  const data = await response.json().catch(() => ({}));
+  return { ok: response.ok && data.ok, status: response.status, data };
+}
+
+async function verifyCurrentAdminPassword(password) {
+  const email = aqSession?.email || accIdentity?.email;
+  if (!email || !password) return false;
+
+  try {
+    const { login } = await getIdentityApi();
+    await login(email, password);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function getParentSession() {
+  try {
+    return window.parent?.JAJSession || null;
+  } catch (_) {
+    return null;
+  }
 }
 
 function htmlEscape(text) {
@@ -313,7 +374,10 @@ function shortName(path) {
 function knownListForCwd() {
   const prefix = cwdPrefix();
   const pfx = prefix ? `${prefix}/` : "";
-  return FILE_INDEX.filter((p) => p.startsWith(pfx)).map(baseName);
+  return FILE_INDEX
+    .filter((p) => p.startsWith(pfx))
+    .filter((p) => accessLevel >= 2 || p !== "logs/security.html")
+    .map(baseName);
 }
 
 function findKnownByName(name) {
@@ -516,7 +580,6 @@ async function execOne(segment, inputLines) {
       persistSave();
     }
   } else if (cmd === "dir" || cmd === "ls") {
-    if (!requireLevel(2)) return [];
     emit(t().directoryOf + promptString().replace(">", ""));
     emit("");
     const list = knownListForCwd();
@@ -525,7 +588,10 @@ async function execOne(segment, inputLines) {
   } else if (cmd === "files") {
     // legacy alias
     emit(t().availableFiles);
-    FILE_INDEX.map(baseName).forEach(emit);
+    FILE_INDEX
+      .filter((p) => accessLevel >= 2 || p !== "logs/security.html")
+      .map(baseName)
+      .forEach(emit);
   } else if (cmd === "open") {
     await openLikeCmd(args.join(" "), "open");
     return [];
@@ -585,11 +651,10 @@ async function execOne(segment, inputLines) {
   } else if (cmd === "time") {
     emit(t().time + new Date().toLocaleTimeString());
   } else if (cmd === "whoami") {
-    const role = accessLevel === 3 ? t().roleAdmin : accessLevel === 2 ? t().roleDev : t().roleGuest;
+    const role = accessLevel >= 2 ? t().roleAdmin : t().roleUser;
     emit(`${t().userLabel} ${role}`);
     emit(`${t().sessionLabel} ${sessionId || "?"}`);
   } else if (cmd === "ipconfig") {
-    if (!requireLevel(2)) return [];
     emit(t().netConfig);
     emit("");
     emit(t().ethernet);
@@ -598,7 +663,6 @@ async function execOne(segment, inputLines) {
     emit("   Subnet Mask . . . . . . . . . . . : 255.255.255.0");
     emit("   Default Gateway . . . . . . . . . : 192.168.1.1");
   } else if (cmd === "ping") {
-    if (!requireLevel(2)) return [];
     const host = args[0] || "aquerty.internal";
     emit(t().pinging(host));
     for (let i = 0; i < 4; i++) emit(t().reply(8 + i));
@@ -606,7 +670,6 @@ async function execOne(segment, inputLines) {
     emit(t().pingStats);
     emit(t().pingPackets);
   } else if (cmd === "tracert" || cmd === "tracert.") {
-    if (!requireLevel(2)) return [];
     const host = args[0] || "aquerty.internal";
     emit(t().tracing(host));
     emit("");
@@ -616,7 +679,6 @@ async function execOne(segment, inputLines) {
     emit("");
     emit(t().traceComplete);
   } else if (cmd === "history") {
-    if (!requireLevel(2)) return [];
     history.slice(-40).forEach(emit);
   } else {
     emit(t().unrecognizedA(tokens[0]));
@@ -716,53 +778,131 @@ function getCompletion(value) {
   return cycle(t, hits);
 }
 
-async function bootFlow() {
-  for (const l of t().intro) await typedLine(l, 18);
-  await typedLine(t().enterSession, 18);
+async function printIntro() {
+  clearScreen();
+  for (const l of t().intro) await typedLine(l, 15);
+}
+
+function showSessionBanner() {
+  const role = accessLevel >= 2 ? "ADMIN" : "USER";
+  writeLine("");
+  writeLine(`[SESSION] ACC-ID ${sessionId || "LOCAL"} // ${role}${accIdentity?.displayName ? " // " + accIdentity.displayName : ""}`);
+  writeText(ASCII_LOGO + "\n");
+  persistSave();
+  shellLoop();
+}
+
+async function promptAdminPassword() {
+  await typedLine(t().enterPassword, 15);
+  mountInput({
+    showPrompt: false,
+    onEnter: async (pwd) => {
+      const ok = await verifyCurrentAdminPassword(String(pwd || ""));
+      if (!ok) {
+        writeLine("");
+        writeLine(t().denied);
+        await promptAdminPassword();
+        return;
+      }
+
+      writeLine("");
+      writeLine(t().granted);
+      accessLevel = 2;
+      showSessionBanner();
+    }
+  });
+}
+
+async function promptAccId() {
+  await typedLine(t().enterSession, 15);
   mountInput({
     showPrompt: false,
     onEnter: async (value) => {
-      sessionId = String(value || "").trim();
-      accessLevel = accessFromSessionId(sessionId);
-      await typedLine(t().enterPassword, 18);
-      mountInput({
-        showPrompt: false,
-        onEnter: async (pwd) => {
-          const p = String(pwd || "").trim();
-          if (p === expectedPassword()) {
-            writeLine("");
-            writeLine(t().granted);
-            writeText(ASCII_LOGO + "\n");
-            persistSave();
-            shellLoop();
-            return;
-          }
-          writeLine("");
-          writeLine(t().denied);
-          // retry password
-          await typedLine(t().enterPassword, 18);
-          // recurse by re-running password prompt
-          mountInput({
-            showPrompt: false,
-            onEnter: async (pwd2) => {
-              const p2 = String(pwd2 || "").trim();
-              if (p2 === expectedPassword()) {
-                writeLine("");
-                writeLine(t().granted);
-                writeText(ASCII_LOGO + "\n");
-                persistSave();
-                shellLoop();
-                return;
-              }
-              writeLine("");
-              writeLine(t().denied);
-              await bootFlow();
-            }
-          });
-        }
-      });
+      const raw = String(value || "").trim();
+
+      if (!/^\d{1,3}$/.test(raw) || Number(raw) < 1 || Number(raw) > 999) {
+        writeLine("");
+        writeLine(t().invalidId);
+        await promptAccId();
+        return;
+      }
+
+      let checked;
+      try {
+        checked = await validateAccId(raw);
+      } catch (_) {
+        checked = null;
+      }
+
+      if (!checked) {
+        writeLine("");
+        writeLine(t().authUnavailable);
+        await promptAccId();
+        return;
+      }
+
+      if (!checked.ok) {
+        const error = checked.data?.error;
+        writeLine("");
+        if (error === "invalid_id_format" || error === "invalid_id_range") writeLine(t().invalidId);
+        else if (error === "unknown_id") writeLine(t().unknownId);
+        else if (error === "admin_role_required") writeLine(t().adminRequired);
+        else if (error === "admin_id_not_current_session") writeLine(t().wrongAdminId);
+        else writeLine(t().denied);
+        await promptAccId();
+        return;
+      }
+
+      sessionId = String(checked.data.accId);
+      if (checked.data.mode === "user") {
+        accessLevel = 1;
+        writeLine("");
+        writeLine(t().granted);
+        showSessionBanner();
+        return;
+      }
+
+      if (checked.data.mode === "admin_password") {
+        accessLevel = 0;
+        await promptAdminPassword();
+        return;
+      }
+
+      writeLine("");
+      writeLine(t().denied);
+      await promptAccId();
     }
   });
+}
+
+async function bootFlow() {
+  currentInput?.remove();
+  currentInput = null;
+  aqSession = getParentSession();
+  accIdentity = await fetchAccIdentity();
+
+  await printIntro();
+
+  if (!aqSession || aqSession.type === "guest" || !accIdentity?.authenticated) {
+    accessLevel = 1;
+    sessionId = "GUEST";
+    await typedLine(t().sessionGuest, 12);
+    showSessionBanner();
+    return;
+  }
+
+  if (accIdentity.role !== "admin") {
+    accessLevel = 1;
+    sessionId = String(accIdentity.accId || "USER");
+    await typedLine(t().sessionUser, 12);
+    showSessionBanner();
+    return;
+  }
+
+  accessLevel = 0;
+  sessionId = null;
+  await typedLine(t().adminPrompt, 12);
+  await promptAccId();
 }
 
 function shellLoop() {
@@ -790,4 +930,18 @@ document.addEventListener("mousedown", (e) => {
 
 persistLoad();
 clearScreen();
-bootFlow();
+writeLine("AQ-ACC prêt. Ouvrez la fenêtre depuis AQ-NEO.");
+
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.type !== "aq-acc-open" && event.data?.type !== "aq-session-changed") return;
+  bootFlow();
+});
+
+try {
+  if (window.parent === window || window.parent?.document?.getElementById("win-acc")?.style.display === "block") {
+    bootFlow();
+  }
+} catch (_) {
+  bootFlow();
+}

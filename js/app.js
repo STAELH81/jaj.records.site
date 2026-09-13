@@ -1545,6 +1545,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     let ieHistoryIndex = 0;
     let isTempusUnlocked = false;
     let ieFavorites = loadIEFavorites();
+    let navigatorWindowedGeometry = null;
 
     function escapeNavigatorHTML(value) {
         return String(value ?? '')
@@ -1854,10 +1855,40 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     function toggleNavigatorFullscreen(force) {
         const win = document.getElementById('win-ie');
         if (!win) return;
-        const next = typeof force === 'boolean'
-            ? force
-            : !win.classList.contains('navigator-fullscreen');
-        win.classList.toggle('navigator-fullscreen', next);
+
+        const currentlyFullscreen = win.classList.contains('navigator-fullscreen');
+        const next = typeof force === 'boolean' ? force : !currentlyFullscreen;
+        if (next === currentlyFullscreen) {
+            updateNavigatorFullscreenMenu();
+            return;
+        }
+
+        if (next) {
+            navigatorWindowedGeometry = {
+                left: win.style.left,
+                top: win.style.top,
+                width: win.style.width,
+                height: win.style.height
+            };
+            win.classList.add('navigator-fullscreen');
+        } else {
+            win.classList.remove('navigator-fullscreen');
+
+            if (navigatorWindowedGeometry) {
+                win.style.left = navigatorWindowedGeometry.left;
+                win.style.top = navigatorWindowedGeometry.top;
+                win.style.width = navigatorWindowedGeometry.width;
+                win.style.height = navigatorWindowedGeometry.height;
+            } else {
+                win.style.left = '560px';
+                win.style.top = '55px';
+                win.style.width = '680px';
+                win.style.height = '500px';
+            }
+
+            requestAnimationFrame(() => constrainWindowToDesktop(win));
+        }
+
         updateNavigatorFullscreenMenu();
         setIENavigatorStatus(next
             ? (getCurrentLanguage() === 'en' ? 'Full screen' : 'Plein écran')
@@ -1944,7 +1975,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (
             document.body.classList.contains('mobile-mode') ||
             document.body.classList.contains('desktop-lite-mode') ||
-            win.classList.contains('player-night-fullscreen')
+            win.classList.contains('player-night-fullscreen') ||
+            win.classList.contains('navigator-fullscreen')
         ) return;
 
         const desktopRoot = document.getElementById('desktop');
@@ -2028,6 +2060,9 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     function closeWindow(winId, taskId) {
         playSystemSound('close');
+        if (winId === 'win-ie' && document.getElementById('win-ie')?.classList.contains('navigator-fullscreen')) {
+            toggleNavigatorFullscreen(false);
+        }
         stopAudioInWindow(winId);
         document.getElementById(winId).style.display = 'none';
         document.getElementById(taskId).style.display = 'none';

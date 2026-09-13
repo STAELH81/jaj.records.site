@@ -1607,6 +1607,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             if (winId === 'win-ie') triggerContextualPopup('openInternet');
             if (winId === 'win-tempus') triggerContextualPopup('openTempus');
             if (winId === 'win-myspace') window.dispatchEvent(new Event('aq:myspace-open'));
+            if (winId === 'win-acc') {
+                const frame = document.querySelector('#win-acc iframe');
+                frame?.contentWindow?.postMessage({ type: 'aq-acc-open' }, window.location.origin);
+            }
         }
         if (!isRestoringSession) addSystemLog(`Fenetre ouverte: ${winId}`);
         if (winId === 'win-player') updatePlayerNightEffects();
@@ -1701,6 +1705,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         };
     }
     document.querySelectorAll(".window").forEach(makeDraggable);
+
+    window.addEventListener('jaj:session-changed', () => {
+        const frame = document.querySelector('#win-acc iframe');
+        frame?.contentWindow?.postMessage({ type: 'aq-session-changed' }, window.location.origin);
+    });
 
     // --- LOGIQUE MOT DE PASSE (EASTER EGG) ---
     function checkTempusPwd() {

@@ -1372,6 +1372,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         t.ieMenu.forEach((txt, i) => { if (ieMenu[i]) ieMenu[i].textContent = txt; });
         const ieAddressLabel = document.querySelector('#win-ie .navigator-address-row label');
         if (ieAddressLabel) ieAddressLabel.textContent = t.ieAddress;
+        updateNavigatorFullscreenMenu();
 
         const logsTitle = document.querySelector('#win-logs .title-bar span');
         if (logsTitle) logsTitle.textContent = t.logsWindow;
@@ -1840,6 +1841,29 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         }
     }
 
+    function updateNavigatorFullscreenMenu() {
+        const win = document.getElementById('win-ie');
+        const item = document.getElementById('navigator-fullscreen-menu-item');
+        if (!item || !win) return;
+        const fullscreen = win.classList.contains('navigator-fullscreen');
+        item.textContent = fullscreen
+            ? (getCurrentLanguage() === 'en' ? 'Exit full screen' : 'Quitter le plein écran')
+            : (getCurrentLanguage() === 'en' ? 'Full screen' : 'Plein écran');
+    }
+
+    function toggleNavigatorFullscreen(force) {
+        const win = document.getElementById('win-ie');
+        if (!win) return;
+        const next = typeof force === 'boolean'
+            ? force
+            : !win.classList.contains('navigator-fullscreen');
+        win.classList.toggle('navigator-fullscreen', next);
+        updateNavigatorFullscreenMenu();
+        setIENavigatorStatus(next
+            ? (getCurrentLanguage() === 'en' ? 'Full screen' : 'Plein écran')
+            : (getCurrentLanguage() === 'en' ? 'Windowed mode' : 'Mode fenêtré'));
+    }
+
     async function navigatorMenuAction(action) {
         closeNavigatorMenus();
 
@@ -1858,7 +1882,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             return;
         }
         if (action === 'fullscreen') {
-            document.getElementById('win-ie')?.classList.toggle('navigator-fullscreen');
+            toggleNavigatorFullscreen();
             return;
         }
         if (action === 'favorite-add') return toggleIEFavorite();
@@ -1901,6 +1925,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     document.addEventListener('click', (event) => {
         if (!event.target.closest('#navigator-menubar')) closeNavigatorMenus();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && document.getElementById('win-ie')?.classList.contains('navigator-fullscreen')) {
+            toggleNavigatorFullscreen(false);
+        }
     });
 
     document.getElementById('ie-address-form')?.addEventListener('submit', (event) => {

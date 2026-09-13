@@ -168,6 +168,7 @@ let accessLevel = 0; // 1 user, 2 admin
 let cwd = "\\ACC";
 
 let currentInput = null;
+let bootInProgress = false;
 let history = [];
 let historyCursor = 0;
 let completionState = null;
@@ -789,6 +790,7 @@ async function printIntro() {
 }
 
 function showSessionBanner() {
+  bootInProgress = false;
   const role = accessLevel >= 2 ? "ADMIN" : "USER";
   document.body.dataset.accMode = role.toLowerCase();
   writeLine("");
@@ -886,6 +888,12 @@ async function promptAccId() {
 }
 
 async function bootFlow() {
+  // The iframe can receive both an "open" and a "session changed" event almost
+  // simultaneously. Never allow two boot animations to type into the same
+  // terminal at once.
+  if (bootInProgress) return;
+  bootInProgress = true;
+
   currentInput?.remove();
   currentInput = null;
   aqSession = getParentSession();

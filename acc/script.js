@@ -699,8 +699,12 @@ async function runPipeline(line) {
   }
 }
 
-function mountInput({ showPrompt, onEnter }) {
+function mountInput({ showPrompt, onEnter, secret = false }) {
   const input = document.createElement("input");
+  if (secret) {
+    input.type = "password";
+    input.autocomplete = "current-password";
+  }
   if (showPrompt) {
     terminal.insertAdjacentHTML("beforeend", `<span class="prompt">${htmlEscape(promptString()).replaceAll(">", "&gt;")}</span> `);
   }
@@ -796,6 +800,7 @@ async function promptAdminPassword() {
   await typedLine(t().enterPassword, 15);
   mountInput({
     showPrompt: false,
+    secret: true,
     onEnter: async (pwd) => {
       const ok = await verifyCurrentAdminPassword(String(pwd || ""));
       if (!ok) {
@@ -901,7 +906,7 @@ async function bootFlow() {
 
   accessLevel = 0;
   sessionId = null;
-  await typedLine(t().adminPrompt, 12);
+  await typedLine(`${t().adminPrompt} [ID ACC: ${accIdentity.accId}]`, 12);
   await promptAccId();
 }
 

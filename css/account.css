@@ -920,3 +920,94 @@ body.global-dark .mail-account-strip {
         padding: 18px 0 22px;
     }
 }
+
+
+/* --- AQ-NEO CRT-era system treatment ---
+   Keep the dark grey/black AQ mood while making the welcome screen feel like
+   an emulated late-90s / early-2000s system display rather than a modern UI. */
+.aq-welcome {
+    background:
+        radial-gradient(circle at 50% 42%, rgba(56, 64, 74, .18), transparent 44%),
+        linear-gradient(to bottom, #171a1f 0%, #222830 48%, #181c22 100%);
+    color: #f2f2f2;
+    font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+    image-rendering: pixelated;
+}
+
+.aq-welcome-topbar,
+.aq-welcome-footer {
+    background: linear-gradient(to bottom, #292d33 0%, #171a1f 100%);
+    border-color: #555b63;
+}
+
+.aq-welcome-topbar {
+    border-bottom: 2px solid #6c7077;
+}
+
+.aq-welcome-footer {
+    border-top: 2px solid #6c7077;
+    color: #d6d8dc;
+}
+
+.aq-welcome-main {
+    filter: saturate(.72) contrast(1.04);
+}
+
+.aq-welcome-brand h1,
+.aq-account-copy strong,
+.aq-welcome-brand p,
+.aq-auth-status {
+    text-shadow: 1px 1px 0 #000;
+}
+
+.aq-account-card.active,
+.aq-account-card:hover {
+    border-color: #b6b9be;
+    background: linear-gradient(to right, #4a4f57 0%, #393e45 100%);
+}
+
+.aq-account-card.current {
+    border-color: #d2d4d8;
+}
+
+.aq-avatar {
+    background: #9aa0a8;
+    color: #20242a;
+}
+
+.aq-avatar-guest {
+    background: #b4b8bd;
+}
+
+.aq-avatar-create {
+    background: #8d9d8b;
+}
+
+.aq-inline-form {
+    border-color: #72777f;
+    background: #30353c;
+}
+
+.aq-welcome::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,.028) 0,
+            rgba(255,255,255,.028) 1px,
+            rgba(0,0,0,.055) 1px,
+            rgba(0,0,0,.055) 3px
+        ),
+        radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.18) 100%);
+    mix-blend-mode: soft-light;
+    opacity: .72;
+}
+
+.aq-welcome > * {
+    position: relative;
+    z-index: 1;
+}

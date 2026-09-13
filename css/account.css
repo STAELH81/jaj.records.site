@@ -705,3 +705,218 @@ body.global-dark .mail-account-strip {
 .aq-account-arrow {
     color: #fff;
 }
+
+
+/* --- AQ-NEO XP-era welcome screen ---
+   Keep the dark AQ palette, but make the composition feel like an early-2000s
+   Windows welcome screen instead of a modern dark web UI. */
+.aq-welcome {
+    background: #273b63;
+    background-image:
+        linear-gradient(
+            to bottom,
+            #162849 0,
+            #162849 34px,
+            #334f80 34px,
+            #334f80 calc(100% - 40px),
+            #102343 calc(100% - 40px),
+            #102343 100%
+        );
+    transition: opacity 90ms linear;
+}
+
+.aq-welcome-topbar {
+    flex-basis: 34px;
+    background: linear-gradient(to bottom, #0c2147 0%, #163769 100%);
+    border-bottom: 2px solid #d88738;
+    box-shadow:
+        inset 0 -1px 0 rgba(255,255,255,.12),
+        0 1px 0 rgba(0,0,0,.65);
+}
+
+.aq-welcome-footer {
+    flex-basis: 40px;
+    background: linear-gradient(to bottom, #173762 0%, #0c2247 100%);
+    border-top: 2px solid #d88738;
+    color: #e7ecf5;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.aq-welcome-main {
+    width: min(1060px, 92vw);
+    grid-template-columns: minmax(290px, .88fr) 2px minmax(350px, 1.12fr);
+    gap: 28px;
+    padding: 26px 0 30px;
+}
+
+.aq-welcome-brand {
+    padding-right: 18px;
+}
+
+.aq-welcome-logo {
+    margin-bottom: 16px;
+    filter: none;
+}
+
+.aq-welcome-kicker {
+    color: #d3def1;
+    font-size: 9px;
+    letter-spacing: 1px;
+}
+
+.aq-welcome-brand h1 {
+    font-family: Tahoma, Arial, sans-serif;
+    font-size: clamp(25px, 3vw, 39px);
+    font-weight: 400;
+    letter-spacing: -1px;
+    text-shadow: 1px 1px 0 #0b1a35;
+}
+
+.aq-welcome-brand p {
+    margin-top: 7px;
+    color: #f4f6fb;
+    font-size: 13px;
+    text-shadow: 1px 1px 0 #0b1a35;
+}
+
+.aq-welcome-divider {
+    background: linear-gradient(
+        to bottom,
+        transparent,
+        #7189b2 14%,
+        #7189b2 86%,
+        transparent
+    );
+    box-shadow: 1px 0 0 rgba(0,0,0,.28);
+}
+
+.aq-account-stack {
+    gap: 4px;
+}
+
+.aq-account-card {
+    border-radius: 0;
+    border: 1px solid transparent;
+    background: transparent;
+}
+
+.aq-account-card.active,
+.aq-account-card:hover {
+    border-color: #b8caea;
+    background: linear-gradient(to right, #4168aa 0%, #35588e 100%);
+    box-shadow:
+        inset 1px 1px 0 rgba(255,255,255,.20),
+        inset -1px -1px 0 rgba(0,0,0,.24);
+}
+
+.aq-account-card.current {
+    border-color: #ffd28a;
+}
+
+.aq-account-select {
+    min-height: 62px;
+    grid-template-columns: 50px minmax(0, 1fr) 18px;
+    padding: 5px 8px;
+}
+
+.aq-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 2px;
+    border: 2px solid #fff;
+    background: #8ca7cf;
+    box-shadow:
+        1px 1px 0 #12264d,
+        inset 1px 1px 0 rgba(255,255,255,.55);
+    color: #18345f;
+    text-shadow: none;
+}
+
+.aq-avatar-guest {
+    background: #aebbd0;
+}
+
+.aq-avatar-create {
+    background: #91ad82;
+    color: #21401f;
+}
+
+.aq-account-copy strong {
+    font-size: 16px;
+    font-weight: 700;
+    text-shadow: 1px 1px 0 #173260;
+}
+
+.aq-account-copy small {
+    color: #e0e8f6;
+}
+
+.aq-account-arrow {
+    font-size: 22px;
+    transition: none;
+}
+
+.aq-inline-form {
+    margin-top: 2px;
+    border: 1px solid #7893bc;
+    border-radius: 0;
+    background: #2e4b78;
+    box-shadow:
+        inset 1px 1px 0 rgba(255,255,255,.15),
+        inset -1px -1px 0 rgba(0,0,0,.25);
+}
+
+.aq-inline-form input {
+    border: 2px inset #d4d0c8;
+    border-radius: 0;
+    background: #fff;
+    color: #000;
+    box-shadow: none;
+}
+
+.aq-inline-form input:focus {
+    outline: 1px dotted #000080;
+    outline-offset: -3px;
+    border-color: #d4d0c8;
+}
+
+.aq-mini-btn,
+.aq-mini-btn-primary {
+    border-radius: 0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #666;
+    border-bottom: 2px solid #666;
+    background: #d4d0c8;
+    color: #000;
+    box-shadow: none;
+    text-shadow: none;
+}
+
+.aq-mini-btn:active {
+    border-top-color: #666;
+    border-left-color: #666;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    padding: 5px 7px 3px 9px;
+}
+
+.aq-auth-status {
+    color: #fff;
+    text-shadow: 1px 1px 0 #19335e;
+}
+
+.aq-auth-status.error {
+    color: #ffd2d2;
+}
+
+.aq-auth-status.success {
+    color: #dcffd7;
+}
+
+@media (max-width: 760px) {
+    .aq-welcome-main {
+        width: min(94vw, 520px);
+        padding: 18px 0 22px;
+    }
+}

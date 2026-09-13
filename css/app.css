@@ -1278,3 +1278,108 @@ body.mobile-mode #win-settings .window-content > div {
         transition-duration: 0.001ms !important;
     }
 }
+
+
+/* --- AQ-NEO organic power transition --- */
+#shutdown-overlay {
+    transition: background .35s ease, opacity .2s ease;
+}
+
+#shutdown-overlay.closing {
+    display: flex;
+    background: rgba(0, 18, 64, .82);
+    backdrop-filter: blur(1px);
+}
+
+#shutdown-overlay.powered-off {
+    display: flex;
+    background: #000;
+}
+
+.shutdown-dialog {
+    width: min(420px, calc(100vw - 36px));
+    box-sizing: border-box;
+    padding: 18px 20px 16px;
+    border: 2px solid #6f8fcb;
+    background: linear-gradient(180deg, #123d89 0%, #08245e 100%);
+    box-shadow: 0 12px 38px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.12);
+    color: #fff;
+    text-align: left;
+}
+
+#shutdown-overlay.powered-off .shutdown-dialog {
+    border-color: #2d4f8d;
+    background: #071a3e;
+}
+
+.shutdown-brand {
+    margin-bottom: 14px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid rgba(255,255,255,.32);
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #cfe0ff;
+}
+
+.shutdown-title {
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.shutdown-detail {
+    min-height: 18px;
+    margin-top: 8px;
+    color: #dce8ff;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shutdown-progress {
+    height: 13px;
+    margin: 14px 0 12px;
+    padding: 2px;
+    border: 1px solid #bfd2ff;
+    background: #061735;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,.65);
+}
+
+#shutdown-progress-bar {
+    width: 0;
+    height: 100%;
+    background: repeating-linear-gradient(
+        90deg,
+        #63a8ff 0 11px,
+        #2f72d8 11px 15px
+    );
+    transition: width .2s ease;
+}
+
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    background: #244b87;
+}
+
+#shutdown-overlay .power-btn {
+    display: block;
+    margin: 14px auto 0;
+}
+
+#shutdown-overlay .power-btn[hidden] {
+    display: none;
+}
+
+.aq-window-shutting-down {
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transform: scale(.985) !important;
+    transition: opacity .14s ease, transform .14s ease !important;
+}
+
+body.mobile-mode #shutdown-overlay.active,
+body.desktop-lite-mode #shutdown-overlay.active {
+    display: flex !important;
+}

@@ -567,3 +567,141 @@ body.global-dark .mail-account-strip {
     border-bottom-color: #111;
     color: #ddd;
 }
+
+
+/* --- AQ-NEO dark login pass --- */
+.aq-welcome {
+    background:
+        radial-gradient(circle at 30% 32%, rgba(90, 112, 150, .12), transparent 34%),
+        radial-gradient(circle at 72% 60%, rgba(35, 55, 82, .16), transparent 38%),
+        linear-gradient(135deg, #07090d 0%, #0d1118 46%, #111722 100%);
+    color: #fff;
+}
+
+.aq-welcome-topbar,
+.aq-welcome-footer {
+    background: linear-gradient(to bottom, #11151c 0%, #0a0d12 100%);
+    border-color: rgba(255,255,255,.15);
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,.75);
+}
+
+.aq-welcome-footer {
+    border-top: 1px solid rgba(255,255,255,.16);
+    color: #d8dde7;
+}
+
+.aq-welcome-kicker,
+.aq-account-copy small,
+.aq-form-note {
+    color: #cbd3df;
+}
+
+.aq-welcome-brand p,
+.aq-account-copy strong,
+.aq-account-select,
+.aq-inline-form label {
+    color: #fff;
+}
+
+.aq-welcome-divider {
+    background: linear-gradient(
+        to bottom,
+        transparent,
+        rgba(255,255,255,.14) 20%,
+        rgba(255,255,255,.14) 80%,
+        transparent
+    );
+}
+
+.aq-auth-status {
+    color: #f1f3f6;
+}
+
+.aq-auth-status.error {
+    color: #ffb8b8;
+}
+
+.aq-auth-status.success {
+    color: #c9ffc4;
+}
+
+.aq-account-card {
+    background: rgba(255,255,255,.015);
+}
+
+.aq-account-card.active,
+.aq-account-card:hover {
+    border-color: rgba(255,255,255,.62);
+    background: linear-gradient(90deg, rgba(46,52,64,.94), rgba(28,33,42,.9));
+    box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.06),
+        0 5px 18px rgba(0,0,0,.28);
+}
+
+.aq-account-card.current {
+    border-color: rgba(190,205,230,.7);
+}
+
+.aq-avatar {
+    border-color: #f0f0f0;
+    box-shadow: 0 0 0 1px #252b35, 1px 2px 4px rgba(0,0,0,.55);
+    background:
+        linear-gradient(145deg, rgba(255,255,255,.72), rgba(255,255,255,.08)),
+        #667183;
+    color: #151922;
+}
+
+.aq-avatar-guest {
+    background:
+        linear-gradient(145deg, rgba(255,255,255,.82), rgba(255,255,255,.08)),
+        #7d8797;
+}
+
+.aq-avatar-create {
+    background:
+        linear-gradient(145deg, rgba(255,255,255,.82), rgba(255,255,255,.08)),
+        #61705e;
+    color: #122014;
+}
+
+.aq-inline-form {
+    border-color: rgba(255,255,255,.22);
+    background: rgba(0,0,0,.42);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.035);
+}
+
+.aq-inline-form input {
+    border: 1px solid #59616f;
+    background: #12161d;
+    color: #fff;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,.75);
+}
+
+.aq-inline-form input:focus {
+    outline: 1px solid #b8c7df;
+    border-color: #8796ad;
+}
+
+.aq-mini-btn {
+    border-top-color: #8e96a3;
+    border-left-color: #8e96a3;
+    border-right-color: #272b31;
+    border-bottom-color: #272b31;
+    background: linear-gradient(#4b515b, #30353d);
+    color: #fff;
+}
+
+.aq-mini-btn-primary {
+    background: linear-gradient(#687384, #434b58);
+}
+
+.aq-mini-btn:active {
+    border-top-color: #272b31;
+    border-left-color: #272b31;
+    border-right-color: #8e96a3;
+    border-bottom-color: #8e96a3;
+}
+
+.aq-account-arrow {
+    color: #fff;
+}

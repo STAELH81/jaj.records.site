@@ -177,7 +177,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                     }
                 }
             });
-            if (saved.currentIEPage) setIEPage(saved.currentIEPage);
+            if (saved.currentIEPage) {
+                const restoredPage = pageKeyFromAddress(saved.currentIEPage) || saved.currentIEPage;
+                if (['info', 'dual', 'tempus', '__favorites', '__history', '__help', '__about'].includes(restoredPage)) {
+                    setIEPage(restoredPage);
+                }
+            }
             isRestoringSession = false;
         } catch (_) {
             // ignore malformed saved session
@@ -1065,7 +1070,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             msDiffIntermediate: 'Intermédiaire (16x16, 40)',
             msDiffExpert: 'Expert (16x30, 99)',
             ieHome: 'Accueil',
-            ieMenu: ['Fichier', 'Édition', 'Affichage', 'Favoris', 'Outils'],
+            ieMenu: ['Fichier', 'Édition', 'Affichage', 'Favoris', 'Outils', 'Aide'],
             ieAddress: 'Adresse :',
             tempusTask: 'Sécurité - tempus_pe...',
             settingsTask: 'Panneau de config...',
@@ -1162,7 +1167,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             msDiffIntermediate: 'Intermediate (16x16, 40)',
             msDiffExpert: 'Expert (16x30, 99)',
             ieHome: 'Home',
-            ieMenu: ['File', 'Edit', 'View', 'Favorites', 'Tools'],
+            ieMenu: ['File', 'Edit', 'View', 'Favorites', 'Tools', 'Help'],
             ieAddress: 'Address:',
             tempusTask: 'Security - tempus_pe...',
             settingsTask: 'Control panel...',
@@ -1272,7 +1277,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         setText('task-trash', t.trashLabel);
         setText('task-player', t.playerTask);
         setText('task-ms', t.minesTask);
-        setText('player-cfg-btn', t.playerCfg);
+        const playerCfgBtn = document.getElementById('player-cfg-btn');
+        if (playerCfgBtn) {
+            playerCfgBtn.textContent = 'CFG';
+            playerCfgBtn.title = t.playerCfg;
+            playerCfgBtn.setAttribute('aria-label', t.playerCfg);
+        }
         setText('player-settings-title', t.playerSettingsTitle);
         const playerSkinLabel = document.getElementById('player-skin-label');
         if (playerSkinLabel) {
@@ -1525,12 +1535,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (appSettings.systemPopups) queueNextPopup();
     }
 
-    // --- AQ-NAVIGATOR 2.0 / AQ-NET ---
-    const IE_FAVORITES_KEY = 'aq_navigator_favorites_v2';
+    // --- AQ-NAVIGATOR / classic browser chrome ---
+    const IE_FAVORITES_KEY = 'aq_navigator_favorites_v3';
     const IE_MAX_HISTORY = 40;
 
-    let currentIEPage = 'aq://home';
-    let ieHistory = ['aq://home'];
+    let currentIEPage = 'info';
+    let ieHistory = ['info'];
     let ieHistoryIndex = 0;
     let isTempusUnlocked = false;
     let ieFavorites = loadIEFavorites();
@@ -1547,9 +1557,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     function loadIEFavorites() {
         try {
             const parsed = JSON.parse(localStorage.getItem(IE_FAVORITES_KEY) || '[]');
-            return Array.isArray(parsed)
-                ? [...new Set(parsed.map((item) => String(item)).filter(Boolean))].slice(0, 24)
-                : [];
+            return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string').slice(0, 24) : [];
         } catch (_) {
             return [];
         }
@@ -1559,369 +1567,151 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         localStorage.setItem(IE_FAVORITES_KEY, JSON.stringify(ieFavorites));
     }
 
-    function normalizeAQAddress(value) {
-        const raw = String(value || '').trim();
-        if (!raw) return 'aq://home';
-
-        const legacy = {
-            info: 'aq://home',
-            dual: 'aq://archive/dual',
-            tempus: 'aq://archive/tempus'
-        };
-        if (legacy[raw]) return legacy[raw];
-
-        if (/^https?:\/\//i.test(raw)) return raw;
-
-        if (/^aq:\/\//i.test(raw)) {
-            const withoutHash = raw.split('#')[0];
-            return 'aq://' + withoutHash.slice(5).replace(/^\/+/, '');
-        }
-
-        const alias = raw.toLowerCase().replace(/^\/+|\/+$/g, '');
-        const aliases = {
-            home: 'aq://home',
-            accueil: 'aq://home',
-            jaj: 'aq://jaj',
-            records: 'aq://jaj',
-            artistes: 'aq://artists',
-            artists: 'aq://artists',
-            akuele: 'aq://artists/akuele',
-            myspace: 'aq://myspace',
-            mail: 'aq://mail',
-            'aq-mail': 'aq://mail',
-            acc: 'aq://acc',
-            player: 'aq://player',
-            dual: 'aq://archive/dual',
-            archives: 'aq://archive',
-            archive: 'aq://archive',
-            aide: 'aq://help',
-            help: 'aq://help',
-            favoris: 'aq://favorites',
-            favorites: 'aq://favorites',
-            historique: 'aq://history',
-            history: 'aq://history'
-        };
-        if (aliases[alias]) return aliases[alias];
-
-        return 'aq://search?q=' + encodeURIComponent(raw);
-    }
-
-    function navigatorRouteKey(route) {
-        const normalized = normalizeAQAddress(route);
-        if (!normalized.toLowerCase().startsWith('aq://')) return normalized;
-        return normalized.slice(5).split('?')[0].replace(/^\/+|\/+$/g, '').toLowerCase() || 'home';
-    }
-
-    function navigatorQuery(route) {
-        const queryString = String(route).split('?')[1] || '';
-        return new URLSearchParams(queryString);
-    }
-
-    function navigatorAppCard(title, body, actionLabel, actionJS, extra = '') {
-        return `
-            <div class="aq-net-card">
-                <h3>${title}</h3>
-                <p>${body}</p>
-                ${extra}
-                <button type="button" onclick="${actionJS}">${actionLabel}</button>
-            </div>
-        `;
-    }
-
-    function getNavigatorDirectory(lang = getCurrentLanguage()) {
+    function getIEPages(lang) {
         const isEn = lang === 'en';
-        return [
-            { route: 'aq://home', title: isEn ? 'AQ-NET Home' : 'Accueil AQ-NET', desc: isEn ? 'Aquerty network portal.' : 'Portail principal du réseau Aquerty.' },
-            { route: 'aq://jaj', title: 'JAJ Records', desc: isEn ? 'Label, catalogue and releases.' : 'Label, catalogue et sorties.' },
-            { route: 'aq://artists', title: isEn ? 'Artists' : 'Artistes', desc: isEn ? 'JAJ Records artist directory.' : 'Annuaire des artistes JAJ Records.' },
-            { route: 'aq://artists/akuele', title: 'akuele', desc: isEn ? 'Artist profile and releases.' : 'Profil artiste et sorties.' },
-            { route: 'aq://myspace', title: 'AQ-MySpace', desc: isEn ? 'AQ-NET social network.' : 'Réseau social AQ-NET.' },
-            { route: 'aq://mail', title: 'AQ-Mail', desc: isEn ? 'AQ-NEO mail client.' : 'Client mail AQ-NEO.' },
-            { route: 'aq://acc', title: 'AQ-ACC', desc: isEn ? 'Aquerty command console.' : 'Console de commandes Aquerty.' },
-            { route: 'aq://player', title: 'JAJ Player', desc: isEn ? 'Music player and catalogue.' : 'Lecteur musical et catalogue.' },
-            { route: 'aq://archive', title: isEn ? 'Archives' : 'Archives', desc: isEn ? 'JAJ/Aquerty archived material.' : 'Contenu archivé JAJ/Aquerty.' },
-            { route: 'aq://archive/dual', title: 'Dual — Cha (2026)', desc: isEn ? 'Archived album page.' : 'Page archive de l’album.' },
-            { route: 'aq://help', title: isEn ? 'AQ-NET Help' : 'Aide AQ-NET', desc: isEn ? 'Navigator addresses and usage.' : 'Adresses et utilisation du Navigator.' }
-        ];
-    }
-
-    function renderNavigatorPage(route) {
-        const lang = getCurrentLanguage();
-        const isEn = lang === 'en';
-        const key = navigatorRouteKey(route);
-        const query = navigatorQuery(route);
-
-        if (key === 'home') {
-            return `
-                <div class="aq-page">
-                    <div class="aq-home-hero">
-                        <strong>AQ-NET</strong>
-                        <span>${isEn ? 'Aquerty network services // JAJ Records' : 'Services réseau Aquerty // JAJ Records'}</span>
+        return {
+            info: {
+                address: 'http://www.jaj-records.com/home.html',
+                title: 'JAJ Records',
+                content: `
+                    <h2 style="color:#000080; font-size:16px;">JAJ Records</h2>
+                    <hr>
+                    <p><strong>${isEn ? 'Welcome to the JAJ Records network.' : 'Bienvenue sur le réseau JAJ Records.'}</strong></p>
+                    <p>
+                        ${isEn
+                            ? 'AQ-NEO is the label portal for music, archives, applications and web experiments. The original Dual experience remains available in the catalogue.'
+                            : "AQ-NEO sert de portail du label pour la musique, les archives, les applications et les expériences web. L'expérience Dual d'origine reste disponible dans le catalogue."}
+                    </p>
+                    <div style="border:1px solid #aca899; background:#f4f4f4; padding:10px; margin:12px 0;">
+                        <strong>${isEn ? 'Catalogue / Archives' : 'Catalogue / Archives'}</strong>
+                        <p style="margin-bottom:0;">
+                            <a href="#" style="color:#0000ee;" onclick="setIEPage('dual'); return false;">Dual - Cha (2026)</a>
+                        </p>
                     </div>
-                    <div class="aq-search-box">
-                        <input id="aq-home-search" type="text" placeholder="${isEn ? 'Search AQ-NET…' : 'Rechercher sur AQ-NET…'}">
-                        <button class="aq-page-action" type="button" onclick="navigateAQ('aq://search?q=' + encodeURIComponent(document.getElementById('aq-home-search').value))">${isEn ? 'Search' : 'Rechercher'}</button>
-                    </div>
-                    <div class="aq-net-grid">
-                        ${navigatorAppCard('JAJ Records', isEn ? 'Catalogue, artists and label archives.' : 'Catalogue, artistes et archives du label.', isEn ? 'Open site' : 'Ouvrir le site', "navigateAQ('aq://jaj')")}
-                        ${navigatorAppCard('AQ-MySpace', isEn ? 'Posts, profiles, comments and forums.' : 'Posts, profils, commentaires et forums.', isEn ? 'Open page' : 'Ouvrir la page', "navigateAQ('aq://myspace')")}
-                        ${navigatorAppCard('AQ-Mail', isEn ? 'Your @aquerty.fr mailbox.' : 'Ta boîte aux lettres @aquerty.fr.', isEn ? 'Open page' : 'Ouvrir la page', "navigateAQ('aq://mail')")}
-                        ${navigatorAppCard('AQ-ACC', isEn ? 'Aquerty system command console.' : 'Console de commandes du système Aquerty.', isEn ? 'Open page' : 'Ouvrir la page', "navigateAQ('aq://acc')")}
-                    </div>
-                    <p style="margin-top:14px;color:#666;font-size:10px;">AQ-Navigator 2.0 // protocole <strong>aq://</strong></p>
-                </div>
-            `;
-        }
-
-        if (key === 'jaj') {
-            return `
-                <div class="aq-page">
-                    <h1>JAJ Records</h1>
+                    <p style="font-size:10px; color:#555;">JAJ Records // Aquerty AQ-NEO</p>
+                `
+            },
+            dual: {
+                address: 'http://www.jaj-records.com/releases/dual.html',
+                title: 'Dual - Cha',
+                content: `
+                    <h2 style="color:#000080; font-size:16px;">Dual - Cha</h2>
                     <hr>
-                    <p><strong>${isEn ? 'Independent label on AQ-NET.' : 'Label indépendant sur AQ-NET.'}</strong></p>
-                    <p>${isEn
-                        ? 'Browse artists, releases, experiments and archived projects through the Aquerty network.'
-                        : 'Parcours les artistes, sorties, expérimentations et anciens projets via le réseau Aquerty.'}</p>
-                    <div class="aq-net-grid">
-                        ${navigatorAppCard(isEn ? 'Artists' : 'Artistes', isEn ? 'JAJ artist directory.' : 'Annuaire des artistes JAJ.', isEn ? 'Browse' : 'Parcourir', "navigateAQ('aq://artists')")}
-                        ${navigatorAppCard(isEn ? 'Archives' : 'Archives', isEn ? 'Older releases and experiments.' : 'Anciennes sorties et expérimentations.', isEn ? 'Browse' : 'Parcourir', "navigateAQ('aq://archive')")}
-                        ${navigatorAppCard('JAJ Player', isEn ? 'Listen through the AQ-NEO player.' : 'Écoute via le lecteur AQ-NEO.', isEn ? 'Launch' : 'Lancer', "openWindow('win-player','task-player')")}
-                        ${navigatorAppCard('AQ-MySpace', isEn ? 'The social side of AQ-NET.' : 'Le côté social d’AQ-NET.', isEn ? 'Visit' : 'Visiter', "navigateAQ('aq://myspace')")}
-                    </div>
-                </div>
-            `;
-        }
-
-        if (key === 'artists') {
-            return `
-                <div class="aq-page">
-                    <h1>${isEn ? 'JAJ Records artists' : 'Artistes JAJ Records'}</h1>
-                    <hr>
-                    <div class="aq-browser-list">
-                        <div class="aq-browser-list-row" onclick="navigateAQ('aq://artists/akuele')" style="cursor:pointer;">
-                            <div><strong>akuele</strong><br><small>${isEn ? 'Artist // JAJ Records' : 'Artiste // JAJ Records'}</small></div>
-                            <span>›</span>
-                        </div>
-                        <div class="aq-browser-list-row">
-                            <div><strong>Cha</strong><br><small>${isEn ? 'Archive artist profile' : 'Profil artiste archive'}</small></div>
-                            <button class="aq-page-action" onclick="navigateAQ('aq://archive/dual')">Dual</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        if (key === 'artists/akuele') {
-            return `
-                <div class="aq-page">
-                    <h1>akuele</h1>
-                    <hr>
-                    <p><strong>JAJ Records</strong></p>
-                    <p>${isEn ? 'Current artist profile on AQ-NET.' : 'Profil artiste actuel sur AQ-NET.'}</p>
-                    <div class="aq-net-card">
-                        <h3>It’S Cold Outside</h3>
-                        <p>${isEn ? 'Release: 20/07/2026' : 'Sortie : 20/07/2026'}</p>
-                        <button type="button" onclick="openWindow('win-player','task-player')">${isEn ? 'Open JAJ Player' : 'Ouvrir JAJ Player'}</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        if (key === 'myspace') {
-            return `
-                <div class="aq-page">
-                    <h1>AQ-MySpace</h1>
-                    <hr>
-                    <p>${isEn
-                        ? 'AQ-NET social service: profiles, feed, reactions, comments and moderated forums.'
-                        : 'Service social AQ-NET : profils, fil, réactions, commentaires et forums modérés.'}</p>
-                    <button class="aq-page-action" type="button" onclick="openWindow('win-myspace','task-myspace')">${isEn ? 'Launch AQ-MySpace' : 'Lancer AQ-MySpace'}</button>
-                </div>
-            `;
-        }
-
-        if (key === 'mail') {
-            return `
-                <div class="aq-page">
-                    <h1>AQ-Mail</h1>
-                    <hr>
-                    <p>${isEn ? 'Aquerty internal mail client.' : 'Client de messagerie interne Aquerty.'}</p>
-                    <p><strong>${escapeNavigatorHTML(window.JAJSession?.aquertyMail || 'guest@aquerty.fr')}</strong></p>
-                    <button class="aq-page-action" type="button" onclick="openWindow('win-mail','task-mail')">${isEn ? 'Launch AQ-Mail' : 'Lancer AQ-Mail'}</button>
-                </div>
-            `;
-        }
-
-        if (key === 'acc') {
-            return `
-                <div class="aq-page">
-                    <h1>AQ-ACC</h1>
-                    <hr>
-                    <p>${isEn ? 'Aquerty command console linked to your AQ-NEO identity.' : 'Console de commandes Aquerty liée à ton identité AQ-NEO.'}</p>
-                    <p>${isEn ? 'Normal accounts open in USER mode. ADMIN accounts require ACC authentication.' : 'Les comptes normaux ouvrent en mode USER. Les comptes ADMIN passent par l’authentification ACC.'}</p>
-                    <button class="aq-page-action" type="button" onclick="openWindow('win-acc','task-acc')">${isEn ? 'Launch AQ-ACC' : 'Lancer AQ-ACC'}</button>
-                </div>
-            `;
-        }
-
-        if (key === 'player') {
-            return `
-                <div class="aq-page">
-                    <h1>JAJ Player</h1>
-                    <hr>
-                    <p>${isEn ? 'AQ-NEO music player.' : 'Lecteur musical intégré à AQ-NEO.'}</p>
-                    <button class="aq-page-action" type="button" onclick="openWindow('win-player','task-player')">${isEn ? 'Launch player' : 'Lancer le lecteur'}</button>
-                </div>
-            `;
-        }
-
-        if (key === 'archive') {
-            return `
-                <div class="aq-page">
-                    <h1>${isEn ? 'JAJ / Aquerty Archives' : 'Archives JAJ / Aquerty'}</h1>
-                    <hr>
-                    <div class="aq-browser-list">
-                        <div class="aq-browser-list-row" onclick="navigateAQ('aq://archive/dual')" style="cursor:pointer;">
-                            <div><strong>Dual — Cha</strong><br><small>2026 // JAJ Records</small></div><span>›</span>
-                        </div>
-                        ${isTempusUnlocked ? `
-                        <div class="aq-browser-list-row" onclick="navigateAQ('aq://archive/tempus')" style="cursor:pointer;">
-                            <div><strong>index_files</strong><br><small>127.0.0.1 // Tempus Perit</small></div><span>›</span>
-                        </div>` : ''}
-                    </div>
-                </div>
-            `;
-        }
-
-        if (key === 'archive/dual') {
-            return `
-                <div class="aq-page">
-                    <h1>Dual — Cha</h1>
-                    <hr>
-                    <p><strong>JAJ Records // 2026</strong></p>
-                    <p>${isEn
-                        ? 'Dual is an archived JAJ Records album collecting releases, recovered projects and experiments.'
-                        : 'Dual est un album archive de JAJ Records réunissant sorties, projets retrouvés et expérimentations.'}</p>
-                    <p>${isEn
-                        ? 'The title refers to duality: identity, daily choices and the coexistence of different musical directions.'
-                        : 'Le titre parle de dualité : identité, choix du quotidien et coexistence de plusieurs directions musicales.'}</p>
+                    <p><strong>Hey!</strong> ${isEn ? 'Thanks for taking the time to read this.' : 'Merci de prendre le temps de lire ceci.'}</p>
+                    <p>
+                        ${isEn
+                            ? 'Originally, this album was meant to be a collection of all my SoundCloud releases. Then I recovered older projects (thanks Clancy &lt;3), and putting everything together made more sense.'
+                            : "À l'origine, cet album devait être une collection de toutes mes sorties SoundCloud. Puis j'ai récupéré d'anciens projets (merci Clancy &lt;3), et les réunir dans un seul ensemble faisait beaucoup plus sens."}
+                    </p>
+                    <p>
+                        ${isEn
+                            ? "The name <strong>Dual</strong> is about duality: identity, daily choices and two possible paths."
+                            : "Le nom <strong>Dual</strong> parle de dualité : identité, choix du quotidien et deux chemins possibles."}
+                    </p>
+                    <p><strong>LRJR</strong> = <em>Lost Records of JAJ Records</em> : ${isEn ? 'lost recordings, experiments and sketches.' : 'enregistrements perdus, expérimentations et essais.'}</p>
                     <p><strong>${isEn ? 'System key' : 'Clé système'} :</strong> <span style="color:#000080;font-weight:bold;">NdZkLa</span></p>
-                    <button class="aq-page-action" type="button" onclick="openWindow('win-player','task-player')">${isEn ? 'Open player' : 'Ouvrir le lecteur'}</button>
-                </div>
-            `;
-        }
-
-        if (key === 'archive/tempus') {
-            if (!isTempusUnlocked) {
-                return `
-                    <div class="aq-page aq-error-page">
-                        <div class="code">403</div>
-                        <h2>${isEn ? 'Restricted resource' : 'Ressource verrouillée'}</h2>
-                        <p>${isEn ? 'This AQ-NET resource is not unlocked.' : 'Cette ressource AQ-NET n’est pas déverrouillée.'}</p>
+                `
+            },
+            tempus: {
+                address: 'http://127.0.0.1/tempus_perit/index_files/',
+                title: 'Index of /tempus_perit/index_files/',
+                content: `
+                    <div style="font-family:'Times New Roman',Times,serif;color:black;background:white;padding:10px;">
+                        <h1 style="font-size:20px;font-weight:normal;border-bottom:1px solid black;padding-bottom:5px;margin-top:0;">${tUI().ieTempusTitle}</h1>
+                        <pre style="font-size:14px;margin-top:20px;"><a href="#" style="color:blue;" onclick="setIEPage('info');return false;">../</a>
+<a href="#" style="color:blue;">Anthem.mp3</a>                       3.2M</pre>
+                        <div style="margin-top:30px;padding:10px;border:1px dashed #ccc;background:#f9f9f9;">
+                            <p style="margin:0 0 10px;font-size:14px;"><strong>C:\\medias\\musique\\Anthem.mp3</strong></p>
+                            <audio id="ie-audio-player" src="medias/musique/anthem.mp3"></audio>
+                            <div style="display:flex;gap:5px;align-items:center;">
+                                <button onclick="document.getElementById('ie-audio-player').play()" class="retro-btn" style="padding:2px 8px;">PLAY</button>
+                                <button onclick="let p=document.getElementById('ie-audio-player');p.pause();p.currentTime=0;" class="retro-btn" style="padding:2px 8px;">STOP</button>
+                                <span style="font-size:11px;margin-left:10px;">${tUI().ieVol}</span>
+                                <input type="range" min="0" max="1" step="0.1" value="0.5" style="width:60px;" oninput="document.getElementById('ie-audio-player').volume=this.value">
+                            </div>
+                        </div>
                     </div>
-                `;
+                `
             }
-            return `
-                <div class="aq-page" style="font-family:'Times New Roman',serif;">
-                    <h1 style="font-weight:normal;color:#000;">Index of /tempus_perit/index_files/</h1>
-                    <hr>
-                    <pre style="font-size:13px;"><a href="#" onclick="navigateAQ('aq://archive');return false;">../</a>
-Anthem.mp3                       3.2M</pre>
-                    <audio id="ie-audio-player" src="medias/musique/anthem.mp3"></audio>
-                    <button class="aq-page-action" onclick="document.getElementById('ie-audio-player').play()">PLAY</button>
-                    <button class="aq-page-action" onclick="let p=document.getElementById('ie-audio-player');p.pause();p.currentTime=0;">STOP</button>
-                </div>
-            `;
-        }
+        };
+    }
 
-        if (key === 'favorites') {
+    function pageKeyFromAddress(value) {
+        const raw = String(value || '').trim();
+        const lower = raw.toLowerCase();
+        if (!raw) return 'info';
+
+        if (['info', 'home', 'aq://home', 'http://www.jaj-records.com/home.html'].includes(lower)) return 'info';
+        if (['dual', 'aq://archive/dual', 'http://www.jaj-records.com/releases/dual.html'].includes(lower)) return 'dual';
+        if (['tempus', 'aq://archive/tempus', 'http://127.0.0.1/tempus_perit/index_files/'].includes(lower)) return 'tempus';
+        if (lower === 'favorites' || lower === 'favoris') return '__favorites';
+        if (lower === 'history' || lower === 'historique') return '__history';
+        if (lower === 'help' || lower === 'aide') return '__help';
+        if (lower === 'about') return '__about';
+        return null;
+    }
+
+    function getIEAddressForPage(pageKey) {
+        const pages = getIEPages(getCurrentLanguage());
+        if (pages[pageKey]) return pages[pageKey].address;
+        if (pageKey === '__favorites') return 'about:favorites';
+        if (pageKey === '__history') return 'about:history';
+        if (pageKey === '__help') return 'about:help';
+        if (pageKey === '__about') return 'about:aq-navigator';
+        return String(pageKey || '');
+    }
+
+    function renderIENavigatorUtilityPage(pageKey) {
+        const isEn = getCurrentLanguage() === 'en';
+
+        if (pageKey === '__favorites') {
             const rows = ieFavorites.length
-                ? ieFavorites.map((favorite) => {
-                    const item = getNavigatorDirectory(lang).find((entry) => entry.route === favorite);
+                ? ieFavorites.map((key) => {
+                    const pages = getIEPages(getCurrentLanguage());
+                    const label = pages[key]?.title || key;
                     return `
-                        <div class="aq-browser-list-row">
-                            <div><strong><a href="#" onclick="navigateAQ('${escapeNavigatorHTML(favorite)}');return false;">${escapeNavigatorHTML(item?.title || favorite)}</a></strong><br><small>${escapeNavigatorHTML(favorite)}</small></div>
-                            <button class="aq-page-action" onclick="removeIEFavorite('${escapeNavigatorHTML(favorite)}')">X</button>
+                        <div style="display:flex;justify-content:space-between;gap:8px;padding:6px;border-bottom:1px solid #ddd;">
+                            <a href="#" onclick="setIEPage('${escapeNavigatorHTML(key)}');return false;">${escapeNavigatorHTML(label)}</a>
+                            <button class="retro-btn" onclick="removeIEFavorite('${escapeNavigatorHTML(key)}')">Suppr.</button>
                         </div>
                     `;
                 }).join('')
-                : `<div style="padding:10px;">${isEn ? 'No favorites yet.' : 'Aucun favori pour le moment.'}</div>`;
-            return `
-                <div class="aq-page">
-                    <h1>${isEn ? 'Favorites' : 'Favoris'}</h1><hr>
-                    <div class="aq-browser-list">${rows}</div>
-                </div>
-            `;
+                : `<p>${isEn ? 'No favorites.' : 'Aucun favori.'}</p>`;
+            return `<div style="padding:12px;"><h2 style="font-size:16px;color:#000080;">${isEn ? 'Favorites' : 'Favoris'}</h2><hr>${rows}</div>`;
         }
 
-        if (key === 'history') {
-            const uniqueHistory = [...ieHistory].reverse().slice(0, IE_MAX_HISTORY);
-            const rows = uniqueHistory.map((item) => `
-                <div class="aq-browser-list-row" onclick="navigateAQ('${escapeNavigatorHTML(item)}')" style="cursor:pointer;">
-                    <div><strong>${escapeNavigatorHTML(item)}</strong><br><small>${isEn ? 'AQ-NET history' : 'Historique AQ-NET'}</small></div><span>›</span>
+        if (pageKey === '__history') {
+            const pages = getIEPages(getCurrentLanguage());
+            const rows = [...ieHistory].reverse().slice(0, IE_MAX_HISTORY).map((key) => `
+                <div style="padding:5px;border-bottom:1px solid #ddd;">
+                    <a href="#" onclick="setIEPage('${escapeNavigatorHTML(key)}');return false;">${escapeNavigatorHTML(pages[key]?.title || getIEAddressForPage(key))}</a><br>
+                    <span style="font-size:9px;color:#777;">${escapeNavigatorHTML(getIEAddressForPage(key))}</span>
                 </div>
             `).join('');
-            return `
-                <div class="aq-page">
-                    <h1>${isEn ? 'History' : 'Historique'}</h1><hr>
-                    <div class="aq-browser-list">${rows || '<div style="padding:10px;">—</div>'}</div>
-                </div>
-            `;
+            return `<div style="padding:12px;"><h2 style="font-size:16px;color:#000080;">${isEn ? 'History' : 'Historique'}</h2><hr>${rows || '—'}</div>`;
         }
 
-        if (key === 'search') {
-            const q = (query.get('q') || '').trim();
-            const lower = q.toLowerCase();
-            const results = getNavigatorDirectory(lang).filter((item) =>
-                !q || item.title.toLowerCase().includes(lower) || item.desc.toLowerCase().includes(lower) || item.route.includes(lower)
-            );
-            const rows = results.map((item) => `
-                <div class="aq-browser-list-row" onclick="navigateAQ('${escapeNavigatorHTML(item.route)}')" style="cursor:pointer;">
-                    <div><strong>${escapeNavigatorHTML(item.title)}</strong><br><small>${escapeNavigatorHTML(item.desc)}</small></div>
-                    <span>›</span>
-                </div>
-            `).join('');
+        if (pageKey === '__help') {
             return `
-                <div class="aq-page">
-                    <h1>${isEn ? 'AQ-NET Search' : 'Recherche AQ-NET'}</h1>
-                    <div class="aq-search-box">
-                        <input id="aq-search-query" value="${escapeNavigatorHTML(q)}" placeholder="${isEn ? 'Search…' : 'Rechercher…'}">
-                        <button class="aq-page-action" onclick="navigateAQ('aq://search?q=' + encodeURIComponent(document.getElementById('aq-search-query').value))">${isEn ? 'Search' : 'Rechercher'}</button>
-                    </div>
-                    <p>${results.length} ${isEn ? 'result(s)' : 'résultat(s)'}</p>
-                    <div class="aq-browser-list">${rows || `<div style="padding:10px;">${isEn ? 'No result.' : 'Aucun résultat.'}</div>`}</div>
-                </div>
-            `;
-        }
-
-        if (key === 'help') {
-            return `
-                <div class="aq-page">
-                    <h1>${isEn ? 'AQ-Navigator Help' : 'Aide AQ-Navigator'}</h1>
+                <div style="padding:12px;">
+                    <h2 style="font-size:16px;color:#000080;">${isEn ? 'AQ-Navigator Help' : 'Aide AQ-Navigator'}</h2>
                     <hr>
-                    <p>${isEn ? 'AQ-Navigator browses the private AQ-NET protocol.' : 'AQ-Navigator parcourt le protocole privé AQ-NET.'}</p>
-                    <pre style="border:1px solid #aca899;background:#f7f7f7;padding:8px;">aq://home
-aq://jaj
-aq://artists
-aq://myspace
-aq://mail
-aq://acc
-aq://player
-aq://archive
-aq://help</pre>
-                    <p>${isEn
-                        ? 'You can also type a search directly in the address bar. External http/https addresses are opened by your system browser.'
-                        : 'Tu peux aussi taper directement une recherche dans la barre d’adresse. Les adresses http/https externes sont ouvertes par ton navigateur système.'}</p>
+                    <p>${isEn ? 'Use the address bar, Back/Forward buttons and the menus above.' : 'Utilise la barre d’adresse, les boutons Précédent/Suivant et les menus en haut.'}</p>
+                    <p>${isEn ? 'Known local pages:' : 'Pages locales connues :'}</p>
+                    <ul style="list-style:square;margin-left:20px;">
+                        <li>http://www.jaj-records.com/home.html</li>
+                        <li>http://www.jaj-records.com/releases/dual.html</li>
+                    </ul>
                 </div>
             `;
         }
 
         return `
-            <div class="aq-page aq-error-page">
-                <div class="code">404</div>
-                <h2>${isEn ? 'AQ-NET address not found' : 'Adresse AQ-NET introuvable'}</h2>
-                <p><strong>${escapeNavigatorHTML(route)}</strong></p>
-                <button class="aq-page-action" onclick="navigateAQ('aq://home')">${isEn ? 'Back to home' : 'Retour à l’accueil'}</button>
+            <div style="padding:12px;text-align:center;">
+                <h2 style="font-size:16px;color:#000080;">AQ-Navigator</h2>
+                <hr>
+                <p>Aquerty AQ-NEO</p>
+                <p style="font-size:10px;color:#666;">Version 2.0 // JAJ Records</p>
             </div>
         `;
     }
@@ -1935,92 +1725,187 @@ aq://help</pre>
 
     function setIENavigatorStatus(message) {
         const status = document.getElementById('ie-status');
-        if (status) status.textContent = message || 'AQ-NET prêt.';
+        if (status) status.textContent = message || (getCurrentLanguage() === 'en' ? 'Done' : 'Terminé');
     }
 
-    function navigateAQ(address, fromHistory = false) {
-        const route = normalizeAQAddress(address);
-
-        if (/^https?:\/\//i.test(route)) {
-            setIENavigatorStatus(getCurrentLanguage() === 'en'
-                ? 'Opening in system browser…'
-                : 'Ouverture dans le navigateur système…');
-            window.open(route, '_blank', 'noopener,noreferrer');
-            return;
-        }
+    function setIEPage(pageKey, fromHistory = false) {
+        const pages = getIEPages(getCurrentLanguage());
+        if (pageKey === 'tempus' && !isTempusUnlocked) return;
+        const isUtility = pageKey.startsWith('__');
+        if (!pages[pageKey] && !isUtility) return;
 
         stopAudioInWindow('win-ie');
-        setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Loading…' : 'Chargement…');
 
         if (!fromHistory) {
             ieHistory = ieHistory.slice(0, ieHistoryIndex + 1);
-            ieHistory.push(route);
+            ieHistory.push(pageKey);
             if (ieHistory.length > IE_MAX_HISTORY) ieHistory.shift();
             ieHistoryIndex = ieHistory.length - 1;
         }
 
-        currentIEPage = route;
+        currentIEPage = pageKey;
+        const address = getIEAddressForPage(pageKey);
         const input = document.getElementById('ie-address-input');
-        if (input) input.value = route;
+        if (input) input.value = address;
 
         const box = document.getElementById('ie-content-box');
         if (box) {
-            box.innerHTML = renderNavigatorPage(route);
+            box.innerHTML = isUtility ? renderIENavigatorUtilityPage(pageKey) : pages[pageKey].content;
             box.scrollTop = 0;
         }
 
-        if (navigatorRouteKey(route) === 'archive/tempus' && isTempusUnlocked) addRecentItem('indexFiles');
-
+        if (pageKey === 'tempus') addRecentItem('indexFiles');
+        setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Done' : 'Terminé');
         updateIENavButtons();
         saveSessionState();
-        setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Done' : 'Terminé');
     }
 
-    function setIEPage(pageKey, fromHistory = false) {
-        navigateAQ(pageKey, fromHistory);
+    function navigateIEAddress(value) {
+        const raw = String(value || '').trim();
+        const key = pageKeyFromAddress(raw);
+        if (key) {
+            setIEPage(key);
+            return;
+        }
+
+        if (/^https?:\/\//i.test(raw)) {
+            setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Opening external address…' : 'Ouverture de l’adresse externe…');
+            window.open(raw, '_blank', 'noopener,noreferrer');
+            return;
+        }
+
+        const box = document.getElementById('ie-content-box');
+        if (box) {
+            box.innerHTML = `
+                <div style="padding:35px 20px;font-family:Tahoma,Arial,sans-serif;">
+                    <h2 style="font-size:16px;color:#000080;">${getCurrentLanguage() === 'en' ? 'The page cannot be displayed' : 'Impossible d’afficher la page'}</h2>
+                    <hr>
+                    <p>${getCurrentLanguage() === 'en' ? 'AQ-Navigator could not find this address.' : 'AQ-Navigator n’a pas trouvé cette adresse.'}</p>
+                    <p style="font-family:'Courier New',monospace;">${escapeNavigatorHTML(raw)}</p>
+                </div>
+            `;
+        }
+        const input = document.getElementById('ie-address-input');
+        if (input) input.value = raw;
+        setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Page not found' : 'Page introuvable');
     }
 
     function goIEBack() {
         if (ieHistoryIndex <= 0) return;
         ieHistoryIndex -= 1;
-        navigateAQ(ieHistory[ieHistoryIndex], true);
+        setIEPage(ieHistory[ieHistoryIndex], true);
     }
 
     function goIEForward() {
         if (ieHistoryIndex >= ieHistory.length - 1) return;
         ieHistoryIndex += 1;
-        navigateAQ(ieHistory[ieHistoryIndex], true);
+        setIEPage(ieHistory[ieHistoryIndex], true);
     }
 
     function refreshIENavigator() {
-        navigateAQ(currentIEPage, true);
+        setIEPage(currentIEPage, true);
     }
 
     function toggleIEFavorite() {
-        const route = normalizeAQAddress(currentIEPage);
-        if (!route.startsWith('aq://')) return;
-        if (ieFavorites.includes(route)) {
-            ieFavorites = ieFavorites.filter((item) => item !== route);
-            setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Favorite removed.' : 'Favori retiré.');
-        } else {
-            ieFavorites.unshift(route);
-            ieFavorites = ieFavorites.slice(0, 24);
-            setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Favorite added.' : 'Favori ajouté.');
+        if (currentIEPage.startsWith('__')) return;
+        const exists = ieFavorites.includes(currentIEPage);
+        ieFavorites = exists
+            ? ieFavorites.filter((item) => item !== currentIEPage)
+            : [currentIEPage, ...ieFavorites].slice(0, 24);
+        saveIEFavorites();
+        setIENavigatorStatus(exists
+            ? (getCurrentLanguage() === 'en' ? 'Favorite removed.' : 'Favori retiré.')
+            : (getCurrentLanguage() === 'en' ? 'Favorite added.' : 'Favori ajouté.'));
+    }
+
+    function removeIEFavorite(pageKey) {
+        ieFavorites = ieFavorites.filter((item) => item !== pageKey);
+        saveIEFavorites();
+        setIEPage('__favorites', true);
+    }
+
+    function closeNavigatorMenus() {
+        document.querySelectorAll('#navigator-menubar .navigator-dropdown.open').forEach((panel) => panel.classList.remove('open'));
+        document.querySelectorAll('#navigator-menubar .navigator-menu-button.active').forEach((button) => button.classList.remove('active'));
+    }
+
+    function toggleNavigatorMenu(name) {
+        const panel = document.querySelector(`#navigator-menubar [data-menu-panel="${name}"]`);
+        const button = document.querySelector(`#navigator-menubar [data-menu="${name}"]`);
+        const wasOpen = panel?.classList.contains('open');
+        closeNavigatorMenus();
+        if (!wasOpen) {
+            panel?.classList.add('open');
+            button?.classList.add('active');
         }
-        saveIEFavorites();
-        if (navigatorRouteKey(currentIEPage) === 'favorites') refreshIENavigator();
     }
 
-    function removeIEFavorite(route) {
-        ieFavorites = ieFavorites.filter((item) => item !== route);
-        saveIEFavorites();
-        refreshIENavigator();
+    async function navigatorMenuAction(action) {
+        closeNavigatorMenus();
+
+        if (action === 'home') return setIEPage('info');
+        if (action === 'open') {
+            document.getElementById('ie-address-input')?.focus();
+            document.getElementById('ie-address-input')?.select();
+            return;
+        }
+        if (action === 'print') return window.print();
+        if (action === 'close') return closeWindow('win-ie', 'task-ie');
+        if (action === 'refresh') return refreshIENavigator();
+        if (action === 'stop') {
+            stopAudioInWindow('win-ie');
+            setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Stopped' : 'Arrêté');
+            return;
+        }
+        if (action === 'fullscreen') {
+            document.getElementById('win-ie')?.classList.toggle('navigator-fullscreen');
+            return;
+        }
+        if (action === 'favorite-add') return toggleIEFavorite();
+        if (action === 'favorites') return setIEPage('__favorites');
+        if (action === 'history') return setIEPage('__history');
+        if (action === 'settings') return openWindow('win-settings', 'task-settings');
+        if (action === 'help') return setIEPage('__help');
+        if (action === 'about') return setIEPage('__about');
+
+        if (action === 'select-all') {
+            const box = document.getElementById('ie-content-box');
+            const selection = window.getSelection();
+            const range = document.createRange();
+            if (box && selection) {
+                range.selectNodeContents(box);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+            return;
+        }
+
+        if (action === 'copy') {
+            const text = window.getSelection()?.toString() || '';
+            if (!text) return;
+            try {
+                await navigator.clipboard.writeText(text);
+                setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Copied.' : 'Copié.');
+            } catch (_) {
+                document.execCommand?.('copy');
+            }
+        }
     }
 
-    const ieAddressForm = document.getElementById('ie-address-form');
-    ieAddressForm?.addEventListener('submit', (event) => {
+    document.querySelectorAll('#navigator-menubar .navigator-menu-button').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toggleNavigatorMenu(button.dataset.menu);
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('#navigator-menubar')) closeNavigatorMenus();
+    });
+
+    document.getElementById('ie-address-form')?.addEventListener('submit', (event) => {
         event.preventDefault();
-        navigateAQ(document.getElementById('ie-address-input')?.value || 'aq://home');
+        navigateIEAddress(document.getElementById('ie-address-input')?.value || '');
     });
 
     // --- GESTION DES FENÊTRES ---

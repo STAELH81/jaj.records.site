@@ -21,6 +21,10 @@ function isLoggedIn() {
     return ms.session?.type === 'user';
 }
 
+function isAdmin() {
+    return isLoggedIn() && Array.isArray(ms.session?.roles) && ms.session.roles.includes('admin');
+}
+
 function initial(value) {
     return String(value || '?').trim().charAt(0).toUpperCase() || '?';
 }
@@ -151,11 +155,11 @@ async function loadFeed() {
     ms.topicId = null;
     setActiveNav('feed');
     clearContent();
-    setStatus('Chargement du bulletin MySpace…');
+    setStatus('Chargement du fil MySpace…');
 
     const compose = document.createElement('div');
     compose.className = 'myspace-box myspace-compose';
-    compose.innerHTML = '<div class="myspace-box-title orange">Bulletin Board</div>';
+    compose.innerHTML = '<div class="myspace-box-title orange">Fil d’actualité</div>';
     const composeBody = document.createElement('div');
     composeBody.className = 'myspace-box-body';
 
@@ -419,7 +423,7 @@ function renderProfile(profile, editable) {
 
     const headline = document.createElement('div');
     headline.className = 'myspace-profile-headline';
-    headline.textContent = profile.headline || 'Pas encore de headline.';
+    headline.textContent = profile.headline || 'Pas encore de statut.';
 
     const badges = roleBadges(profile.roles || []);
     badges.style.justifyContent = 'flex-start';
@@ -450,14 +454,14 @@ function renderProfile(profile, editable) {
     const editor = document.createElement('div');
     editor.className = 'myspace-box';
     editor.style.marginTop = '10px';
-    editor.innerHTML = '<div class="myspace-box-title orange">Edit Profile</div>';
+    editor.innerHTML = '<div class="myspace-box-title orange">Modifier le profil</div>';
 
     const form = document.createElement('div');
     form.className = 'myspace-box-body myspace-form';
 
     const fields = [
         ['displayName', 'Nom affiché', 40, false],
-        ['headline', 'Headline', 100, false],
+        ['headline', 'Statut / phrase de profil', 100, false],
         ['location', 'Localisation', 80, false],
         ['favoriteMusic', 'Musique / artistes favoris', 180, false],
         ['bio', 'À propos de moi', 700, true]
@@ -522,52 +526,156 @@ async function loadForums() {
 
     const create = document.createElement('div');
     create.className = 'myspace-box';
-    create.innerHTML = '<div class="myspace-box-title orange">Nouveau topic</div>';
+    create.innerHTML = `<div class="myspace-box-title orange">${isAdmin() ? 'Créer un topic' : 'Demander un topic'}</div>`;
     const createBody = document.createElement('div');
     createBody.className = 'myspace-box-body';
 
     if (isLoggedIn()) {
         const form = document.createElement('div');
         form.className = 'myspace-form';
+
+        const explain = document.createElement('div');
+        explain.className = 'myspace-status';
+        explain.style.marginBottom = '8px';
+        explain.textContent = isAdmin()
+            ? 'Compte ADMIN : tu peux créer directement un topic public.'
+            : 'Pour éviter le bazar, les membres proposent un topic. Un ADMIN doit l’approuver avant sa publication.';
+
         const title = document.createElement('input');
         title.maxLength = 90;
         title.placeholder = 'Titre du topic';
+
         const body = document.createElement('textarea');
         body.maxLength = 2000;
-        body.placeholder = 'Message…';
+        body.placeholder = isAdmin() ? 'Message d’ouverture…' : 'Décris le topic que tu voudrais ouvrir…';
 
         const actions = document.createElement('div');
         actions.className = 'myspace-actions';
+
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'myspace-btn primary';
-        button.textContent = 'Créer le topic';
+        button.textContent = isAdmin() ? 'Créer le topic' : 'Envoyer la demande';
 
         button.addEventListener('click', async () => {
             if (!title.value.trim() || !body.value.trim()) return;
             button.disabled = true;
             try {
-                const data = await requestPOST('create_topic', {
+                if (isAdmin()) {
+                    const data = await requestPOST('create_topic', {
+                        title: title.value,
+                        text: body.value
+                    });
+                    await openTopic(data.topic.id);
+                    return;
+                }
+
+                await requestPOST('request_topic', {
                     title: title.value,
                     text: body.value
                 });
-                await openTopic(data.topic.id);
+                title.value = '';
+                body.value = '';
+                setStatus('Demande envoyée aux administrateurs.', 'ok');
             } catch (error) {
-                setStatus('Création impossible : ' + error.message, 'error');
+                setStatus('Action impossible : ' + error.message, 'error');
             } finally {
                 button.disabled = false;
             }
         });
 
         actions.appendChild(button);
-        form.append(title, body, actions);
+        form.append(explain, title, body, actions);
         createBody.appendChild(form);
     } else {
-        createBody.textContent = 'Connecte-toi pour créer un topic ou répondre.';
+        createBody.textContent = 'Connecte-toi pour demander un topic ou répondre aux discussions.';
     }
 
     create.appendChild(createBody);
     content.appendChild(create);
+
+    if (isAdmin()) {
+        try {
+            const pending = await requestGET('forum_requests');
+            const requests = Array.isArray(pending.requests) ? pending.requests : [];
+
+            const moderation = document.createElement('div');
+            moderation.className = 'myspace-box';
+            moderation.innerHTML = '<div class="myspace-box-title">Demandes en attente</div>';
+
+            if (!requests.length) {
+                const empty = document.createElement('div');
+                empty.className = 'myspace-box-body';
+                empty.textContent = 'Aucune demande de topic.';
+                moderation.appendChild(empty);
+            } else {
+                requests.forEach((request) => {
+                    const row = document.createElement('div');
+                    row.className = 'myspace-forum-request';
+
+                    const copy = document.createElement('div');
+                    copy.className = 'myspace-forum-request-copy';
+
+                    const title = document.createElement('div');
+                    title.className = 'myspace-topic-title';
+                    title.textContent = request.title || 'Sans titre';
+
+                    const meta = document.createElement('div');
+                    meta.className = 'myspace-topic-meta';
+                    meta.textContent = `Demandé par ${request.requesterName || 'Utilisateur'} · ${formatDate(request.createdAt)}`;
+
+                    const text = document.createElement('div');
+                    text.className = 'myspace-forum-request-text';
+                    text.textContent = request.text || '';
+
+                    copy.append(title, meta, text);
+
+                    const actions = document.createElement('div');
+                    actions.className = 'myspace-forum-request-actions';
+
+                    const approve = document.createElement('button');
+                    approve.type = 'button';
+                    approve.className = 'myspace-btn primary';
+                    approve.textContent = 'Approuver';
+
+                    const reject = document.createElement('button');
+                    reject.type = 'button';
+                    reject.className = 'myspace-btn';
+                    reject.textContent = 'Refuser';
+
+                    const decide = async (decision) => {
+                        approve.disabled = true;
+                        reject.disabled = true;
+                        try {
+                            const result = await requestPOST('moderate_topic_request', {
+                                requestId: request.id,
+                                decision
+                            });
+                            if (decision === 'approve' && result.topic?.id) {
+                                await openTopic(result.topic.id);
+                            } else {
+                                await loadForums();
+                            }
+                        } catch (error) {
+                            setStatus('Modération impossible : ' + error.message, 'error');
+                            approve.disabled = false;
+                            reject.disabled = false;
+                        }
+                    };
+
+                    approve.addEventListener('click', () => decide('approve'));
+                    reject.addEventListener('click', () => decide('reject'));
+                    actions.append(approve, reject);
+                    row.append(copy, actions);
+                    moderation.appendChild(row);
+                });
+            }
+
+            content.appendChild(moderation);
+        } catch (error) {
+            setStatus('Impossible de charger les demandes : ' + error.message, 'error');
+        }
+    }
 
     try {
         const data = await requestGET('topics');

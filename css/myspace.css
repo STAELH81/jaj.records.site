@@ -509,3 +509,44 @@ body.global-dark #win-myspace .myspace-compose textarea {
         font-size: 16px;
     }
 }
+
+
+.myspace-forum-request {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    background: #fffdf4;
+}
+
+.myspace-forum-request:last-child {
+    border-bottom: 0;
+}
+
+.myspace-forum-request-copy {
+    min-width: 0;
+}
+
+.myspace-forum-request-text {
+    margin-top: 5px;
+    color: #444;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.myspace-forum-request-actions {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+@media (max-width: 760px) {
+    .myspace-forum-request {
+        grid-template-columns: 1fr;
+    }
+
+    .myspace-forum-request-actions {
+        justify-content: flex-end;
+    }
+}

@@ -1383,3 +1383,73 @@ body.mobile-mode #shutdown-overlay.active,
 body.desktop-lite-mode #shutdown-overlay.active {
     display: flex !important;
 }
+
+
+/* --- AQ-NEO dark power screen pass --- */
+#shutdown-overlay.closing {
+    background:
+        radial-gradient(circle at 50% 42%, rgba(55, 66, 82, .22), transparent 34%),
+        rgba(3, 4, 6, .96);
+    color: #fff;
+    backdrop-filter: blur(2px);
+}
+
+#shutdown-overlay.powered-off {
+    background: #020304;
+    color: #fff;
+}
+
+.shutdown-dialog {
+    border: 1px solid #3b414a;
+    background:
+        linear-gradient(180deg, rgba(28,31,36,.98) 0%, rgba(11,13,16,.99) 100%);
+    box-shadow:
+        0 18px 55px rgba(0,0,0,.72),
+        inset 0 0 0 1px rgba(255,255,255,.035);
+    color: #fff;
+}
+
+#shutdown-overlay.powered-off .shutdown-dialog {
+    border-color: #282c32;
+    background: linear-gradient(180deg, #121419 0%, #08090b 100%);
+}
+
+.shutdown-brand {
+    border-bottom-color: rgba(255,255,255,.14);
+    color: #d9dde5;
+}
+
+.shutdown-title {
+    color: #fff;
+}
+
+.shutdown-detail {
+    color: #c9ced7;
+}
+
+.shutdown-progress {
+    border-color: #555d69;
+    background: #080a0d;
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,.88);
+}
+
+#shutdown-progress-bar {
+    background: repeating-linear-gradient(
+        90deg,
+        #d7dbe1 0 10px,
+        #777f8b 10px 14px
+    );
+}
+
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    background: #363b43;
+}
+
+#shutdown-overlay .power-btn {
+    color: #fff;
+    border-top-color: #7b818b;
+    border-left-color: #7b818b;
+    border-right-color: #24272d;
+    border-bottom-color: #24272d;
+    background: linear-gradient(#474c55, #292d33);
+}

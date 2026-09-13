@@ -933,8 +933,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             traySoundPanelTitle: 'Son',
             trayNetworkPanelTitle: 'Réseau',
             trayPanelSoundAria: 'Panneau son',
-            trayPanelNetworkAria: 'Panneau reseau',
-            trayStatus: 'Etat',
+            trayPanelNetworkAria: 'Panneau réseau',
+            trayStatus: 'État',
             trayConnected: 'Connecté',
             traySystem: 'Système',
             trayBoot: 'Boot',
@@ -1001,7 +1001,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             clear: 'Clear',
             enableBoot: 'Enable boot screen',
             crtEffect: 'CRT effect',
-            theme: 'Thème :',
+            theme: 'Theme:',
             systemSounds: 'System sounds',
             bootSound: 'Startup sound',
             ambient: 'Ambient hum',
@@ -1672,6 +1672,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const titleBar = el.querySelector(".title-bar");
         titleBar.onmousedown = (e) => {
             e = e || window.event;
+            if (e.target.closest('button, input, select, textarea, a')) return;
             pos3 = e.clientX; pos4 = e.clientY;
             document.onmouseup = () => {
                 document.onmouseup = null;

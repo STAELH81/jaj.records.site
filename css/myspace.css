@@ -1,0 +1,552 @@
+/* AQ-MySpace — Phase 4 */
+#win-myspace {
+    background: #fff;
+    border-color: #003399;
+}
+
+#win-myspace .title-bar {
+    background: linear-gradient(to bottom, #003399 0%, #1b5ed2 45%, #003399 100%);
+}
+
+.myspace-shell {
+    height: calc(100% - 25px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    color: #111;
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 11px;
+    user-select: text;
+}
+
+.myspace-top {
+    flex: 0 0 auto;
+    background: #003399;
+    color: #fff;
+    border-bottom: 3px solid #ffcc66;
+}
+
+.myspace-brand-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 7px 10px;
+    box-sizing: border-box;
+}
+
+.myspace-brand-row img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    background: #fff;
+    border: 1px solid #fff;
+}
+
+.myspace-brand {
+    font-size: 19px;
+    font-weight: bold;
+    letter-spacing: -1px;
+}
+
+.myspace-brand small {
+    display: block;
+    margin-top: 2px;
+    font-size: 9px;
+    font-weight: normal;
+    letter-spacing: 0;
+    color: #dbe7ff;
+}
+
+#myspace-session-pill {
+    margin-left: auto;
+    max-width: 42%;
+    padding: 4px 7px;
+    border: 1px solid #80a8ff;
+    background: #184ea8;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 9px;
+}
+
+.myspace-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+    padding: 0 8px 5px;
+}
+
+.myspace-nav-btn {
+    border: 0;
+    padding: 5px 10px;
+    background: transparent;
+    color: #fff;
+    font: bold 10px Verdana, Arial, sans-serif;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.myspace-nav-btn:hover,
+.myspace-nav-btn.active {
+    background: #fff;
+    color: #003399;
+    text-decoration: none;
+}
+
+.myspace-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.myspace-sidebar,
+.myspace-content {
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.myspace-box {
+    margin-bottom: 9px;
+    border: 1px solid #6699cc;
+    background: #fff;
+}
+
+.myspace-box-title {
+    padding: 4px 6px;
+    background: #6699cc;
+    color: #fff;
+    font-weight: bold;
+    font-size: 10px;
+}
+
+.myspace-box-title.orange {
+    background: #ff9933;
+    color: #fff;
+}
+
+.myspace-box-body {
+    padding: 7px;
+}
+
+.myspace-self-card {
+    text-align: center;
+}
+
+.myspace-avatar {
+    width: 92px;
+    height: 92px;
+    margin: 4px auto 7px;
+    display: grid;
+    place-items: center;
+    border: 2px solid #666;
+    background: linear-gradient(145deg, #f8f8f8, #cbd9f4);
+    color: #003399;
+    font-size: 42px;
+    font-weight: bold;
+    user-select: none;
+}
+
+.myspace-self-name {
+    color: #003399;
+    font-size: 14px;
+    font-weight: bold;
+    overflow-wrap: anywhere;
+}
+
+.myspace-self-mail {
+    margin-top: 4px;
+    color: #666;
+    font: 9px "Courier New", monospace;
+    overflow-wrap: anywhere;
+}
+
+.myspace-role-list {
+    margin-top: 6px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.myspace-role {
+    display: inline-block;
+    padding: 1px 4px;
+    border: 1px solid #999;
+    background: #eee;
+    color: #333;
+    font-size: 8px;
+    font-weight: bold;
+}
+
+.myspace-role[data-role="artist"] {
+    background: #fff5bf;
+    border-color: #d1a800;
+    color: #7a5a00;
+}
+
+.myspace-role[data-role="admin"] {
+    background: #ffdede;
+    border-color: #c75c5c;
+    color: #8a1111;
+}
+
+.myspace-status {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    background: #f7f7f7;
+    color: #555;
+    font-size: 10px;
+}
+
+.myspace-status.error {
+    border-color: #d27b7b;
+    background: #fff1f1;
+    color: #8b1111;
+}
+
+.myspace-status.ok {
+    border-color: #8bb884;
+    background: #f1fff0;
+    color: #245a1f;
+}
+
+.myspace-compose textarea,
+.myspace-form textarea,
+.myspace-form input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #777;
+    background: #fff;
+    color: #111;
+    font: 11px Verdana, Arial, sans-serif;
+}
+
+.myspace-compose textarea,
+.myspace-form textarea {
+    min-height: 72px;
+    padding: 6px;
+    resize: vertical;
+}
+
+.myspace-form input {
+    padding: 5px;
+}
+
+.myspace-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #444;
+}
+
+.myspace-form label > span {
+    display: block;
+    margin-bottom: 3px;
+}
+
+.myspace-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.myspace-btn {
+    border: 1px solid #666;
+    background: linear-gradient(#fff, #ddd);
+    color: #111;
+    padding: 4px 8px;
+    font: bold 10px Verdana, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.myspace-btn:hover {
+    background: #eef4ff;
+}
+
+.myspace-btn.primary {
+    background: #003399;
+    border-color: #002466;
+    color: #fff;
+}
+
+.myspace-btn:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+.myspace-post {
+    margin-bottom: 10px;
+    border: 1px solid #b7b7b7;
+    background: #fff;
+}
+
+.myspace-post-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 7px;
+    background: #f0f4fb;
+    border-bottom: 1px solid #c5d4ef;
+}
+
+.myspace-mini-avatar {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #777;
+    background: #dce7fa;
+    color: #003399;
+    font-weight: bold;
+    font-size: 16px;
+    user-select: none;
+}
+
+.myspace-author {
+    min-width: 0;
+    color: #003399;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.myspace-author:hover {
+    text-decoration: underline;
+}
+
+.myspace-post-meta {
+    margin-left: auto;
+    color: #777;
+    font-size: 9px;
+    white-space: nowrap;
+}
+
+.myspace-post-body,
+.myspace-comment-body,
+.myspace-topic-body {
+    padding: 8px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.45;
+}
+
+.myspace-post-foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 5px 7px;
+    border-top: 1px solid #eee;
+    background: #fafafa;
+}
+
+.myspace-reaction {
+    border: 1px solid #aaa;
+    background: #fff;
+    padding: 2px 6px;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.myspace-reaction.active {
+    border-color: #003399;
+    background: #dce8ff;
+    color: #003399;
+    font-weight: bold;
+}
+
+.myspace-comments {
+    border-top: 1px dashed #bbb;
+    padding: 7px;
+    background: #fcfcfc;
+}
+
+.myspace-comment {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #eee;
+}
+
+.myspace-comment:last-child {
+    margin-bottom: 0;
+    border-bottom: 0;
+}
+
+.myspace-comment-meta {
+    color: #666;
+    font-size: 9px;
+}
+
+.myspace-empty {
+    padding: 22px 10px;
+    text-align: center;
+    color: #777;
+    border: 1px dashed #aaa;
+    background: #fafafa;
+}
+
+.myspace-profile-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid #6699cc;
+    background: #eef4ff;
+}
+
+.myspace-profile-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.myspace-profile-name {
+    color: #003399;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.myspace-profile-headline {
+    margin-top: 4px;
+    color: #555;
+    font-style: italic;
+}
+
+.myspace-profile-grid {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 4px 8px;
+    margin-top: 10px;
+    border: 1px solid #ddd;
+}
+
+.myspace-profile-grid dt,
+.myspace-profile-grid dd {
+    margin: 0;
+    padding: 5px 6px;
+}
+
+.myspace-profile-grid dt {
+    background: #f0f0f0;
+    font-weight: bold;
+    color: #555;
+}
+
+.myspace-topic {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.myspace-topic:hover {
+    background: #eef4ff;
+}
+
+.myspace-topic-title {
+    color: #003399;
+    font-weight: bold;
+}
+
+.myspace-topic-meta {
+    margin-top: 3px;
+    color: #777;
+    font-size: 9px;
+}
+
+.myspace-thread-back {
+    margin-bottom: 8px;
+}
+
+.myspace-thread-title {
+    padding: 6px 8px;
+    background: #ff9933;
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+body.global-dark #win-myspace .myspace-shell,
+body.global-dark #win-myspace .myspace-main,
+body.global-dark #win-myspace .myspace-box,
+body.global-dark #win-myspace .myspace-post,
+body.global-dark #win-myspace .myspace-form input,
+body.global-dark #win-myspace .myspace-form textarea,
+body.global-dark #win-myspace .myspace-compose textarea {
+    background: #fff;
+    color: #111;
+}
+
+@media (max-width: 760px) {
+    .myspace-main {
+        grid-template-columns: 1fr;
+        overflow-y: auto;
+    }
+
+    .myspace-sidebar,
+    .myspace-content {
+        overflow: visible;
+    }
+
+    .myspace-sidebar {
+        display: none;
+    }
+
+    #myspace-session-pill {
+        max-width: 50%;
+    }
+
+    .myspace-brand {
+        font-size: 16px;
+    }
+}
+
+
+.myspace-forum-request {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    background: #fffdf4;
+}
+
+.myspace-forum-request:last-child {
+    border-bottom: 0;
+}
+
+.myspace-forum-request-copy {
+    min-width: 0;
+}
+
+.myspace-forum-request-text {
+    margin-top: 5px;
+    color: #444;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.myspace-forum-request-actions {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+@media (max-width: 760px) {
+    .myspace-forum-request {
+        grid-template-columns: 1fr;
+    }
+
+    .myspace-forum-request-actions {
+        justify-content: flex-end;
+    }
+}

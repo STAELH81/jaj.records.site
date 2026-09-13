@@ -1278,3 +1278,772 @@ body.mobile-mode #win-settings .window-content > div {
         transition-duration: 0.001ms !important;
     }
 }
+
+
+/* --- AQ-NEO organic power transition --- */
+#shutdown-overlay {
+    transition: background .35s ease, opacity .2s ease;
+}
+
+#shutdown-overlay.closing {
+    display: flex;
+    background: rgba(0, 18, 64, .82);
+    backdrop-filter: blur(1px);
+}
+
+#shutdown-overlay.powered-off {
+    display: flex;
+    background: #000;
+}
+
+.shutdown-dialog {
+    width: min(420px, calc(100vw - 36px));
+    box-sizing: border-box;
+    padding: 18px 20px 16px;
+    border: 2px solid #6f8fcb;
+    background: linear-gradient(180deg, #123d89 0%, #08245e 100%);
+    box-shadow: 0 12px 38px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.12);
+    color: #fff;
+    text-align: left;
+}
+
+#shutdown-overlay.powered-off .shutdown-dialog {
+    border-color: #2d4f8d;
+    background: #071a3e;
+}
+
+.shutdown-brand {
+    margin-bottom: 14px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid rgba(255,255,255,.32);
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #cfe0ff;
+}
+
+.shutdown-title {
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.shutdown-detail {
+    min-height: 18px;
+    margin-top: 8px;
+    color: #dce8ff;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shutdown-progress {
+    height: 13px;
+    margin: 14px 0 12px;
+    padding: 2px;
+    border: 1px solid #bfd2ff;
+    background: #061735;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,.65);
+}
+
+#shutdown-progress-bar {
+    width: 0;
+    height: 100%;
+    background: repeating-linear-gradient(
+        90deg,
+        #63a8ff 0 11px,
+        #2f72d8 11px 15px
+    );
+    transition: width .2s ease;
+}
+
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    background: #244b87;
+}
+
+#shutdown-overlay .power-btn {
+    display: block;
+    margin: 14px auto 0;
+}
+
+#shutdown-overlay .power-btn[hidden] {
+    display: none;
+}
+
+.aq-window-shutting-down {
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transform: scale(.985) !important;
+    transition: opacity .14s ease, transform .14s ease !important;
+}
+
+body.mobile-mode #shutdown-overlay.active,
+body.desktop-lite-mode #shutdown-overlay.active {
+    display: flex !important;
+}
+
+
+/* --- AQ-NEO dark power screen pass --- */
+#shutdown-overlay.closing {
+    background:
+        radial-gradient(circle at 50% 42%, rgba(55, 66, 82, .22), transparent 34%),
+        rgba(13, 17, 23, .94);
+    color: #fff;
+    backdrop-filter: blur(2px);
+}
+
+#shutdown-overlay.powered-off {
+    background: #0b0f14;
+    color: #fff;
+}
+
+.shutdown-dialog {
+    border: 1px solid #3b414a;
+    background:
+        linear-gradient(180deg, rgba(42,49,60,.98) 0%, rgba(24,29,37,.99) 100%);
+    box-shadow:
+        0 18px 55px rgba(0,0,0,.72),
+        inset 0 0 0 1px rgba(255,255,255,.035);
+    color: #fff;
+}
+
+#shutdown-overlay.powered-off .shutdown-dialog {
+    border-color: #282c32;
+    background: linear-gradient(180deg, #232a34 0%, #171c24 100%);
+}
+
+.shutdown-brand {
+    border-bottom-color: rgba(255,255,255,.14);
+    color: #d9dde5;
+}
+
+.shutdown-title {
+    color: #fff;
+}
+
+.shutdown-detail {
+    color: #c9ced7;
+}
+
+.shutdown-progress {
+    border-color: #555d69;
+    background: #161b22;
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,.88);
+}
+
+#shutdown-progress-bar {
+    background: repeating-linear-gradient(
+        90deg,
+        #dfe5ee 0 10px,
+        #8f9baa 10px 14px
+    );
+}
+
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    background: #596270;
+}
+
+#shutdown-overlay .power-btn {
+    color: #fff;
+    border-top-color: #7b818b;
+    border-left-color: #7b818b;
+    border-right-color: #24272d;
+    border-bottom-color: #24272d;
+    background: linear-gradient(#5b6573, #3e4652);
+}
+
+
+/* --- AQ-NEO classic XP chrome pass ---
+   Deliberately less "modern UI": harder bevels, smaller chrome,
+   classic Luna-era title bars and square system controls. */
+body:not(.theme-win95):not(.theme-neo2000) .window {
+    border: 3px solid #0054e3;
+    border-radius: 7px 7px 0 0;
+    background: #ece9d8;
+    box-shadow:
+        1px 1px 0 #001d6b,
+        3px 3px 0 rgba(0,0,0,.22);
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .window > .title-bar {
+    min-height: 27px;
+    padding: 3px 4px 3px 7px;
+    border-radius: 4px 4px 0 0;
+    border-top: 1px solid #8dbdff;
+    border-bottom: 1px solid #003cbe;
+    background:
+        linear-gradient(
+            to bottom,
+            #6aa7ff 0%,
+            #0a72ef 8%,
+            #075ad8 45%,
+            #0647bd 88%,
+            #003da8 100%
+        );
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.55),
+        inset 0 -1px 0 rgba(0,35,130,.7);
+    color: #fff;
+    font-family: Tahoma, Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-shadow: 1px 1px 0 #0a2c73;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .window > .title-bar > span:first-child {
+    padding-left: 1px;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .window-controls {
+    gap: 2px;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .window-controls .retro-btn {
+    width: 21px;
+    min-width: 21px;
+    height: 21px;
+    min-height: 21px;
+    padding: 0;
+    border-radius: 3px;
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 2px solid #164696;
+    border-bottom: 2px solid #164696;
+    background: linear-gradient(to bottom, #5d9bf2 0%, #2b6fd3 100%);
+    box-shadow: inset 1px 1px 0 rgba(255,255,255,.25);
+    color: #fff;
+    font: bold 12px/17px Arial, sans-serif;
+    text-align: center;
+    text-shadow: 1px 1px 0 rgba(0,0,0,.45);
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .window-controls .retro-btn:hover {
+    filter: none;
+    background: linear-gradient(to bottom, #75adf6 0%, #377cdc 100%);
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .window-controls .retro-btn:active {
+    transform: none;
+    border-top-color: #164696;
+    border-left-color: #164696;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    background: #2e67bd;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .window-close-btn {
+    background: linear-gradient(to bottom, #ef8a78 0%, #d84b34 44%, #bd2d18 100%) !important;
+    border-top-color: #ffd0c8 !important;
+    border-left-color: #ffd0c8 !important;
+    border-right-color: #7c180c !important;
+    border-bottom-color: #7c180c !important;
+    box-shadow: inset 1px 1px 0 rgba(255,255,255,.18) !important;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .window-close-btn:hover {
+    background: linear-gradient(to bottom, #f5a08f 0%, #e65a42 44%, #c93620 100%) !important;
+    filter: none;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .window-content {
+    background: #ece9d8;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .retro-btn:not(.window-minimize-btn):not(.window-close-btn) {
+    border-radius: 0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #7f7f7f;
+    border-bottom: 2px solid #7f7f7f;
+    background: #ece9d8;
+    box-shadow: none;
+    color: #000;
+    text-shadow: none;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .retro-btn:not(.window-minimize-btn):not(.window-close-btn):hover {
+    filter: none;
+    background: #f3f0df;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .retro-btn:not(.window-minimize-btn):not(.window-close-btn):active {
+    transform: none;
+    border-top-color: #7f7f7f;
+    border-left-color: #7f7f7f;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    background: #dedac8;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .task-item {
+    border-radius: 2px;
+    border-top: 1px solid #78a9f6;
+    border-left: 1px solid #78a9f6;
+    border-right: 1px solid #1245a4;
+    border-bottom: 1px solid #1245a4;
+    background: linear-gradient(to bottom, #3f8cf3 0%, #2c6fd9 100%);
+    box-shadow: none;
+}
+
+body:not(.theme-win95):not(.theme-neo2000) .task-item.active {
+    background: #1f5bbd;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,.38);
+}
+
+body:not(.theme-win95):not(.theme-neo2000) input,
+body:not(.theme-win95):not(.theme-neo2000) select,
+body:not(.theme-win95):not(.theme-neo2000) textarea {
+    border-radius: 0;
+}
+
+
+/* --- AQ-NEO XP-era power screen ---
+   Full-screen old-system presentation: no blur, no floating modern card,
+   classic navy panel + bevels + segmented progress. */
+#shutdown-overlay,
+#shutdown-overlay.closing,
+#shutdown-overlay.powered-off {
+    background: #1f3763;
+    background-image:
+        linear-gradient(
+            to bottom,
+            #0f2349 0,
+            #0f2349 36px,
+            #294b7f 36px,
+            #294b7f calc(100% - 40px),
+            #0d2248 calc(100% - 40px),
+            #0d2248 100%
+        );
+    color: #fff;
+    backdrop-filter: none;
+    transition: none;
+}
+
+#shutdown-overlay::before {
+    content: "Aquerty AQ-NEO";
+    position: fixed;
+    top: 10px;
+    left: 18px;
+    color: #fff;
+    font: bold 11px Tahoma, Arial, sans-serif;
+    text-shadow: 1px 1px 0 #07152e;
+}
+
+#shutdown-overlay::after {
+    content: "JAJ Records // Aquerty System";
+    position: fixed;
+    left: 18px;
+    bottom: 12px;
+    color: #d7e0ef;
+    font: 10px Tahoma, Arial, sans-serif;
+}
+
+.shutdown-dialog,
+#shutdown-overlay.powered-off .shutdown-dialog {
+    width: min(460px, calc(100vw - 36px));
+    padding: 16px 18px 14px;
+    border: 2px solid #8ba8d3;
+    border-top-color: #c4d6ef;
+    border-left-color: #c4d6ef;
+    border-right-color: #10294f;
+    border-bottom-color: #10294f;
+    border-radius: 0;
+    background: #33588d;
+    box-shadow:
+        inset 1px 1px 0 rgba(255,255,255,.16),
+        2px 2px 0 rgba(0,0,0,.28);
+    color: #fff;
+    text-align: left;
+}
+
+.shutdown-brand {
+    margin-bottom: 10px;
+    padding: 0 0 5px;
+    border-bottom: 1px solid #8da9cf;
+    color: #e5edf8;
+    font: bold 10px Tahoma, Arial, sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.shutdown-title {
+    color: #fff;
+    font: bold 18px Tahoma, Arial, sans-serif;
+    text-shadow: 1px 1px 0 #16345d;
+}
+
+.shutdown-detail {
+    margin-top: 7px;
+    color: #f0f4fa;
+    font: 11px Tahoma, Arial, sans-serif;
+    text-shadow: 1px 1px 0 #17365f;
+}
+
+.shutdown-progress {
+    height: 14px;
+    margin: 13px 0 8px;
+    padding: 2px;
+    border: 2px inset #d4d0c8;
+    background: #0c1f3e;
+    box-shadow: none;
+}
+
+#shutdown-progress-bar,
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    height: 100%;
+    background: repeating-linear-gradient(
+        to right,
+        #5ba0ee 0 12px,
+        #5ba0ee 12px,
+        transparent 12px,
+        transparent 15px
+    );
+    transition: width .16s linear;
+}
+
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    background: #6581aa;
+}
+
+#shutdown-overlay .power-btn {
+    min-width: 82px;
+    margin: 12px auto 0;
+    border-radius: 0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #666;
+    border-bottom: 2px solid #666;
+    background: #d4d0c8;
+    color: #000;
+    box-shadow: none;
+    text-shadow: none;
+    font: bold 10px Tahoma, Arial, sans-serif;
+}
+
+#shutdown-overlay .power-btn:active {
+    border-top-color: #666;
+    border-left-color: #666;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+}
+
+.aq-window-shutting-down {
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity .10s linear !important;
+}
+
+
+/* --- AQ-NEO CRT power screen treatment --- */
+#shutdown-overlay,
+#shutdown-overlay.closing,
+#shutdown-overlay.powered-off {
+    background:
+        radial-gradient(circle at 50% 45%, rgba(58, 65, 74, .17), transparent 44%),
+        linear-gradient(to bottom, #15181d 0%, #20252c 50%, #15181d 100%);
+    color: #f3f3f3;
+    font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+#shutdown-overlay::before {
+    color: #f1f1f1;
+    text-shadow: 1px 1px 0 #000;
+}
+
+#shutdown-overlay::after {
+    color: #c9ccd1;
+}
+
+.shutdown-dialog,
+#shutdown-overlay.powered-off .shutdown-dialog {
+    border-top-color: #aeb2b8;
+    border-left-color: #aeb2b8;
+    border-right-color: #34383e;
+    border-bottom-color: #34383e;
+    background: linear-gradient(to bottom, #3a3f46 0%, #2b3036 100%);
+    box-shadow:
+        inset 1px 1px 0 rgba(255,255,255,.14),
+        2px 2px 0 rgba(0,0,0,.42);
+}
+
+.shutdown-brand {
+    border-bottom-color: #686d74;
+    color: #e2e4e7;
+}
+
+.shutdown-title,
+.shutdown-detail {
+    color: #fff;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.shutdown-progress {
+    background: #111418;
+    border-color: #d4d0c8;
+}
+
+#shutdown-progress-bar,
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    background: repeating-linear-gradient(
+        to right,
+        #c8ccd2 0 11px,
+        #c8ccd2 11px,
+        transparent 11px,
+        transparent 14px
+    );
+}
+
+#shutdown-overlay::selection {
+    background: #808080;
+    color: #fff;
+}
+
+#shutdown-overlay::marker {
+    color: #fff;
+}
+
+#shutdown-overlay .shutdown-dialog {
+    filter: saturate(.55) contrast(1.03);
+}
+
+#shutdown-overlay {
+    overflow: hidden;
+}
+
+#shutdown-overlay .shutdown-dialog::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+#shutdown-overlay::selection {
+    background: #6a6a6a;
+}
+
+#shutdown-overlay::backdrop {
+    background: #111;
+}
+
+#shutdown-overlay::before,
+#shutdown-overlay::after {
+    z-index: 2;
+}
+
+#shutdown-overlay .shutdown-dialog {
+    position: relative;
+    z-index: 1;
+}
+
+#shutdown-overlay {
+    isolation: isolate;
+}
+
+#shutdown-overlay > .shutdown-dialog + * {
+    position: relative;
+    z-index: 1;
+}
+
+#shutdown-overlay.powered-off,
+#shutdown-overlay.closing {
+    box-shadow: inset 0 0 90px rgba(0,0,0,.28);
+}
+
+#shutdown-overlay .shutdown-dialog {
+    image-rendering: pixelated;
+}
+
+#shutdown-overlay::selection {
+    text-shadow: none;
+}
+
+#shutdown-overlay {
+    background-color: #171a1f;
+}
+
+#shutdown-overlay .shutdown-progress {
+    image-rendering: pixelated;
+}
+
+#shutdown-overlay::after {
+    content: "JAJ Records // Aquerty System";
+}
+
+#shutdown-overlay .shutdown-dialog::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,.025) 0,
+            rgba(255,255,255,.025) 1px,
+            rgba(0,0,0,.055) 1px,
+            rgba(0,0,0,.055) 3px
+        ),
+        radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.20) 100%);
+    mix-blend-mode: soft-light;
+    opacity: .76;
+}
+
+
+/* --- AQ-NEO XP shutdown reference composition --- */
+#shutdown-overlay,
+#shutdown-overlay.closing,
+#shutdown-overlay.powered-off {
+    background:
+        radial-gradient(ellipse at center, rgba(76,82,91,.16) 0%, transparent 58%),
+        #262a30;
+    font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+#shutdown-overlay::before,
+#shutdown-overlay::after {
+    display: none;
+}
+
+.shutdown-dialog,
+#shutdown-overlay.powered-off .shutdown-dialog {
+    width: min(620px, calc(100vw - 34px));
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    text-align: center;
+    filter: saturate(.7) contrast(1.03);
+}
+
+.shutdown-logo {
+    display: block;
+    width: min(230px, 52vw);
+    max-height: 105px;
+    margin: 0 auto 16px;
+    object-fit: contain;
+    filter: grayscale(.15) contrast(1.08);
+}
+
+.shutdown-brand {
+    display: none;
+}
+
+.shutdown-title {
+    color: #fff;
+    font: normal 25px/1.2 Tahoma, "MS Sans Serif", Arial, sans-serif;
+    text-align: center;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.shutdown-detail {
+    min-height: 18px;
+    margin: 8px auto 0;
+    color: #e5e6e8;
+    font: normal 12px/1.2 Tahoma, "MS Sans Serif", Arial, sans-serif;
+    text-align: center;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.shutdown-progress {
+    width: 180px;
+    height: 10px;
+    margin: 16px auto 0;
+    padding: 1px;
+    border: 1px solid #7b8087;
+    background: #15171b;
+    box-shadow:
+        inset 1px 1px 0 #050607,
+        1px 1px 0 rgba(255,255,255,.08);
+}
+
+#shutdown-progress-bar,
+#shutdown-overlay.powered-off #shutdown-progress-bar {
+    height: 100%;
+    background: repeating-linear-gradient(
+        to right,
+        #c9cdd2 0 8px,
+        #c9cdd2 8px,
+        transparent 8px,
+        transparent 11px
+    );
+}
+
+#shutdown-overlay.powered-off .shutdown-progress {
+    display: none;
+}
+
+#shutdown-overlay .power-btn {
+    margin: 18px auto 0;
+    padding: 4px 14px;
+    border-radius: 0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #666;
+    border-bottom: 2px solid #666;
+    background: #d4d0c8;
+    color: #000;
+    box-shadow: none;
+    font: bold 10px Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+#shutdown-overlay .shutdown-dialog::before {
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,.018) 0,
+            rgba(255,255,255,.018) 1px,
+            rgba(0,0,0,.040) 1px,
+            rgba(0,0,0,.040) 3px
+        ),
+        radial-gradient(ellipse at center, transparent 66%, rgba(0,0,0,.14) 100%);
+    mix-blend-mode: soft-light;
+    opacity: .60;
+}
+
+
+/* --- Power-screen CRT blend hotfix ---
+   The scanline layer used to be contained by the filtered shutdown dialog,
+   creating a visible rectangular cut. Move the CRT treatment to the full
+   screen so the transition is continuous. */
+#shutdown-overlay .shutdown-dialog {
+    filter: none;
+}
+
+#shutdown-overlay .shutdown-dialog::before {
+    display: none;
+}
+
+#shutdown-overlay::after {
+    content: "";
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,.015) 0,
+            rgba(255,255,255,.015) 1px,
+            rgba(0,0,0,.032) 1px,
+            rgba(0,0,0,.032) 3px
+        ),
+        radial-gradient(
+            ellipse at center,
+            transparent 58%,
+            rgba(0,0,0,.055) 78%,
+            rgba(0,0,0,.13) 100%
+        );
+    opacity: .58;
+}
+
+#shutdown-overlay .shutdown-dialog {
+    position: relative;
+    z-index: 3;
+}
+
+.shutdown-logo {
+    filter: grayscale(.15) contrast(1.08) saturate(.82);
+}

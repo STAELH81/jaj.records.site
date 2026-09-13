@@ -95,7 +95,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         logs: { labelKey: 'logs', action: () => openWindow('win-logs', 'task-logs') },
         commandCenter: { labelKey: 'AQ-ACC', action: () => openWindow('win-acc', 'task-acc') },
         minesweeper: { labelKey: 'AQ-Mines', action: () => openWindow('win-ms', 'task-ms') },
-        mail: { labelKey: 'AQ-Mail', action: () => openWindow('win-mail', 'task-mail') }
+        mail: { labelKey: 'AQ-Mail', action: () => openWindow('win-mail', 'task-mail') },
+        myspace: { labelKey: 'AQ-MySpace', action: () => openWindow('win-myspace', 'task-myspace') }
     };
 
     function loadPersistedData() {
@@ -591,34 +592,149 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         });
     }
 
-    function shutdownSystem() {
+    let powerTransitionRunning = false;
+
+    function powerDelay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function setShutdownScreen(title, detail, progress) {
+        const overlay = document.getElementById('shutdown-overlay');
+        const titleEl = document.getElementById('shutdown-title');
+        const detailEl = document.getElementById('shutdown-detail');
+        const bar = document.getElementById('shutdown-progress-bar');
+        const powerBtn = document.getElementById('power-on-btn');
+
+        if (titleEl) titleEl.textContent = title || '';
+        if (detailEl) detailEl.textContent = detail || '';
+        if (bar) bar.style.width = Math.max(0, Math.min(100, progress || 0)) + '%';
+        if (powerBtn) powerBtn.hidden = true;
+        overlay?.classList.add('active', 'closing');
+        overlay?.classList.remove('powered-off');
+    }
+
+    function showPoweredOffScreen() {
+        const overlay = document.getElementById('shutdown-overlay');
+        const titleEl = document.getElementById('shutdown-title');
+        const detailEl = document.getElementById('shutdown-detail');
+        const bar = document.getElementById('shutdown-progress-bar');
+        const powerBtn = document.getElementById('power-on-btn');
+
+        overlay?.classList.remove('closing');
+        overlay?.classList.add('powered-off', 'active');
+        if (titleEl) titleEl.textContent = 'Aquerty AQ-NEO est éteint';
+        if (detailEl) detailEl.textContent = 'Vous pouvez maintenant rallumer le système.';
+        if (bar) bar.style.width = '100%';
+        if (powerBtn) powerBtn.hidden = false;
+    }
+
+    async function closeAppsForPowerTransition() {
+        const visibleWindows = Array.from(document.querySelectorAll('.window'))
+            .filter((win) => win.style.display === 'block');
+
+        if (!visibleWindows.length) {
+            setShutdownScreen('Fermeture des applications…', 'Aucune application ouverte.', 45);
+            await powerDelay(280);
+            return;
+        }
+
+        for (let i = 0; i < visibleWindows.length; i += 1) {
+            const win = visibleWindows[i];
+            const title = win.querySelector('.title-bar > span')?.textContent?.trim() || win.id;
+            const progress = 10 + Math.round(((i + 1) / visibleWindows.length) * 42);
+
+            setShutdownScreen('Fermeture des applications…', title, progress);
+            stopAudioInWindow(win.id);
+            win.classList.add('aq-window-shutting-down');
+            await powerDelay(150);
+
+            win.style.display = 'none';
+            win.classList.remove('aq-window-shutting-down');
+
+            const taskId = win.id.replace('win-', 'task-');
+            const task = document.getElementById(taskId);
+            if (task) {
+                task.style.display = 'none';
+                task.classList.remove('active');
+            }
+
+            await powerDelay(90);
+        }
+
+        saveSessionState();
+    }
+
+    async function runPowerTransition(mode = 'shutdown') {
+        if (powerTransitionRunning) return;
+        powerTransitionRunning = true;
+
+        toggleStartMenu(false);
+        hideScreensaver();
+        toggleAmbientHum(false);
+        setShutdownScreen(
+            mode === 'restart' ? 'Redémarrage d’AQ-NEO…' : 'Arrêt d’AQ-NEO…',
+            'Préparation du système…',
+            5
+        );
+
+        await powerDelay(220);
+        await closeAppsForPowerTransition();
+
+        setShutdownScreen(
+            mode === 'restart' ? 'Redémarrage d’AQ-NEO…' : 'Arrêt d’AQ-NEO…',
+            'Enregistrement de la session…',
+            68
+        );
+        await window.AQCloudSync?.flush?.();
+        await powerDelay(320);
+
+        setShutdownScreen(
+            mode === 'restart' ? 'Redémarrage d’AQ-NEO…' : 'Arrêt d’AQ-NEO…',
+            mode === 'restart' ? 'Relance des services Aquerty…' : 'Fermeture des services Aquerty…',
+            88
+        );
+        await powerDelay(420);
+
+        if (mode === 'restart') {
+            addSystemLog('Redémarrage du système.', 'warn');
+            localStorage.removeItem(SESSION_KEY);
+            setShutdownScreen('Redémarrage…', 'AQ-NEO va redémarrer.', 100);
+            await powerDelay(420);
+            window.location.reload();
+            return;
+        }
+
         isPoweredOff = true;
         saveState();
-        toggleAmbientHum(false);
-        addSystemLog('Arret du systeme.', 'warn');
-        document.getElementById('shutdown-overlay').classList.add('active');
-        toggleStartMenu(false);
-        document.querySelectorAll('.window').forEach((w) => {
-            if (w.style.display !== 'block') return;
-            const taskId = w.id.replace('win-', 'task-');
-            if (document.getElementById(taskId)) closeWindow(w.id, taskId);
-        });
+        addSystemLog('Arrêt du système.', 'warn');
+
+        showPoweredOffScreen();
+        powerTransitionRunning = false;
+    }
+
+    function shutdownSystem() {
+        void runPowerTransition('shutdown');
     }
 
     function powerOnSystem() {
+        if (powerTransitionRunning) return;
+
         isPoweredOff = false;
         saveState();
-        addSystemLog('Power on demande.');
-        document.getElementById('shutdown-overlay').classList.remove('active');
+        addSystemLog('Power on demandé.');
+
+        const overlay = document.getElementById('shutdown-overlay');
+        const powerBtn = document.getElementById('power-on-btn');
+        if (powerBtn) powerBtn.hidden = true;
+        overlay?.classList.remove('active', 'closing', 'powered-off');
+
         applyVisualSettings();
         runBootSequence();
         resetScreensaverTimer();
     }
 
     function restartSystem() {
-        addSystemLog('Redemarrage du systeme.', 'warn');
-        localStorage.removeItem(SESSION_KEY);
-        window.location.reload();
+        void runPowerTransition('restart');
     }
 
     function bindDesktopIconAnimations() {
@@ -643,7 +759,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         settings: { left: '110px', top: '15px' },
         acc: { left: '110px', top: '110px' },
         mines: { left: '110px', top: '205px' },
-        mail: { left: '110px', top: '300px' }
+        mail: { left: '110px', top: '300px' },
+        myspace: { left: '205px', top: '15px' }
     };
     const ICON_GRID_X = 95;
     const ICON_GRID_Y = 95;
@@ -1596,13 +1713,19 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             'win-logs': 'logs',
             'win-acc': 'commandCenter',
             'win-ms': 'minesweeper',
-            'win-mail': 'mail'
+            'win-mail': 'mail',
+            'win-myspace': 'myspace'
         };
         if (!isRestoringSession) {
             if (winToRecent[winId]) addRecentItem(winToRecent[winId]);
             if (winId === 'win-player') triggerContextualPopup('openPlayer');
             if (winId === 'win-ie') triggerContextualPopup('openInternet');
             if (winId === 'win-tempus') triggerContextualPopup('openTempus');
+            if (winId === 'win-myspace') window.dispatchEvent(new Event('aq:myspace-open'));
+            if (winId === 'win-acc') {
+                const frame = document.querySelector('#win-acc iframe');
+                frame?.contentWindow?.postMessage({ type: 'aq-acc-open' }, window.location.origin);
+            }
         }
         if (!isRestoringSession) addSystemLog(`Fenetre ouverte: ${winId}`);
         if (winId === 'win-player') updatePlayerNightEffects();
@@ -1698,6 +1821,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
     document.querySelectorAll(".window").forEach(makeDraggable);
 
+    window.addEventListener('jaj:session-changed', () => {
+        const frame = document.querySelector('#win-acc iframe');
+        frame?.contentWindow?.postMessage({ type: 'aq-session-changed' }, window.location.origin);
+    });
+
     // --- LOGIQUE MOT DE PASSE (EASTER EGG) ---
     function checkTempusPwd() {
         if (isPoweredOff) return;
@@ -1757,11 +1885,22 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     setupDesktopIconActivation();
     setupActivityListeners();
     renderRecents();
-    runBootSequence();
-    restartPopupLoop();
+
     const hasSavedSession = !!localStorage.getItem(SESSION_KEY);
     if (hasSavedSession) restoreSessionState();
-    if (isPoweredOff) document.getElementById('shutdown-overlay').classList.add('active');
+
+    if (isPoweredOff) {
+        // A reload while AQ-NEO is off must restore the FINAL powered-off screen,
+        // not the transient "Arrêt... Préparation" state from the markup.
+        stopBootSound();
+        const boot = document.getElementById('boot-screen');
+        if (boot) boot.style.display = 'none';
+        showPoweredOffScreen();
+        markBootComplete();
+    } else {
+        runBootSequence();
+        restartPopupLoop();
+    }
 
     // Initialiser la page IE d'accueil au chargement
     if (!hasSavedSession) setIEPage('info');

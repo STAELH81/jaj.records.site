@@ -59,7 +59,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         }
         return [
             { title: 'System Message', text: 'Le disque C: est presque plein. Pensez a liberer de l espace.' },
-            { title: 'Network', text: 'Connexion reseau interrompue. Reessayez dans quelques instants.' },
+            { title: 'Network', text: 'Connexion réseau interrompue. Réessayez dans quelques instants.' },
             { title: 'Printer', text: 'Aucune imprimante detectee sur le port LPT1.' },
             { title: 'Reminder', text: 'N oubliez pas de sauvegarder votre travail regulierement.' }
         ];
@@ -1224,8 +1224,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             secretWallpaperOption.textContent = isTempusUnlocked ? t.secretWallpaperUnlocked : t.secretWallpaperLocked;
         }
         const mobileNow = document.getElementById('mobile-now-playing');
-        if (mobileNow && mobileNow.textContent === 'PRET') {
-            mobileNow.textContent = selected === 'en' ? 'READY' : 'PRET';
+        if (mobileNow && mobileNow.textContent === 'PRÊT') {
+            mobileNow.textContent = selected === 'en' ? 'READY' : 'PRÊT';
         }
         const mobilePlayBtn = document.getElementById('mobile-play-btn');
         if (mobilePlayBtn) mobilePlayBtn.textContent = selected === 'en' ? 'PLAY / PAUSE' : 'LECTURE / PAUSE';
@@ -1416,7 +1416,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 content: `
                 <h2 style="color:#000080; font-size:16px;">JAJ Records</h2>
                 <hr>
-                <p><strong>${isEn ? 'Welcome to the JAJ Records network.' : 'Bienvenue sur le reseau JAJ Records.'}</strong></p>
+                <p><strong>${isEn ? 'Welcome to the JAJ Records network.' : 'Bienvenue sur le réseau JAJ Records.'}</strong></p>
                 <p>
                     ${isEn
                         ? 'AQ-NEO is now the label portal for music, archives, apps and web experiments. The original Dual experience remains available as part of the catalogue.'
@@ -1459,7 +1459,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 <p>
                     ${isEn ? "Sound-wise, it's a mix of classic hip-hop, techno and ambient." : "Niveau son, c'est un melange de hip-hop classique, techno et ambient."}
                 </p>
-                <p><strong>${isEn ? 'System key:' : 'Cle systeme :'}</strong> <span style="color:#000080; font-weight:bold;">NdZkLa</span></p>
+                <p><strong>${isEn ? 'System key:' : 'Clé système :'}</strong> <span style="color:#000080; font-weight:bold;">NdZkLa</span></p>
             `
             },
             tempus: {
@@ -1979,7 +1979,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     function syncMobileNowPlaying() {
         const target = document.getElementById('mobile-now-playing');
         if (!target) return;
-        target.textContent = statusDisplay.innerText || (getCurrentLanguage() === 'en' ? 'READY' : 'PRET');
+        target.textContent = statusDisplay.innerText || (getCurrentLanguage() === 'en' ? 'READY' : 'PRÊT');
     }
 
     function syncMobileQuickSettings() {
@@ -2740,7 +2740,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                     : 'Ton environnement AQ-NEO est pret.\n\n- Player: OK\n- ACC: OK\n- Demineur: OK\n\nBon test.'
             },
             m2: {
-                subject: isEn ? 'Ticket #1042 - Audio settings' : 'Ticket #1042 - Parametres audio',
+                subject: isEn ? 'Ticket #1042 - Audio settings' : 'Ticket #1042 - Paramètres audio',
                 body: isEn
                     ? 'We received your request.\n\nTip: adjust the master volume with the Sound icon (bottom right).'
                     : 'On a bien recu ta demande.\n\nConseil: regle le volume master via l icone Son (en bas a droite).'

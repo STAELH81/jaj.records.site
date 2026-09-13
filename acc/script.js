@@ -26,10 +26,10 @@ function getDesktopLang() {
 const ACC_I18N = {
   fr: {
     intro: [
-      "[INIT] Initialisation systeme...",
-      "[FW] Chargement des regles firewall dynamiques",
-      "[NET] Connexion hub securise - Etablie",
-      "[SEC] Chargement modules de chiffrement - OK"
+      "[INIT] Initialisation système...",
+      "[FW] Chargement des règles firewall dynamiques",
+      "[NET] Connexion hub sécurisé - Établie",
+      "[SEC] Chargement des modules de chiffrement - OK"
     ],
     enterSession: "Entrez votre ID ACC :",
     enterPassword: "Mot de passe AQ-NEO :",
@@ -46,16 +46,16 @@ const ACC_I18N = {
     adminPrompt: "Session ADMIN détectée : authentification ACC requise.",
     usageOpen: (m) => `Usage: ${m} <nom|chemin>`,
     fileNotFound: "Fichier introuvable",
-    cannotDisplay: "Le systeme ne peut pas afficher ce fichier.",
-    cannotFindFile: "Le systeme ne trouve pas le fichier specifie.",
-    pathNotFound: "Le systeme ne trouve pas le chemin specifie.",
+    cannotDisplay: "Le système ne peut pas afficher ce fichier.",
+    cannotFindFile: "Le système ne trouve pas le fichier spécifié.",
+    pathNotFound: "Le système ne trouve pas le chemin spécifié.",
     cmdSyntax: "La syntaxe de la commande est incorrecte.",
     commands: "Commandes:",
     usage: "Utilisation:",
     helpOpen: "  open <nom|chemin>     Ouvrir un fichier de assets/ ou logs/",
     helpStart: "  start <nom|chemin>    Ouvrir (pdf dans le navigateur)",
     helpTip: 'Astuce: utiliser des guillemets pour les espaces: open "ACC Manual.pdf"',
-    directoryOf: " Repertoire de ",
+    directoryOf: " Répertoire de ",
     empty: " <vide>",
     availableFiles: "Fichiers disponibles:",
     more: "Plus ?",
@@ -64,14 +64,14 @@ const ACC_I18N = {
     time: "Heure actuelle: ",
     userLabel: "Utilisateur:",
     sessionLabel: "Session:",
-    netConfig: "Configuration reseau Aquerty",
-    ethernet: "Adaptateur Ethernet Connexion au reseau local:",
-    pinging: (h) => `Ping vers ${h} avec 32 octets de donnees:`,
-    reply: (t) => `Reponse de 10.10.0.254: octets=32 temps=${t}ms TTL=64`,
+    netConfig: "Configuration réseau Aquerty",
+    ethernet: "Adaptateur Ethernet Connexion au réseau local :",
+    pinging: (h) => `Ping vers ${h} avec 32 octets de données :`,
+    reply: (t) => `Réponse de 10.10.0.254: octets=32 temps=${t}ms TTL=64`,
     pingStats: "Statistiques Ping pour 10.10.0.254:",
-    pingPackets: "    Paquets: envoyes = 4, recus = 4, perdus = 0 (0% de perte),",
+    pingPackets: "    Paquets: envoyés = 4, reçus = 4, perdus = 0 (0% de perte),",
     tracing: (h) => `Itineraire vers ${h} avec un maximum de 30 sauts`,
-    traceComplete: "Trace terminee.",
+    traceComplete: "Trace terminée.",
     unrecognizedA: (cmd) => `'${cmd}' n est pas reconnu en tant que commande interne ou externe,`,
     unrecognizedB: "programme executable ou fichier de commandes.",
     roleAdmin: "Administrateur",
@@ -423,15 +423,15 @@ function generateSecurityLogText() {
   const mkIp = () => `${10 + Math.floor(Math.random()*10)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
   const sid = sessionId || "???";
   const entries = [
-    { lvl: "INFO", msg: isEn ? `Console session authenticated (SID=${sid}, level=${accessLevel})` : `Session console authentifiee (SID=${sid}, niveau=${accessLevel})`, ip: "127.0.0.1", act: "OK" },
-    { lvl: "WARN", msg: isEn ? "Multiple failed login attempts detected" : "Plusieurs tentatives de connexion echouees detectees", ip: mkIp(), act: isEn ? "THROTTLED" : "RALENTI" },
-    { lvl: "INFO", msg: isEn ? "Firewall policy reloaded" : "Politique firewall rechargee", ip: "127.0.0.1", act: "OK" },
-    { lvl: "ALERT", msg: isEn ? "Unauthorized probe detected on port 445" : "Sonde non autorisee detectee sur le port 445", ip: mkIp(), act: isEn ? "BLOCKED" : "BLOQUE" }
+    { lvl: "INFO", msg: isEn ? `Console session authenticated (SID=${sid}, level=${accessLevel})` : `Session console authentifiée (SID=${sid}, niveau=${accessLevel})`, ip: "127.0.0.1", act: "OK" },
+    { lvl: "WARN", msg: isEn ? "Multiple failed login attempts detected" : "Plusieurs tentatives de connexion échouées détectées", ip: mkIp(), act: isEn ? "THROTTLED" : "RALENTI" },
+    { lvl: "INFO", msg: isEn ? "Firewall policy reloaded" : "Politique firewall rechargée", ip: "127.0.0.1", act: "OK" },
+    { lvl: "ALERT", msg: isEn ? "Unauthorized probe detected on port 445" : "Sonde non autorisée détectée sur le port 445", ip: mkIp(), act: isEn ? "BLOCKED" : "BLOQUÉ" }
   ];
   const pick = () => entries[Math.floor(Math.random() * entries.length)];
   const out = [];
-  out.push(isEn ? "=== Security Log / Intrusion Detection Report ===" : "=== Journal de securite / Rapport de detection d intrusion ===");
-  out.push((isEn ? "Generated: " : "Genere: ") + ts);
+  out.push(isEn ? "=== Security Log / Intrusion Detection Report ===" : "=== Journal de sécurité / Rapport de détection d’intrusion ===");
+  out.push((isEn ? "Generated: " : "Généré : ") + ts);
   out.push("");
   for (let i = 0; i < 6; i++) {
     const e = pick();
@@ -789,9 +789,11 @@ async function printIntro() {
 
 function showSessionBanner() {
   const role = accessLevel >= 2 ? "ADMIN" : "USER";
+  document.body.dataset.accMode = role.toLowerCase();
   writeLine("");
-  writeLine(`[SESSION] ACC-ID ${sessionId || "LOCAL"} // ${role}${accIdentity?.displayName ? " // " + accIdentity.displayName : ""}`);
   writeText(ASCII_LOGO + "\n");
+  writeLine(`[SESSION] ACC-ID ${sessionId || "LOCAL"} // ${role}${accIdentity?.displayName ? " // " + accIdentity.displayName : ""}`);
+  writeLine("");
   persistSave();
   shellLoop();
 }
@@ -891,7 +893,6 @@ async function bootFlow() {
   if (!aqSession || aqSession.type === "guest" || !accIdentity?.authenticated) {
     accessLevel = 1;
     sessionId = "GUEST";
-    await typedLine(t().sessionGuest, 12);
     showSessionBanner();
     return;
   }
@@ -899,7 +900,6 @@ async function bootFlow() {
   if (accIdentity.role !== "admin") {
     accessLevel = 1;
     sessionId = String(accIdentity.accId || "USER");
-    await typedLine(t().sessionUser, 12);
     showSessionBanner();
     return;
   }

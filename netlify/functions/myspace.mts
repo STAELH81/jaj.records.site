@@ -75,7 +75,7 @@ async function profileForUser(store: any, sessionUser: any) {
   const saved = await store.get(`profiles/${sessionUser.id}.json`, { type: "json" });
   const meta = identityMetadata(live);
 
-  return {
+  const profile = {
     userId: sessionUser.id,
     displayName: cleanSingleLine(
       saved?.displayName || meta.display_name || meta.full_name || sessionUser.email?.split("@")[0] || "Utilisateur",
@@ -89,6 +89,12 @@ async function profileForUser(store: any, sessionUser: any) {
     roles: normalizeRoles(live?.roles),
     updatedAt: saved?.updatedAt || null,
   };
+
+  if (!saved) {
+    await store.setJSON(`profiles/${sessionUser.id}.json`, profile);
+  }
+
+  return profile;
 }
 
 async function listJSON(store: any, prefix: string) {
@@ -214,7 +220,7 @@ export default async (request: Request, _context: Context) => {
     const profile = {
       ...author,
       displayName: cleanSingleLine(body.displayName || author.displayName, 40),
-      aquertyMail: cleanSingleLine(body.aquertyMail || author.aquertyMail, 120),
+      aquertyMail: author.aquertyMail,
       headline: cleanSingleLine(body.headline, 100),
       bio: cleanText(body.bio, 700),
       location: cleanSingleLine(body.location, 80),

@@ -2400,3 +2400,147 @@ body.global-dark #win-ie .aq-page {
         display: none;
     }
 }
+
+
+/* --- AQ-Navigator classic-browser refinement --- */
+#win-player .player-cfg-title-btn {
+    width: 34px;
+    min-width: 34px;
+    padding: 0 3px !important;
+    font-size: 9px !important;
+}
+
+#win-player > .title-bar > span:first-child {
+    padding-right: 4px;
+}
+
+.navigator-menubar {
+    position: relative;
+    z-index: 50;
+    gap: 0;
+    overflow: visible;
+}
+
+.navigator-menu {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+}
+
+.navigator-menu-button {
+    height: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 1px 7px 2px;
+    color: #111;
+    font: 11px Tahoma, Arial, sans-serif;
+    cursor: default;
+}
+
+.navigator-menu-button:hover,
+.navigator-menu-button.active {
+    border-top-color: #fff;
+    border-left-color: #fff;
+    border-right-color: #808080;
+    border-bottom-color: #808080;
+    background: #d4d0c8;
+}
+
+.navigator-dropdown {
+    display: none;
+    position: absolute;
+    top: 20px;
+    left: 0;
+    z-index: 400;
+    min-width: 170px;
+    padding: 2px;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #404040;
+    border-bottom: 2px solid #404040;
+    background: #d4d0c8;
+    box-shadow: 1px 1px 0 rgba(0,0,0,.35);
+}
+
+.navigator-dropdown-right {
+    left: auto;
+    right: 0;
+}
+
+.navigator-dropdown.open {
+    display: block;
+}
+
+.navigator-dropdown button {
+    width: 100%;
+    min-height: 20px;
+    border: 0;
+    background: transparent;
+    padding: 3px 22px 3px 18px;
+    text-align: left;
+    color: #000;
+    font: 11px Tahoma, Arial, sans-serif;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.navigator-dropdown button:hover {
+    background: #0a246a;
+    color: #fff;
+}
+
+.navigator-menu-separator {
+    height: 1px;
+    margin: 3px 2px;
+    border-top: 1px solid #808080;
+    border-bottom: 1px solid #fff;
+}
+
+.navigator-linksbar {
+    min-height: 23px;
+    box-sizing: border-box;
+}
+
+.navigator-links-label {
+    color: #555;
+    padding-left: 2px;
+}
+
+#win-ie.navigator-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: calc(100vh - 30px) !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    resize: none !important;
+    z-index: 6500 !important;
+}
+
+#win-ie.navigator-fullscreen > .title-bar {
+    border-radius: 0 !important;
+}
+
+.navigator-content {
+    font-family: Tahoma, Arial, sans-serif;
+}
+
+.navigator-content h2,
+.navigator-content p,
+.navigator-content div,
+.navigator-content a {
+    font-family: inherit;
+}
+
+/* Old browsers did not have soft modern card interactions. */
+#win-ie .aq-home-hero,
+#win-ie .aq-net-card,
+#win-ie .aq-browser-list,
+#win-ie .aq-browser-list-row,
+#win-ie .aq-search-box {
+    border-radius: 0;
+    box-shadow: none;
+}

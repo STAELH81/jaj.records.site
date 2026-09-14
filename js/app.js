@@ -58,10 +58,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             ];
         }
         return [
-            { title: 'System Message', text: 'Le disque C: est presque plein. Pensez a liberer de l espace.' },
-            { title: 'Network', text: 'Connexion réseau interrompue. Réessayez dans quelques instants.' },
-            { title: 'Printer', text: 'Aucune imprimante detectee sur le port LPT1.' },
-            { title: 'Reminder', text: 'N oubliez pas de sauvegarder votre travail regulierement.' }
+            { title: 'Message système', text: 'Le disque C: est presque plein. Pensez à libérer de l’espace.' },
+            { title: 'Réseau', text: 'Connexion réseau interrompue. Réessayez dans quelques instants.' },
+            { title: 'Imprimante', text: 'Aucune imprimante détectée sur le port LPT1.' },
+            { title: 'Rappel', text: 'N’oubliez pas de sauvegarder votre travail régulièrement.' }
         ];
     }
     function getContextualPopupMessages() {
@@ -76,11 +76,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             };
         }
         return {
-            openInternet: [{ title: 'Network', text: 'Connexion au serveur en cours...' }],
-            openPlayer: [{ title: 'Audio', text: 'Module audio initialise en mode stereo.' }],
-            openTempus: [{ title: 'Security', text: 'Fichier protege. Authentification requise.' }],
-            wrongPassword: [{ title: 'Security', text: 'Acces refuse. Mot de passe invalide.' }],
-            unlockTempus: [{ title: 'Security', text: 'Acces confirme. Nouveau chemin ajoute a Internet.' }],
+            openInternet: [{ title: 'Réseau', text: 'Connexion au serveur en cours...' }],
+            openPlayer: [{ title: 'Audio', text: 'Module audio initialisé en mode stéréo.' }],
+            openTempus: [{ title: 'Sécurité', text: 'Fichier protégé. Authentification requise.' }],
+            wrongPassword: [{ title: 'Sécurité', text: 'Accès refusé. Mot de passe invalide.' }],
+            unlockTempus: [{ title: 'Sécurité', text: 'Accès confirmé. Nouveau chemin ajouté à Navigator.' }],
             playTrack: [{ title: 'Audio', text: 'Lecture en cours. Niveau de sortie stable.' }]
         };
     }
@@ -177,7 +177,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                     }
                 }
             });
-            if (saved.currentIEPage) setIEPage(saved.currentIEPage);
+            if (saved.currentIEPage) {
+                const restoredPage = pageKeyFromAddress(saved.currentIEPage) || saved.currentIEPage;
+                if (['info', 'dual', 'tempus', '__favorites', '__history', '__help', '__about'].includes(restoredPage)) {
+                    setIEPage(restoredPage);
+                }
+            }
             isRestoringSession = false;
         } catch (_) {
             // ignore malformed saved session
@@ -288,7 +293,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const container = document.getElementById('recent-list');
         container.innerHTML = '';
         if (recentItems.length === 0) {
-            container.innerHTML = '<p class="start-menu-empty">Aucun élément récent</p>';
+            container.innerHTML = `<p class="start-menu-empty">${getCurrentLanguage() === 'en' ? 'No recent items' : 'Aucun élément récent'}</p>`;
             return;
         }
         recentItems.forEach((key) => {
@@ -325,7 +330,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (!list) return;
         list.innerHTML = '';
         if (systemLogs.length === 0) {
-            list.innerHTML = '<div class="log-entry">Aucun log pour le moment.</div>';
+            list.innerHTML = `<div class="log-entry">${getCurrentLanguage() === 'en' ? 'No logs yet.' : 'Aucun log pour le moment.'}</div>`;
             return;
         }
         systemLogs.forEach((entry) => {
@@ -633,7 +638,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             .filter((win) => win.style.display === 'block');
 
         if (!visibleWindows.length) {
-            setShutdownScreen('Fermeture des applications…', 'Aucune application ouverte.', 45);
+            setShutdownScreen(
+                getCurrentLanguage() === 'en' ? 'Closing applications…' : 'Fermeture des applications…',
+                getCurrentLanguage() === 'en' ? 'No application is open.' : 'Aucune application ouverte.',
+                45
+            );
             await powerDelay(280);
             return;
         }
@@ -643,7 +652,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             const title = win.querySelector('.title-bar > span')?.textContent?.trim() || win.id;
             const progress = 10 + Math.round(((i + 1) / visibleWindows.length) * 42);
 
-            setShutdownScreen('Fermeture des applications…', title, progress);
+            setShutdownScreen(getCurrentLanguage() === 'en' ? 'Closing applications…' : 'Fermeture des applications…', title, progress);
             stopAudioInWindow(win.id);
             win.classList.add('aq-window-shutting-down');
             await powerDelay(150);
@@ -671,9 +680,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         toggleStartMenu(false);
         hideScreensaver();
         toggleAmbientHum(false);
+        const powerTitle = mode === 'restart'
+            ? (getCurrentLanguage() === 'en' ? 'Restarting AQ-NEO…' : 'Redémarrage d’AQ-NEO…')
+            : (getCurrentLanguage() === 'en' ? 'Shutting down AQ-NEO…' : 'Arrêt d’AQ-NEO…');
         setShutdownScreen(
-            mode === 'restart' ? 'Redémarrage d’AQ-NEO…' : 'Arrêt d’AQ-NEO…',
-            'Préparation du système…',
+            powerTitle,
+            getCurrentLanguage() === 'en' ? 'Preparing the system…' : 'Préparation du système…',
             5
         );
 
@@ -681,16 +693,18 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         await closeAppsForPowerTransition();
 
         setShutdownScreen(
-            mode === 'restart' ? 'Redémarrage d’AQ-NEO…' : 'Arrêt d’AQ-NEO…',
-            'Enregistrement de la session…',
+            powerTitle,
+            getCurrentLanguage() === 'en' ? 'Saving session…' : 'Enregistrement de la session…',
             68
         );
         await window.AQCloudSync?.flush?.();
         await powerDelay(320);
 
         setShutdownScreen(
-            mode === 'restart' ? 'Redémarrage d’AQ-NEO…' : 'Arrêt d’AQ-NEO…',
-            mode === 'restart' ? 'Relance des services Aquerty…' : 'Fermeture des services Aquerty…',
+            powerTitle,
+            mode === 'restart'
+                ? (getCurrentLanguage() === 'en' ? 'Restarting Aquerty services…' : 'Relance des services Aquerty…')
+                : (getCurrentLanguage() === 'en' ? 'Closing Aquerty services…' : 'Fermeture des services Aquerty…'),
             88
         );
         await powerDelay(420);
@@ -698,7 +712,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (mode === 'restart') {
             addSystemLog('Redémarrage du système.', 'warn');
             localStorage.removeItem(SESSION_KEY);
-            setShutdownScreen('Redémarrage…', 'AQ-NEO va redémarrer.', 100);
+            setShutdownScreen(
+                getCurrentLanguage() === 'en' ? 'Restarting…' : 'Redémarrage…',
+                getCurrentLanguage() === 'en' ? 'AQ-NEO will restart.' : 'AQ-NEO va redémarrer.',
+                100
+            );
             await powerDelay(420);
             window.location.reload();
             return;
@@ -1013,7 +1031,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             playerTask: 'AQ-Player...',
             playerCfg: 'Réglages',
             playerSettingsTitle: 'Paramètres Player',
-            playerSkinLabel: 'Skin:',
+            playerSkinLabel: 'Apparence :',
             playerNightLabel: 'Mode plein écran nuit',
             playerSettingsHint: 'Astuce: clique hors du panneau pour le fermer.',
             minesTask: 'AQ-Mines',
@@ -1065,14 +1083,14 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             msDiffIntermediate: 'Intermédiaire (16x16, 40)',
             msDiffExpert: 'Expert (16x30, 99)',
             ieHome: 'Accueil',
-            ieMenu: ['Fichier', 'Édition', 'Affichage', 'Favoris', 'Outils'],
+            ieMenu: ['Fichier', 'Édition', 'Affichage', 'Favoris', 'Outils', 'Aide'],
             ieAddress: 'Adresse :',
             tempusTask: 'Sécurité - tempus_pe...',
             settingsTask: 'Panneau de config...',
             mailFoldersTitle: 'Dossiers',
-            inbox: 'Inbox',
-            sent: 'Sent',
-            trash: 'Trash',
+            inbox: 'Boîte de réception',
+            sent: 'Envoyés',
+            trash: 'Corbeille',
             mailNew: 'Nouveau',
             mailReply: 'Répondre',
             mailDelete: 'Supprimer',
@@ -1162,7 +1180,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             msDiffIntermediate: 'Intermediate (16x16, 40)',
             msDiffExpert: 'Expert (16x30, 99)',
             ieHome: 'Home',
-            ieMenu: ['File', 'Edit', 'View', 'Favorites', 'Tools'],
+            ieMenu: ['File', 'Edit', 'View', 'Favorites', 'Tools', 'Help'],
             ieAddress: 'Address:',
             tempusTask: 'Security - tempus_pe...',
             settingsTask: 'Control panel...',
@@ -1253,11 +1271,25 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         appSettings.desktopLanguage = selected;
         document.documentElement.lang = selected;
         const t = tUI();
+        const isEn = selected === 'en';
         const setText = (id, value) => {
             const el = document.getElementById(id);
             if (el) el.textContent = value;
         };
+        const bootTitle = document.querySelector('#boot-screen .boot-title');
+        if (bootTitle) bootTitle.textContent = isEn ? 'Starting Aquerty AQ-NEO...' : 'Démarrage d’Aquerty AQ-NEO...';
         setText('boot-subtitle', t.bootSubtitle);
+        setText('boot-hint', isEn ? 'Tip: the experience is better on a PC.' : 'Astuce : l’expérience est meilleure sur PC.');
+        document.querySelectorAll('.window-minimize-btn').forEach((btn) => {
+            const label = isEn ? 'Minimize' : 'Réduire';
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
+        });
+        document.querySelectorAll('.window-close-btn').forEach((btn) => {
+            const label = isEn ? 'Close' : 'Fermer';
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
+        });
         setText('start-btn', t.menuLabel);
         const startTitles = document.querySelectorAll('#start-menu .start-menu-title');
         if (startTitles[0]) startTitles[0].textContent = t.recents;
@@ -1266,13 +1298,23 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (startButtons[0]) startButtons[0].textContent = t.settingsTitle;
         if (startButtons[1]) startButtons[1].textContent = t.shutdown;
         if (startButtons[2]) startButtons[2].textContent = t.restart;
+        setText('aq-switch-user-btn', isEn ? 'Switch user' : 'Changer d’utilisateur');
+        setText('aq-logout-btn', isEn ? 'Log out' : 'Déconnexion');
+        setText('power-on-btn', isEn ? 'Power on' : 'Allumer');
+        setText('shutdown-title', isEn ? 'Shutting down AQ-NEO…' : 'Arrêt d’AQ-NEO…');
+        setText('shutdown-detail', isEn ? 'Preparing the system…' : 'Préparation du système…');
         setText('task-logs', t.logsWindow);
         setText('task-tempus', t.tempusTask);
         setText('task-settings', t.settingsTask);
         setText('task-trash', t.trashLabel);
         setText('task-player', t.playerTask);
         setText('task-ms', t.minesTask);
-        setText('player-cfg-btn', t.playerCfg);
+        const playerCfgBtn = document.getElementById('player-cfg-btn');
+        if (playerCfgBtn) {
+            playerCfgBtn.textContent = 'CFG';
+            playerCfgBtn.title = t.playerCfg;
+            playerCfgBtn.setAttribute('aria-label', t.playerCfg);
+        }
         setText('player-settings-title', t.playerSettingsTitle);
         const playerSkinLabel = document.getElementById('player-skin-label');
         if (playerSkinLabel) {
@@ -1285,6 +1327,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         setText('player-settings-hint', t.playerSettingsHint);
         const desktopTrash = document.querySelector('.desktop-icon[data-desktop-icon="trash"] span');
         if (desktopTrash) desktopTrash.textContent = t.trashLabel;
+        const desktopSettings = document.querySelector('.desktop-icon[data-desktop-icon="settings"] span');
+        if (desktopSettings) desktopSettings.textContent = isEn ? 'Settings' : 'Paramètres';
         const trashWinTitle = document.querySelector('#win-trash .title-bar span');
         if (trashWinTitle) trashWinTitle.textContent = t.trashLabel;
         const trashTexts = document.querySelectorAll('#win-trash p');
@@ -1345,23 +1389,84 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             mobileNow.textContent = selected === 'en' ? 'READY' : 'PRÊT';
         }
         const mobilePlayBtn = document.getElementById('mobile-play-btn');
-        if (mobilePlayBtn) mobilePlayBtn.textContent = selected === 'en' ? 'PLAY / PAUSE' : 'LECTURE / PAUSE';
-        setText('mobile-lite-title', selected === 'en' ? 'Aquerty Mobile Lite' : 'Aquerty Mobile Lite');
-        setText('mobile-lite-subtitle', selected === 'en' ? 'Simplified mode: tracks + essential settings.' : 'Version simplifiée : tracks + réglages essentiels.');
-        setText('mobile-quick-title', selected === 'en' ? 'Quick settings' : 'Réglages rapides');
-        setText('mobile-quick-sounds-label', selected === 'en' ? 'System sounds' : 'Sons système');
-        setText('mobile-quick-volume-label', selected === 'en' ? 'Volume' : 'Volume');
-        setText('mobile-quick-language-label', selected === 'en' ? 'Language' : 'Langue');
-        setText('mobile-exit-lite-btn', selected === 'en' ? 'Exit lite mode' : 'Quitter le mode lite');
+        if (mobilePlayBtn) mobilePlayBtn.textContent = isEn ? 'PLAY / PAUSE' : 'LECTURE / PAUSE';
+        setText('mobile-prev-btn', isEn ? 'PREV' : 'PRÉC.');
+        setText('mobile-next-btn', isEn ? 'NEXT' : 'SUIV.');
+        setText('mobile-lite-title', 'Aquerty Mobile Lite');
+        setText('mobile-lite-subtitle', isEn ? 'Simplified mode: tracks + essential settings.' : 'Version simplifiée : pistes + réglages essentiels.');
+        setText('mobile-quick-title', isEn ? 'Quick settings' : 'Réglages rapides');
+        setText('mobile-quick-sounds-label', isEn ? 'System sounds' : 'Sons système');
+        setText('mobile-quick-volume-label', 'Volume');
+        setText('mobile-quick-language-label', isEn ? 'Language' : 'Langue');
+        setText('mobile-exit-lite-btn', isEn ? 'Exit lite mode' : 'Quitter le mode lite');
+        const mobileTrackTitle = document.querySelector('#mobile-app .mobile-card:nth-of-type(3) .mobile-title');
+        if (mobileTrackTitle) mobileTrackTitle.textContent = isEn ? 'Tracks' : 'Pistes';
+        const mobilePortLabels = {
+            'win-player': 'AQ-Player',
+            'win-ie': 'AQ-Navigator',
+            'win-settings': isEn ? 'Settings' : 'Paramètres',
+            'win-tempus': 'Tempus',
+            'win-myspace': 'MySpace'
+        };
+        document.querySelectorAll('#mobile-port-nav .mobile-port-btn').forEach((btn) => {
+            const key = btn.getAttribute('data-open-win');
+            if (mobilePortLabels[key]) btn.textContent = mobilePortLabels[key];
+        });
         const fab = document.getElementById('lite-exit-fab');
         if (fab) fab.textContent = selected === 'en' ? 'Exit lite' : 'Quitter lite';
 
-        const ieHomeBtn = document.querySelector('#win-ie .ie-toolbar .retro-btn:nth-of-type(3)');
-        if (ieHomeBtn) ieHomeBtn.textContent = t.ieHome;
-        const ieMenu = document.querySelectorAll('#win-ie .ie-toolbar > span');
+        const ieHomeBtn = document.getElementById('ie-home-btn');
+        if (ieHomeBtn) ieHomeBtn.title = t.ieHome;
+        const ieMenu = document.querySelectorAll('#win-ie .navigator-menu-button');
         t.ieMenu.forEach((txt, i) => { if (ieMenu[i]) ieMenu[i].textContent = txt; });
-        const ieAddressLabel = document.querySelector('#win-ie .ie-address-bar span');
+
+        const navText = isEn ? {
+            file: ['Home page', 'Open address...', 'Print...', 'Close'],
+            edit: ['Copy', 'Select all'],
+            view: ['Refresh', 'Stop'],
+            favorites: ['Add to favorites...', 'Organize favorites...'],
+            tools: ['Internet Options...'],
+            help: ['Contents and Index', 'About AQ-Navigator'],
+            toolbar: ['Favorites', 'History', '★ Add'],
+            go: 'Go',
+            links: 'Links',
+            back: 'Back',
+            forward: 'Forward',
+            stop: 'Stop',
+            refresh: 'Refresh'
+        } : {
+            file: ['Page d’accueil', 'Ouvrir une adresse...', 'Imprimer...', 'Fermer'],
+            edit: ['Copier', 'Sélectionner tout'],
+            view: ['Actualiser', 'Arrêter'],
+            favorites: ['Ajouter aux favoris...', 'Organiser les favoris...'],
+            tools: ['Options Internet...'],
+            help: ['Sommaire et index', 'À propos d’AQ-Navigator'],
+            toolbar: ['Favoris', 'Historique', '★ Ajouter'],
+            go: 'Aller',
+            links: 'Liens',
+            back: 'Précédente',
+            forward: 'Suivante',
+            stop: 'Arrêter',
+            refresh: 'Actualiser'
+        };
+        ['file','edit','view','favorites','tools','help'].forEach((name) => {
+            const buttons = document.querySelectorAll(`#navigator-menubar [data-menu-panel="${name}"] > button`);
+            (navText[name] || []).forEach((txt, i) => { if (buttons[i]) buttons[i].textContent = txt; });
+        });
+        const navToolbarText = document.querySelectorAll('#win-ie .navigator-toolbar .nav-text-btn');
+        navText.toolbar.forEach((txt, i) => { if (navToolbarText[i]) navToolbarText[i].textContent = txt; });
+        const navToolButtons = document.querySelectorAll('#win-ie .navigator-toolbar .nav-tool-btn');
+        if (navToolButtons[0]) navToolButtons[0].title = navText.back;
+        if (navToolButtons[1]) navToolButtons[1].title = navText.forward;
+        if (navToolButtons[2]) navToolButtons[2].title = navText.stop;
+        if (navToolButtons[3]) navToolButtons[3].title = navText.refresh;
+        const ieAddressLabel = document.querySelector('#win-ie .navigator-address-row label');
         if (ieAddressLabel) ieAddressLabel.textContent = t.ieAddress;
+        const ieGoBtn = document.querySelector('#win-ie .navigator-address-row button[type="submit"]');
+        if (ieGoBtn) ieGoBtn.textContent = navText.go;
+        const ieLinksLabel = document.querySelector('#win-ie .navigator-links-label');
+        if (ieLinksLabel) ieLinksLabel.textContent = navText.links;
+        updateNavigatorFullscreenMenu();
 
         const logsTitle = document.querySelector('#win-logs .title-bar span');
         if (logsTitle) logsTitle.textContent = t.logsWindow;
@@ -1398,6 +1503,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const netStatus = document.getElementById('tray-net-status');
         if (netStatus) netStatus.textContent = t.trayConnected;
 
+        const mailAddressLabel = document.querySelector('#win-mail .mail-account-strip span');
+        if (mailAddressLabel) mailAddressLabel.textContent = isEn ? 'AQ-Mail address:' : 'Adresse AQ-Mail :';
         const mailFoldersTitle = document.querySelector('#win-mail .mail-sidebar .setting-title');
         if (mailFoldersTitle) mailFoldersTitle.textContent = t.mailFoldersTitle;
         const mailFolders = document.querySelectorAll('#win-mail .mail-folder span');
@@ -1426,8 +1533,19 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         }
         const accFrame = document.querySelector('#win-acc iframe');
         if (accFrame) accFrame.src = accFrame.src;
+        const shuffleUi = document.getElementById('shuffle-btn');
+        if (shuffleUi) {
+            const on = shuffleUi.classList.contains('active');
+            shuffleUi.textContent = isEn ? (on ? 'SHUFFLE ON' : 'SHUFFLE OFF') : (on ? 'ALÉATOIRE OUI' : 'ALÉATOIRE NON');
+        }
+        const repeatUi = document.getElementById('repeat-one-btn');
+        if (repeatUi) {
+            const on = repeatUi.classList.contains('active');
+            repeatUi.textContent = isEn ? (on ? 'REPEAT1 ON' : 'REPEAT1 OFF') : (on ? 'RÉPÉTER1 OUI' : 'RÉPÉTER1 NON');
+        }
         renderSystemLogs();
         renderRecents();
+        window.dispatchEvent(new CustomEvent('aq:language-changed', { detail: { language: selected } }));
     }
 
     function closeSystemPopup() {
@@ -1525,88 +1643,187 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (appSettings.systemPopups) queueNextPopup();
     }
 
-    function getIEPages(lang) {
-        const isEn = lang === 'en';
-        return {
-            info: {
-                address: tUI().ieInfoAddress,
-                content: `
-                <h2 style="color:#000080; font-size:16px;">JAJ Records</h2>
-                <hr>
-                <p><strong>${isEn ? 'Welcome to the JAJ Records network.' : 'Bienvenue sur le réseau JAJ Records.'}</strong></p>
-                <p>
-                    ${isEn
-                        ? 'AQ-NEO is now the label portal for music, archives, apps and web experiments. The original Dual experience remains available as part of the catalogue.'
-                        : "AQ-NEO sert maintenant de portail du label pour la musique, les archives, les applications et les experiences web. L'experience Dual d'origine reste disponible dans le catalogue."}
-                </p>
-                <div style="border:1px solid #aca899; background:#f4f4f4; padding:10px; margin:12px 0;">
-                    <strong>Catalogue / Archives</strong>
-                    <p style="margin-bottom:0;">
-                        <a href="#" style="color:#0000ee;" onclick="setIEPage('dual'); return false;">Dual - Cha (2026)</a>
-                    </p>
-                </div>
-                <p style="font-size:10px; color:#555;">JAJ Records // powered by Aquerty AQ-NEO</p>
-            `
-            },
-            dual: {
-                address: 'http://www.jaj-records.com/releases/dual.html',
-                content: `
-                <h2 style="color:#000080; font-size:16px;">Dual - Cha</h2>
-                <hr>
-                <p><strong>Hey!</strong> ${isEn ? 'Thanks for taking the time to read this.' : 'Merci de prendre le temps de lire ceci.'}</p>
-                <p>
-                    ${isEn
-                        ? 'Originally, this album was meant to be a collection of all my SoundCloud releases. Then I recovered older projects (thanks Clancy &lt;3), and putting everything together made way more sense.'
-                        : "A l'origine, cet album devait etre une collection de toutes mes sorties SoundCloud. Puis j'ai recupere d'anciens projets (merci Clancy &lt;3), et les reunir dans un seul ensemble faisait beaucoup plus sens."}
-                </p>
-                <p>
-                    ${isEn
-                        ? "The name <strong>Dual</strong> is about duality. Personally, mostly around gender: sometimes I feel masc, sometimes fem, and honestly I don't really care what people think. It's also the duality of daily life: two paths, two jobs, two opportunities."
-                        : "Le nom <strong>Dual</strong> parle de dualite. D'un point de vue perso, surtout sur le genre : parfois je me sens mec, parfois meuf, et au fond je m'en fiche de ce que les gens peuvent en dire. Mais c'est aussi la dualite du quotidien : deux chemins, deux jobs, deux opportunites."}
-                </p>
-                <p>
-                    ${isEn
-                        ? '<strong>Gender Mess</strong> and <strong>Just Not Enough For It (Speech Intro)</strong> are the tracks that express that state the most.'
-                        : '<strong>Gender Mess</strong> et <strong>Just Not Enough For It (Speech Intro)</strong> sont les morceaux qui parlent le plus de cet etat.'}
-                </p>
-                <p>
-                    <strong>LRJR</strong> = <em>Lost Records of JAJ Records</em> :
-                    ${isEn ? 'lost recordings, experiments, sketches.' : 'des enregistrements perdus, des experimentations, des essais.'}
-                </p>
-                <p>
-                    ${isEn ? "Sound-wise, it's a mix of classic hip-hop, techno and ambient." : "Niveau son, c'est un melange de hip-hop classique, techno et ambient."}
-                </p>
-                <p><strong>${isEn ? 'System key:' : 'Clé système :'}</strong> <span style="color:#000080; font-weight:bold;">NdZkLa</span></p>
-            `
-            },
-            tempus: {
-                address: 'http://127.0.0.1/tempus_perit/index_files/',
-                content: `
-                <div style="font-family: 'Times New Roman', Times, serif; color: black; background: white; padding: 10px;">
-                    <h1 style="font-size: 20px; font-weight: normal; border-bottom: 1px solid black; padding-bottom: 5px; margin-top: 0;">${tUI().ieTempusTitle}</h1>
-                    <pre style="font-size: 14px; margin-top: 20px;">
-<a href="#" style="color: blue;" onclick="setIEPage('info'); return false;">../</a>
-<a href="#" style="color: blue;">Anthem.mp3</a>                       3.2M
-                    </pre>
-                    <div style="margin-top: 30px; padding: 10px; border: 1px dashed #ccc; background: #f9f9f9;">
-                        <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>C:\\medias\\musique\\Anthem.mp3</strong></p>
-                        <audio id="ie-audio-player" src="medias/musique/anthem.mp3"></audio>
-                        <div style="display: flex; gap: 5px; align-items: center;">
-                            <button onclick="document.getElementById('ie-audio-player').play()" class="retro-btn" style="padding: 2px 8px;">PLAY</button>
-                            <button onclick="let p = document.getElementById('ie-audio-player'); p.pause(); p.currentTime = 0;" class="retro-btn" style="padding: 2px 8px;">STOP</button>
-                            <span style="font-size: 11px; margin-left: 10px;">${tUI().ieVol}</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0.5" style="width: 60px;" oninput="document.getElementById('ie-audio-player').volume = this.value">
-                        </div>
-                    </div>
-                </div>
-            `
-            }
-        }
-    }
+    // --- AQ-NAVIGATOR / classic browser chrome ---
+    const IE_FAVORITES_KEY = 'aq_navigator_favorites_v3';
+    const IE_MAX_HISTORY = 40;
+
     let currentIEPage = 'info';
     let ieHistory = ['info'];
     let ieHistoryIndex = 0;
     let isTempusUnlocked = false;
+    let ieFavorites = loadIEFavorites();
+    let navigatorWindowedGeometry = null;
+
+    function escapeNavigatorHTML(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function loadIEFavorites() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(IE_FAVORITES_KEY) || '[]');
+            return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string').slice(0, 24) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function saveIEFavorites() {
+        localStorage.setItem(IE_FAVORITES_KEY, JSON.stringify(ieFavorites));
+    }
+
+    function getIEPages(lang) {
+        const isEn = lang === 'en';
+        return {
+            info: {
+                address: 'http://www.jaj-records.com/home.html',
+                title: 'JAJ Records',
+                content: `
+                    <h2 style="color:#000080; font-size:16px;">JAJ Records</h2>
+                    <hr>
+                    <p><strong>${isEn ? 'Welcome to the JAJ Records network.' : 'Bienvenue sur le réseau JAJ Records.'}</strong></p>
+                    <p>
+                        ${isEn
+                            ? 'AQ-NEO is the label portal for music, archives, applications and web experiments. The original Dual experience remains available in the catalogue.'
+                            : "AQ-NEO sert de portail du label pour la musique, les archives, les applications et les expériences web. L'expérience Dual d'origine reste disponible dans le catalogue."}
+                    </p>
+                    <div style="border:1px solid #aca899; background:#f4f4f4; padding:10px; margin:12px 0;">
+                        <strong>${isEn ? 'Catalogue / Archives' : 'Catalogue / Archives'}</strong>
+                        <p style="margin-bottom:0;">
+                            <a href="#" style="color:#0000ee;" onclick="setIEPage('dual'); return false;">Dual - Cha (2026)</a>
+                        </p>
+                    </div>
+                    <p style="font-size:10px; color:#555;">JAJ Records // Aquerty AQ-NEO</p>
+                `
+            },
+            dual: {
+                address: 'http://www.jaj-records.com/releases/dual.html',
+                title: 'Dual - Cha',
+                content: `
+                    <h2 style="color:#000080; font-size:16px;">Dual - Cha</h2>
+                    <hr>
+                    <p><strong>Hey!</strong> ${isEn ? 'Thanks for taking the time to read this.' : 'Merci de prendre le temps de lire ceci.'}</p>
+                    <p>
+                        ${isEn
+                            ? 'Originally, this album was meant to be a collection of all my SoundCloud releases. Then I recovered older projects (thanks Clancy &lt;3), and putting everything together made more sense.'
+                            : "À l'origine, cet album devait être une collection de toutes mes sorties SoundCloud. Puis j'ai récupéré d'anciens projets (merci Clancy &lt;3), et les réunir dans un seul ensemble faisait beaucoup plus sens."}
+                    </p>
+                    <p>
+                        ${isEn
+                            ? "The name <strong>Dual</strong> is about duality: identity, daily choices and two possible paths."
+                            : "Le nom <strong>Dual</strong> parle de dualité : identité, choix du quotidien et deux chemins possibles."}
+                    </p>
+                    <p><strong>LRJR</strong> = <em>Lost Records of JAJ Records</em> : ${isEn ? 'lost recordings, experiments and sketches.' : 'enregistrements perdus, expérimentations et essais.'}</p>
+                    <p><strong>${isEn ? 'System key' : 'Clé système'} :</strong> <span style="color:#000080;font-weight:bold;">NdZkLa</span></p>
+                `
+            },
+            tempus: {
+                address: 'http://127.0.0.1/tempus_perit/index_files/',
+                title: 'Index of /tempus_perit/index_files/',
+                content: `
+                    <div style="font-family:'Times New Roman',Times,serif;color:black;background:white;padding:10px;">
+                        <h1 style="font-size:20px;font-weight:normal;border-bottom:1px solid black;padding-bottom:5px;margin-top:0;">${tUI().ieTempusTitle}</h1>
+                        <pre style="font-size:14px;margin-top:20px;"><a href="#" style="color:blue;" onclick="setIEPage('info');return false;">../</a>
+<a href="#" style="color:blue;">Anthem.mp3</a>                       3.2M</pre>
+                        <div style="margin-top:30px;padding:10px;border:1px dashed #ccc;background:#f9f9f9;">
+                            <p style="margin:0 0 10px;font-size:14px;"><strong>C:\\medias\\musique\\Anthem.mp3</strong></p>
+                            <audio id="ie-audio-player" src="medias/musique/anthem.mp3"></audio>
+                            <div style="display:flex;gap:5px;align-items:center;">
+                                <button onclick="document.getElementById('ie-audio-player').play()" class="retro-btn" style="padding:2px 8px;">${isEn ? 'PLAY' : 'LECTURE'}</button>
+                                <button onclick="let p=document.getElementById('ie-audio-player');p.pause();p.currentTime=0;" class="retro-btn" style="padding:2px 8px;">${isEn ? 'STOP' : 'ARRÊT'}</button>
+                                <span style="font-size:11px;margin-left:10px;">${tUI().ieVol}</span>
+                                <input type="range" min="0" max="1" step="0.1" value="0.5" style="width:60px;" oninput="document.getElementById('ie-audio-player').volume=this.value">
+                            </div>
+                        </div>
+                    </div>
+                `
+            }
+        };
+    }
+
+    function pageKeyFromAddress(value) {
+        const raw = String(value || '').trim();
+        const lower = raw.toLowerCase();
+        if (!raw) return 'info';
+
+        if (['info', 'home', 'aq://home', 'http://www.jaj-records.com/home.html'].includes(lower)) return 'info';
+        if (['dual', 'aq://archive/dual', 'http://www.jaj-records.com/releases/dual.html'].includes(lower)) return 'dual';
+        if (['tempus', 'aq://archive/tempus', 'http://127.0.0.1/tempus_perit/index_files/'].includes(lower)) return 'tempus';
+        if (lower === 'favorites' || lower === 'favoris') return '__favorites';
+        if (lower === 'history' || lower === 'historique') return '__history';
+        if (lower === 'help' || lower === 'aide') return '__help';
+        if (lower === 'about') return '__about';
+        return null;
+    }
+
+    function getIEAddressForPage(pageKey) {
+        const pages = getIEPages(getCurrentLanguage());
+        if (pages[pageKey]) return pages[pageKey].address;
+        if (pageKey === '__favorites') return 'about:favorites';
+        if (pageKey === '__history') return 'about:history';
+        if (pageKey === '__help') return 'about:help';
+        if (pageKey === '__about') return 'about:aq-navigator';
+        return String(pageKey || '');
+    }
+
+    function renderIENavigatorUtilityPage(pageKey) {
+        const isEn = getCurrentLanguage() === 'en';
+
+        if (pageKey === '__favorites') {
+            const rows = ieFavorites.length
+                ? ieFavorites.map((key) => {
+                    const pages = getIEPages(getCurrentLanguage());
+                    const label = pages[key]?.title || key;
+                    return `
+                        <div style="display:flex;justify-content:space-between;gap:8px;padding:6px;border-bottom:1px solid #ddd;">
+                            <a href="#" onclick="setIEPage('${escapeNavigatorHTML(key)}');return false;">${escapeNavigatorHTML(label)}</a>
+                            <button class="retro-btn" onclick="removeIEFavorite('${escapeNavigatorHTML(key)}')">${isEn ? 'Remove' : 'Suppr.'}</button>
+                        </div>
+                    `;
+                }).join('')
+                : `<p>${isEn ? 'No favorites.' : 'Aucun favori.'}</p>`;
+            return `<div style="padding:12px;"><h2 style="font-size:16px;color:#000080;">${isEn ? 'Favorites' : 'Favoris'}</h2><hr>${rows}</div>`;
+        }
+
+        if (pageKey === '__history') {
+            const pages = getIEPages(getCurrentLanguage());
+            const rows = [...ieHistory].reverse().slice(0, IE_MAX_HISTORY).map((key) => `
+                <div style="padding:5px;border-bottom:1px solid #ddd;">
+                    <a href="#" onclick="setIEPage('${escapeNavigatorHTML(key)}');return false;">${escapeNavigatorHTML(pages[key]?.title || getIEAddressForPage(key))}</a><br>
+                    <span style="font-size:9px;color:#777;">${escapeNavigatorHTML(getIEAddressForPage(key))}</span>
+                </div>
+            `).join('');
+            return `<div style="padding:12px;"><h2 style="font-size:16px;color:#000080;">${isEn ? 'History' : 'Historique'}</h2><hr>${rows || '—'}</div>`;
+        }
+
+        if (pageKey === '__help') {
+            return `
+                <div style="padding:12px;">
+                    <h2 style="font-size:16px;color:#000080;">${isEn ? 'AQ-Navigator Help' : 'Aide AQ-Navigator'}</h2>
+                    <hr>
+                    <p>${isEn ? 'Use the address bar, Back/Forward buttons and the menus above.' : 'Utilise la barre d’adresse, les boutons Précédent/Suivant et les menus en haut.'}</p>
+                    <p>${isEn ? 'Known local pages:' : 'Pages locales connues :'}</p>
+                    <ul style="list-style:square;margin-left:20px;">
+                        <li>http://www.jaj-records.com/home.html</li>
+                        <li>http://www.jaj-records.com/releases/dual.html</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        return `
+            <div style="padding:12px;text-align:center;">
+                <h2 style="font-size:16px;color:#000080;">AQ-Navigator</h2>
+                <hr>
+                <p>Aquerty AQ-NEO</p>
+                <p style="font-size:10px;color:#666;">Version 2.0 // JAJ Records</p>
+            </div>
+        `;
+    }
 
     function updateIENavButtons() {
         const backBtn = document.getElementById('ie-back-btn');
@@ -1615,22 +1832,71 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (forwardBtn) forwardBtn.disabled = ieHistoryIndex >= ieHistory.length - 1;
     }
 
+    function setIENavigatorStatus(message) {
+        const status = document.getElementById('ie-status');
+        if (status) status.textContent = message || (getCurrentLanguage() === 'en' ? 'Done' : 'Terminé');
+    }
+
     function setIEPage(pageKey, fromHistory = false) {
         const pages = getIEPages(getCurrentLanguage());
-        if (!pages[pageKey]) return;
         if (pageKey === 'tempus' && !isTempusUnlocked) return;
+        const isUtility = pageKey.startsWith('__');
+        if (!pages[pageKey] && !isUtility) return;
+
         stopAudioInWindow('win-ie');
+
         if (!fromHistory) {
             ieHistory = ieHistory.slice(0, ieHistoryIndex + 1);
             ieHistory.push(pageKey);
+            if (ieHistory.length > IE_MAX_HISTORY) ieHistory.shift();
             ieHistoryIndex = ieHistory.length - 1;
         }
+
         currentIEPage = pageKey;
-        document.getElementById('ie-address').innerText = pages[pageKey].address;
-        document.getElementById('ie-content-box').innerHTML = pages[pageKey].content;
+        const address = getIEAddressForPage(pageKey);
+        const input = document.getElementById('ie-address-input');
+        if (input) input.value = address;
+
+        const box = document.getElementById('ie-content-box');
+        if (box) {
+            box.innerHTML = isUtility ? renderIENavigatorUtilityPage(pageKey) : pages[pageKey].content;
+            box.scrollTop = 0;
+        }
+
         if (pageKey === 'tempus') addRecentItem('indexFiles');
+        setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Done' : 'Terminé');
         updateIENavButtons();
         saveSessionState();
+    }
+
+    function navigateIEAddress(value) {
+        const raw = String(value || '').trim();
+        const key = pageKeyFromAddress(raw);
+        if (key) {
+            setIEPage(key);
+            return;
+        }
+
+        if (/^https?:\/\//i.test(raw)) {
+            setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Opening external address…' : 'Ouverture de l’adresse externe…');
+            window.open(raw, '_blank', 'noopener,noreferrer');
+            return;
+        }
+
+        const box = document.getElementById('ie-content-box');
+        if (box) {
+            box.innerHTML = `
+                <div style="padding:35px 20px;font-family:Tahoma,Arial,sans-serif;">
+                    <h2 style="font-size:16px;color:#000080;">${getCurrentLanguage() === 'en' ? 'The page cannot be displayed' : 'Impossible d’afficher la page'}</h2>
+                    <hr>
+                    <p>${getCurrentLanguage() === 'en' ? 'AQ-Navigator could not find this address.' : 'AQ-Navigator n’a pas trouvé cette adresse.'}</p>
+                    <p style="font-family:'Courier New',monospace;">${escapeNavigatorHTML(raw)}</p>
+                </div>
+            `;
+        }
+        const input = document.getElementById('ie-address-input');
+        if (input) input.value = raw;
+        setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Page not found' : 'Page introuvable');
     }
 
     function goIEBack() {
@@ -1645,13 +1911,179 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         setIEPage(ieHistory[ieHistoryIndex], true);
     }
 
+    function refreshIENavigator() {
+        setIEPage(currentIEPage, true);
+    }
+
+    function toggleIEFavorite() {
+        if (currentIEPage.startsWith('__')) return;
+        const exists = ieFavorites.includes(currentIEPage);
+        ieFavorites = exists
+            ? ieFavorites.filter((item) => item !== currentIEPage)
+            : [currentIEPage, ...ieFavorites].slice(0, 24);
+        saveIEFavorites();
+        setIENavigatorStatus(exists
+            ? (getCurrentLanguage() === 'en' ? 'Favorite removed.' : 'Favori retiré.')
+            : (getCurrentLanguage() === 'en' ? 'Favorite added.' : 'Favori ajouté.'));
+    }
+
+    function removeIEFavorite(pageKey) {
+        ieFavorites = ieFavorites.filter((item) => item !== pageKey);
+        saveIEFavorites();
+        setIEPage('__favorites', true);
+    }
+
+    function closeNavigatorMenus() {
+        document.querySelectorAll('#navigator-menubar .navigator-dropdown.open').forEach((panel) => panel.classList.remove('open'));
+        document.querySelectorAll('#navigator-menubar .navigator-menu-button.active').forEach((button) => button.classList.remove('active'));
+    }
+
+    function toggleNavigatorMenu(name) {
+        const panel = document.querySelector(`#navigator-menubar [data-menu-panel="${name}"]`);
+        const button = document.querySelector(`#navigator-menubar [data-menu="${name}"]`);
+        const wasOpen = panel?.classList.contains('open');
+        closeNavigatorMenus();
+        if (!wasOpen) {
+            panel?.classList.add('open');
+            button?.classList.add('active');
+        }
+    }
+
+    function updateNavigatorFullscreenMenu() {
+        const win = document.getElementById('win-ie');
+        const item = document.getElementById('navigator-fullscreen-menu-item');
+        if (!item || !win) return;
+        const fullscreen = win.classList.contains('navigator-fullscreen');
+        item.textContent = fullscreen
+            ? (getCurrentLanguage() === 'en' ? 'Exit full screen' : 'Quitter le plein écran')
+            : (getCurrentLanguage() === 'en' ? 'Full screen' : 'Plein écran');
+    }
+
+    function toggleNavigatorFullscreen(force) {
+        const win = document.getElementById('win-ie');
+        if (!win) return;
+
+        const currentlyFullscreen = win.classList.contains('navigator-fullscreen');
+        const next = typeof force === 'boolean' ? force : !currentlyFullscreen;
+        if (next === currentlyFullscreen) {
+            updateNavigatorFullscreenMenu();
+            return;
+        }
+
+        if (next) {
+            navigatorWindowedGeometry = {
+                left: win.style.left,
+                top: win.style.top,
+                width: win.style.width,
+                height: win.style.height
+            };
+            win.classList.add('navigator-fullscreen');
+        } else {
+            win.classList.remove('navigator-fullscreen');
+
+            if (navigatorWindowedGeometry) {
+                win.style.left = navigatorWindowedGeometry.left;
+                win.style.top = navigatorWindowedGeometry.top;
+                win.style.width = navigatorWindowedGeometry.width;
+                win.style.height = navigatorWindowedGeometry.height;
+            } else {
+                win.style.left = '560px';
+                win.style.top = '55px';
+                win.style.width = '680px';
+                win.style.height = '500px';
+            }
+
+            requestAnimationFrame(() => constrainWindowToDesktop(win));
+        }
+
+        updateNavigatorFullscreenMenu();
+        setIENavigatorStatus(next
+            ? (getCurrentLanguage() === 'en' ? 'Full screen' : 'Plein écran')
+            : (getCurrentLanguage() === 'en' ? 'Windowed mode' : 'Mode fenêtré'));
+    }
+
+    async function navigatorMenuAction(action) {
+        closeNavigatorMenus();
+
+        if (action === 'home') return setIEPage('info');
+        if (action === 'open') {
+            document.getElementById('ie-address-input')?.focus();
+            document.getElementById('ie-address-input')?.select();
+            return;
+        }
+        if (action === 'print') return window.print();
+        if (action === 'close') return closeWindow('win-ie', 'task-ie');
+        if (action === 'refresh') return refreshIENavigator();
+        if (action === 'stop') {
+            stopAudioInWindow('win-ie');
+            setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Stopped' : 'Arrêté');
+            return;
+        }
+        if (action === 'fullscreen') {
+            toggleNavigatorFullscreen();
+            return;
+        }
+        if (action === 'favorite-add') return toggleIEFavorite();
+        if (action === 'favorites') return setIEPage('__favorites');
+        if (action === 'history') return setIEPage('__history');
+        if (action === 'settings') return openWindow('win-settings', 'task-settings');
+        if (action === 'help') return setIEPage('__help');
+        if (action === 'about') return setIEPage('__about');
+
+        if (action === 'select-all') {
+            const box = document.getElementById('ie-content-box');
+            const selection = window.getSelection();
+            const range = document.createRange();
+            if (box && selection) {
+                range.selectNodeContents(box);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+            return;
+        }
+
+        if (action === 'copy') {
+            const text = window.getSelection()?.toString() || '';
+            if (!text) return;
+            try {
+                await navigator.clipboard.writeText(text);
+                setIENavigatorStatus(getCurrentLanguage() === 'en' ? 'Copied.' : 'Copié.');
+            } catch (_) {
+                document.execCommand?.('copy');
+            }
+        }
+    }
+
+    document.querySelectorAll('#navigator-menubar .navigator-menu-button').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toggleNavigatorMenu(button.dataset.menu);
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('#navigator-menubar')) closeNavigatorMenus();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && document.getElementById('win-ie')?.classList.contains('navigator-fullscreen')) {
+            toggleNavigatorFullscreen(false);
+        }
+    });
+
+    document.getElementById('ie-address-form')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        navigateIEAddress(document.getElementById('ie-address-input')?.value || '');
+    });
+
     // --- GESTION DES FENÊTRES ---
     function constrainWindowToDesktop(win) {
         if (!win) return;
         if (
             document.body.classList.contains('mobile-mode') ||
             document.body.classList.contains('desktop-lite-mode') ||
-            win.classList.contains('player-night-fullscreen')
+            win.classList.contains('player-night-fullscreen') ||
+            win.classList.contains('navigator-fullscreen')
         ) return;
 
         const desktopRoot = document.getElementById('desktop');
@@ -1735,6 +2167,9 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     function closeWindow(winId, taskId) {
         playSystemSound('close');
+        if (winId === 'win-ie' && document.getElementById('win-ie')?.classList.contains('navigator-fullscreen')) {
+            toggleNavigatorFullscreen(false);
+        }
         stopAudioInWindow(winId);
         document.getElementById(winId).style.display = 'none';
         document.getElementById(taskId).style.display = 'none';
@@ -2028,8 +2463,13 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
 
     function updateModeButtons() {
-        shuffleBtn.innerText = isShuffleEnabled ? 'SHUFFLE ON' : 'SHUFFLE OFF';
-        repeatOneBtn.innerText = isRepeatOneEnabled ? 'REPEAT1 ON' : 'REPEAT1 OFF';
+        const isEn = getCurrentLanguage() === 'en';
+        shuffleBtn.innerText = isEn
+            ? (isShuffleEnabled ? 'SHUFFLE ON' : 'SHUFFLE OFF')
+            : (isShuffleEnabled ? 'ALÉATOIRE OUI' : 'ALÉATOIRE NON');
+        repeatOneBtn.innerText = isEn
+            ? (isRepeatOneEnabled ? 'REPEAT1 ON' : 'REPEAT1 OFF')
+            : (isRepeatOneEnabled ? 'RÉPÉTER1 OUI' : 'RÉPÉTER1 NON');
         shuffleBtn.classList.toggle('active', isShuffleEnabled);
         repeatOneBtn.classList.toggle('active', isRepeatOneEnabled);
     }
@@ -2267,7 +2707,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         });
         player.src = folder + track.file;
         player.play();
-        statusDisplay.innerText = "PLAYING: " + track.title.toUpperCase();
+        statusDisplay.innerText = (getCurrentLanguage() === 'en' ? 'PLAYING: ' : 'LECTURE : ') + track.title.toUpperCase();
         addSystemLog(`Lecture piste: ${track.title}`);
         if (shouldNotify) triggerContextualPopup('playTrack');
         savePlayerState();

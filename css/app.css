@@ -2047,3 +2047,518 @@ body:not(.theme-win95):not(.theme-neo2000) textarea {
 .shutdown-logo {
     filter: grayscale(.15) contrast(1.08) saturate(.82);
 }
+
+
+/* --- AQ-Navigator 2.0 / AQ-NET browser --- */
+#win-ie {
+    min-width: 460px;
+    min-height: 330px;
+}
+
+.navigator-shell {
+    height: calc(100% - 27px);
+    display: grid;
+    grid-template-rows: 21px 34px 29px 23px minmax(0, 1fr) 20px;
+    min-height: 0;
+    background: #ece9d8;
+    color: #111;
+    font: 11px Tahoma, Arial, sans-serif;
+}
+
+.navigator-menubar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 7px;
+    border-bottom: 1px solid #aca899;
+    background: #ece9d8;
+    white-space: nowrap;
+}
+
+.navigator-menubar span {
+    cursor: default;
+}
+
+.navigator-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 5px;
+    border-bottom: 1px solid #aca899;
+    background:
+        linear-gradient(to bottom, #f7f5eb 0%, #ece9d8 100%);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.navigator-toolbar::-webkit-scrollbar {
+    display: none;
+}
+
+.navigator-toolbar .retro-btn {
+    flex: 0 0 auto;
+}
+
+.nav-tool-btn {
+    width: 27px;
+    min-width: 27px;
+    height: 25px;
+    padding: 1px 3px !important;
+    font-size: 12px !important;
+}
+
+.nav-text-btn {
+    min-height: 25px;
+    padding: 2px 7px !important;
+    white-space: nowrap;
+}
+
+.navigator-toolbar-separator {
+    width: 1px;
+    height: 24px;
+    margin: 0 3px;
+    background: #aca899;
+    box-shadow: 1px 0 0 #fff;
+    flex: 0 0 auto;
+}
+
+.navigator-address-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 5px;
+    border-bottom: 1px solid #aca899;
+    background: #ece9d8;
+}
+
+.navigator-address-row label {
+    color: #444;
+}
+
+#ie-address-input {
+    min-width: 0;
+    height: 20px;
+    box-sizing: border-box;
+    border: 2px inset #fff;
+    border-radius: 0;
+    background: #fff;
+    color: #111;
+    padding: 1px 4px;
+    font: 11px "Courier New", monospace;
+}
+
+.navigator-linksbar {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 5px;
+    border-bottom: 1px solid #aca899;
+    background: #f4f1e6;
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.navigator-linksbar::-webkit-scrollbar {
+    display: none;
+}
+
+.navigator-links-label {
+    margin-right: 4px;
+    color: #555;
+}
+
+.navigator-linksbar button {
+    border: 0;
+    background: transparent;
+    color: #003399;
+    padding: 1px 5px;
+    font: 11px Tahoma, Arial, sans-serif;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.navigator-linksbar button:hover {
+    background: #dbe8ff;
+}
+
+.navigator-page-wrap {
+    min-height: 0;
+    padding: 2px;
+    background: #ece9d8;
+}
+
+.navigator-content {
+    height: 100%;
+    padding: 0;
+    overflow: auto;
+    border: 2px inset #fff;
+    background: #fff;
+    color: #111;
+}
+
+.navigator-statusbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 0 5px;
+    border-top: 1px solid #aca899;
+    background: #ece9d8;
+    color: #555;
+    font-size: 9px;
+    overflow: hidden;
+}
+
+.navigator-statusbar span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aq-page {
+    min-height: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+    background: #fff;
+    color: #111;
+}
+
+.aq-page a {
+    color: #0000ee;
+}
+
+.aq-page h1,
+.aq-page h2,
+.aq-page h3 {
+    color: #000080;
+    font-family: Tahoma, Arial, sans-serif;
+}
+
+.aq-page h1 {
+    margin: 0 0 5px;
+    font-size: 20px;
+}
+
+.aq-page h2 {
+    margin: 14px 0 6px;
+    font-size: 14px;
+}
+
+.aq-page hr {
+    border: 0;
+    border-top: 1px solid #aca899;
+}
+
+.aq-home-hero {
+    padding: 14px;
+    border: 1px solid #7f9db9;
+    background: linear-gradient(to bottom, #eef5ff, #d7e8ff);
+}
+
+.aq-home-hero strong {
+    display: block;
+    color: #003399;
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.aq-net-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.aq-net-card {
+    border: 1px solid #aca899;
+    background: #f7f7f7;
+    padding: 8px;
+}
+
+.aq-net-card h3 {
+    margin: 0 0 4px;
+    font-size: 12px;
+}
+
+.aq-net-card p {
+    margin: 0 0 7px;
+    color: #444;
+    line-height: 1.35;
+}
+
+.aq-net-card button,
+.aq-page-action {
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #777;
+    border-bottom: 2px solid #777;
+    background: #ece9d8;
+    color: #000;
+    padding: 3px 8px;
+    font: bold 10px Tahoma, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.aq-net-card button:active,
+.aq-page-action:active {
+    border-top-color: #777;
+    border-left-color: #777;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+}
+
+.aq-browser-list {
+    border: 1px solid #aca899;
+    background: #fff;
+}
+
+.aq-browser-list-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 7px 8px;
+    border-bottom: 1px solid #ddd;
+}
+
+.aq-browser-list-row:last-child {
+    border-bottom: 0;
+}
+
+.aq-browser-list-row:hover {
+    background: #eef5ff;
+}
+
+.aq-browser-list-row strong {
+    color: #003399;
+}
+
+.aq-browser-list-row small {
+    color: #777;
+}
+
+.aq-search-box {
+    display: flex;
+    gap: 5px;
+    margin: 10px 0;
+}
+
+.aq-search-box input {
+    flex: 1;
+    min-width: 0;
+    border: 2px inset #fff;
+    padding: 3px 5px;
+}
+
+.aq-error-page {
+    text-align: center;
+    padding-top: 46px;
+}
+
+.aq-error-page .code {
+    color: #808080;
+    font-size: 42px;
+    font-weight: bold;
+}
+
+body.global-dark #win-ie .navigator-shell,
+body.global-dark #win-ie .navigator-menubar,
+body.global-dark #win-ie .navigator-toolbar,
+body.global-dark #win-ie .navigator-address-row,
+body.global-dark #win-ie .navigator-linksbar,
+body.global-dark #win-ie .navigator-statusbar,
+body.global-dark #win-ie .navigator-page-wrap {
+    background: #ece9d8;
+    color: #111;
+}
+
+body.global-dark #win-ie .navigator-content,
+body.global-dark #win-ie .aq-page {
+    background: #fff;
+    color: #111;
+}
+
+@media (max-width: 760px) {
+    .navigator-shell {
+        grid-template-rows: 0 34px 29px 23px minmax(0, 1fr) 20px;
+    }
+
+    .navigator-menubar {
+        display: none;
+    }
+
+    .nav-text-btn {
+        display: none;
+    }
+
+    .aq-net-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #ie-zone {
+        display: none;
+    }
+}
+
+
+/* --- AQ-Navigator classic-browser refinement --- */
+#win-player .player-cfg-title-btn {
+    width: 34px;
+    min-width: 34px;
+    padding: 0 3px !important;
+    font-size: 9px !important;
+}
+
+#win-player > .title-bar > span:first-child {
+    padding-right: 4px;
+}
+
+.navigator-menubar {
+    position: relative;
+    z-index: 50;
+    gap: 0;
+    overflow: visible;
+}
+
+.navigator-menu {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+}
+
+.navigator-menu-button {
+    height: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 1px 7px 2px;
+    color: #111;
+    font: 11px Tahoma, Arial, sans-serif;
+    cursor: default;
+}
+
+.navigator-menu-button:hover,
+.navigator-menu-button.active {
+    border-top-color: #fff;
+    border-left-color: #fff;
+    border-right-color: #808080;
+    border-bottom-color: #808080;
+    background: #d4d0c8;
+}
+
+.navigator-dropdown {
+    display: none;
+    position: absolute;
+    top: 20px;
+    left: 0;
+    z-index: 400;
+    min-width: 170px;
+    padding: 2px;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #404040;
+    border-bottom: 2px solid #404040;
+    background: #d4d0c8;
+    box-shadow: 1px 1px 0 rgba(0,0,0,.35);
+}
+
+.navigator-dropdown-right {
+    left: auto;
+    right: 0;
+}
+
+.navigator-dropdown.open {
+    display: block;
+}
+
+.navigator-dropdown button {
+    width: 100%;
+    min-height: 20px;
+    border: 0;
+    background: transparent;
+    padding: 3px 22px 3px 18px;
+    text-align: left;
+    color: #000;
+    font: 11px Tahoma, Arial, sans-serif;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.navigator-dropdown button:hover {
+    background: #0a246a;
+    color: #fff;
+}
+
+.navigator-menu-separator {
+    height: 1px;
+    margin: 3px 2px;
+    border-top: 1px solid #808080;
+    border-bottom: 1px solid #fff;
+}
+
+.navigator-linksbar {
+    min-height: 23px;
+    box-sizing: border-box;
+}
+
+.navigator-links-label {
+    color: #555;
+    padding-left: 2px;
+}
+
+#win-ie.navigator-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: calc(100vh - 30px) !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    resize: none !important;
+    z-index: 6500 !important;
+}
+
+#win-ie.navigator-fullscreen > .title-bar {
+    border-radius: 0 !important;
+}
+
+.navigator-content {
+    font-family: Tahoma, Arial, sans-serif;
+}
+
+.navigator-content h2,
+.navigator-content p,
+.navigator-content div,
+.navigator-content a {
+    font-family: inherit;
+}
+
+/* Old browsers did not have soft modern card interactions. */
+#win-ie .aq-home-hero,
+#win-ie .aq-net-card,
+#win-ie .aq-browser-list,
+#win-ie .aq-browser-list-row,
+#win-ie .aq-search-box {
+    border-radius: 0;
+    box-shadow: none;
+}
+
+
+/* --- Navigator menu rendering hotfix --- */
+.navigator-dropdown {
+    opacity: 1;
+    overflow: hidden;
+    background: #d4d0c8 !important;
+}
+
+.navigator-dropdown button {
+    box-sizing: border-box;
+    background: #d4d0c8;
+}
+
+.navigator-dropdown button:hover {
+    background: #0a246a;
+    color: #fff;
+}

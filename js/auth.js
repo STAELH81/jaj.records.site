@@ -1,12 +1,29 @@
 import './cloud-sync.js';
-const IDENTITY_MODULE_URL = 'https://esm.sh/@netlify/identity@2.0.0';
-let identityModulePromise = null;
+const AUTH_API_PATH = '/api/aq-auth';
 
-function getIdentityApi() {
-    if (!identityModulePromise) {
-        identityModulePromise = import(IDENTITY_MODULE_URL);
+async function authApi(method = 'GET', payload = null) {
+    const options = {
+        method,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' }
+    };
+
+    if (payload) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(payload);
     }
-    return identityModulePromise;
+
+    const response = await fetch(AUTH_API_PATH, options);
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        const error = new Error(data?.message || data?.error || `AQ Auth failed (${response.status})`);
+        error.status = response.status;
+        throw error;
+    }
+
+    return data;
 }
 
 const RECENT_ACCOUNTS_KEY = 'jaj_recent_accounts_v1';
@@ -37,6 +54,67 @@ const sessionSummary = document.getElementById('aq-session-summary');
 let currentIdentityUser = null;
 let currentSession = null;
 let busy = false;
+
+function isEnglish() {
+    return document.documentElement.lang === 'en';
+}
+
+function tr(fr, en) {
+    return isEnglish() ? en : fr;
+}
+
+function applyAuthLanguage() {
+    const q = (selector) => document.querySelector(selector);
+    const set = (selector, value) => {
+        const el = q(selector);
+        if (el) el.textContent = value;
+    };
+
+    const welcomeTitle = q('.aq-welcome-brand h1');
+    if (welcomeTitle) welcomeTitle.innerHTML = tr('Bienvenue sur <span>AQ-NEO</span>', 'Welcome to <span>AQ-NEO</span>');
+    set('.aq-welcome-brand p', tr('Pour commencer, choisissez votre session.', 'To get started, choose your session.'));
+    const zone = q('.aq-account-zone');
+    if (zone) zone.setAttribute('aria-label', tr('Choix du compte', 'Account selection'));
+
+    const guestCopy = document.querySelectorAll('#aq-guest-btn .aq-account-copy > *');
+    if (guestCopy[0]) guestCopy[0].textContent = tr('Invité', 'Guest');
+    if (guestCopy[1]) guestCopy[1].textContent = tr('Entrer sans compte', 'Enter without an account');
+
+    const otherCopy = document.querySelectorAll('#aq-other-toggle .aq-account-copy > *');
+    if (otherCopy[0]) otherCopy[0].textContent = tr('Autre compte', 'Other account');
+    if (otherCopy[1]) otherCopy[1].textContent = tr('Adresse e-mail + mot de passe', 'Email address + password');
+
+    const createCopy = document.querySelectorAll('#aq-create-toggle .aq-account-copy > *');
+    if (createCopy[0]) createCopy[0].textContent = tr('Créer un compte', 'Create an account');
+    if (createCopy[1]) createCopy[1].textContent = tr('Sauvegarde AQ-NEO et identité JAJ', 'AQ-NEO backup and JAJ identity');
+
+    const loginLabels = document.querySelectorAll('#aq-login-form label > span');
+    if (loginLabels[0]) loginLabels[0].textContent = 'E-mail';
+    if (loginLabels[1]) loginLabels[1].textContent = tr('Mot de passe', 'Password');
+    if (loginCancel) loginCancel.textContent = tr('Annuler', 'Cancel');
+    const loginSubmit = q('#aq-login-form button[type="submit"]');
+    if (loginSubmit) loginSubmit.textContent = tr('Connexion ›', 'Sign in ›');
+
+    const signupLabels = document.querySelectorAll('#aq-signup-form label > span');
+    if (signupLabels[0]) signupLabels[0].textContent = tr('Nom affiché', 'Display name');
+    if (signupLabels[1]) signupLabels[1].textContent = tr('E-mail réel', 'Real email');
+    if (signupLabels[2]) signupLabels[2].textContent = tr('Mot de passe', 'Password');
+    const note = q('#aq-signup-form .aq-form-note');
+    if (note) note.innerHTML = tr(
+        'Ton adresse <strong>@aquerty.fr</strong> est fictive et sera générée automatiquement.',
+        'Your <strong>@aquerty.fr</strong> address is fictional and will be generated automatically.'
+    );
+    if (signupCancel) signupCancel.textContent = tr('Annuler', 'Cancel');
+    const signupSubmit = q('#aq-signup-form button[type="submit"]');
+    if (signupSubmit) signupSubmit.textContent = tr('Créer ›', 'Create ›');
+
+    set('#aq-welcome-network', tr('AQ-NET · prêt', 'AQ-NET · ready'));
+    if (switchUserBtn) switchUserBtn.textContent = tr('Changer d’utilisateur', 'Switch user');
+    if (logoutBtn) logoutBtn.textContent = tr('Déconnexion', 'Log out');
+
+    renderRecentAccounts();
+    updateDesktopSessionUI(currentSession);
+}
 
 function setStatus(message = '', type = '') {
     if (!statusEl) return;
@@ -69,7 +147,7 @@ function shortToken(size = 4) {
 
 function getDisplayName(user) {
     const metadata = user?.user_metadata || {};
-    return metadata.display_name || metadata.full_name || user?.email?.split('@')[0] || 'Utilisateur';
+    return metadata.display_name || metadata.full_name || user?.email?.split('@')[0] || tr('Utilisateur', 'User');
 }
 
 function buildAquertyMail(user) {
@@ -96,36 +174,13 @@ function normalizeRoles(user) {
 }
 
 async function refreshUserFromServer(user) {
-    if (!user?.id) return user;
-
     try {
-        const response = await fetch('/api/aq-me', {
-            method: 'GET',
-            credentials: 'same-origin',
-            cache: 'no-store',
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (!response.ok) return user;
-
-        const live = await response.json();
-        const liveRoles = normalizeRoleList(live?.roles);
-
-        return {
-            ...user,
-            roles: liveRoles,
-            app_metadata: {
-                ...(user.app_metadata || {}),
-                roles: liveRoles
-            },
-            appMetadata: {
-                ...(user.appMetadata || {}),
-                roles: liveRoles
-            }
-        };
+        const result = await authApi('GET');
+        if (!result?.authenticated || !result?.user) return user || null;
+        return result.user;
     } catch (error) {
-        console.warn('[JAJ Auth] live role refresh failed', error);
-        return user;
+        console.warn('[JAJ Auth] live user refresh failed', error);
+        return user || null;
     }
 }
 
@@ -283,7 +338,7 @@ function renderRecentAccounts() {
 
         const sub = document.createElement('small');
         sub.textContent = isCurrent
-            ? `${account.aquertyMail || maskEmail(account.email)} · session active`
+            ? `${account.aquertyMail || maskEmail(account.email)} · ${tr('session active', 'active session')}`
             : (account.aquertyMail || maskEmail(account.email));
 
         const arrow = document.createElement('span');
@@ -316,12 +371,12 @@ function renderRecentAccounts() {
             form.className = 'aq-inline-form aq-recent-login';
             form.innerHTML = `
                 <label>
-                    <span>Mot de passe</span>
+                    <span>${tr('Mot de passe', 'Password')}</span>
                     <input type="password" autocomplete="current-password" required minlength="6">
                 </label>
                 <div class="aq-inline-actions">
-                    <button type="button" class="aq-mini-btn aq-recent-cancel">Annuler</button>
-                    <button type="submit" class="aq-mini-btn aq-mini-btn-primary">Connexion ›</button>
+                    <button type="button" class="aq-mini-btn aq-recent-cancel">${tr('Annuler', 'Cancel')}</button>
+                    <button type="submit" class="aq-mini-btn aq-mini-btn-primary">${tr('Connexion ›', 'Sign in ›')}</button>
                 </div>
             `;
             card.append(form);
@@ -347,7 +402,7 @@ function makeGuestSession() {
         type: 'guest',
         id: `guest-${guestId}`,
         email: null,
-        displayName: 'Invité',
+        displayName: tr('Invité', 'Guest'),
         aquertyMail: `guest-${guestId}@aquerty.fr`,
         roles: [],
         isArtist: false,
@@ -364,11 +419,11 @@ function updateDesktopSessionUI(session) {
     if (sessionSummary) {
         sessionSummary.textContent = session
             ? session.aquertyMail
-            : 'Session : aucune';
+            : tr('Session : aucune', 'Session: none');
     }
 
     if (sessionName) {
-        sessionName.textContent = session?.displayName || 'Aucune session';
+        sessionName.textContent = session?.displayName || tr('Aucune session', 'No session');
     }
 
     if (sessionAvatar) {
@@ -381,7 +436,7 @@ function updateDesktopSessionUI(session) {
         sessionRole.dataset.role = primaryRole;
         sessionRole.textContent = displayRoles.length
             ? displayRoles.map((role) => role.toUpperCase()).join(' + ')
-            : 'OFFLINE';
+            : tr('HORS LIGNE', 'OFFLINE');
     }
 
     if (logoutBtn) {
@@ -396,7 +451,7 @@ async function enterSession(session) {
     updateDesktopSessionUI(session);
 
     if (window.AQCloudSync) {
-        setStatus(session?.type === 'user' ? 'Synchronisation du profil AQ-NEO…' : 'Chargement de la session locale…');
+        setStatus(session?.type === 'user' ? tr('Synchronisation du profil AQ-NEO…', 'Syncing AQ-NEO profile…') : tr('Chargement de la session locale…', 'Loading local session…'));
         await window.AQCloudSync.activate(session);
     }
 
@@ -428,19 +483,23 @@ function hideWelcome() {
 async function doLogin(email, password) {
     if (!email || !password || busy) return;
     setBusy(true);
-    setStatus('Connexion à AQ-NET…');
+    setStatus(tr('Connexion à AQ-NET…', 'Connecting to AQ-NET…'));
     try {
         await window.AQCloudSync?.flush?.();
-        const { login } = await getIdentityApi();
-        const user = await login(email.trim(), password);
-        currentIdentityUser = await refreshUserFromServer(user);
+        const result = await authApi('POST', {
+            action: 'login',
+            email: email.trim(),
+            password
+        });
+        currentIdentityUser = result?.user || null;
+        if (!currentIdentityUser) throw new Error(tr('Session AQ-NEO introuvable après connexion.', 'AQ-NEO session not found after sign-in.'));
         const session = sessionFromUser(currentIdentityUser);
         renderRecentAccounts();
-        setStatus('Session ouverte.', 'success');
+        setStatus(tr('Session ouverte.', 'Session opened.'), 'success');
         await enterSession(session);
     } catch (error) {
         console.error('[JAJ Auth] login failed', error);
-        setStatus(identityErrorMessage(error, 'Connexion impossible.'), 'error');
+        setStatus(identityErrorMessage(error, tr('Connexion impossible.', 'Unable to sign in.')), 'error');
     } finally {
         setBusy(false);
     }
@@ -451,16 +510,16 @@ function identityErrorMessage(error, fallback) {
     const lower = raw.toLowerCase();
 
     if (lower.includes('identity') && (lower.includes('404') || lower.includes('not found'))) {
-        return 'Netlify Identity n’est pas encore activé sur ce site.';
+        return tr('Netlify Identity n’est pas encore activé sur ce site.', 'Netlify Identity is not enabled on this site yet.');
     }
     if (lower.includes('confirm') || lower.includes('verified')) {
-        return 'Compte créé, mais ton e-mail doit encore être confirmé.';
+        return tr('Compte créé, mais ton e-mail doit encore être confirmé.', 'Account created, but your email still needs to be confirmed.');
     }
     if (lower.includes('invalid') || lower.includes('password') || lower.includes('credentials')) {
-        return 'E-mail ou mot de passe incorrect.';
+        return tr('E-mail ou mot de passe incorrect.', 'Incorrect email or password.');
     }
     if (lower.includes('fetch') || lower.includes('network')) {
-        return 'AQ-NET ne répond pas. En local, utilise Netlify Dev ou teste le site déployé.';
+        return tr('AQ-NET ne répond pas. En local, utilise Netlify Dev ou teste le site déployé.', 'AQ-NET is not responding. Locally, use Netlify Dev or test the deployed site.');
     }
     return raw ? `${fallback} ${raw}` : fallback;
 }
@@ -512,29 +571,29 @@ signupForm?.addEventListener('submit', async (event) => {
     if (!displayName || !email || password.length < 8) return;
 
     setBusy(true);
-    setStatus('Création du profil AQ-NEO…');
+    setStatus(tr('Création du profil AQ-NEO…', 'Creating AQ-NEO profile…'));
 
     const provisionalMail = `${slugify(displayName)}.${shortToken(4)}@aquerty.fr`;
 
     try {
         await window.AQCloudSync?.flush?.();
-        const { signup, login } = await getIdentityApi();
-        await signup(email, password, {
-            full_name: displayName,
-            display_name: displayName,
-            aquerty_mail: provisionalMail
+        const result = await authApi('POST', {
+            action: 'signup',
+            email,
+            password,
+            displayName,
+            aquertyMail: provisionalMail
         });
 
-        try {
-            const user = await login(email, password);
-            currentIdentityUser = await refreshUserFromServer(user);
+        if (result?.authenticated && result?.user) {
+            currentIdentityUser = result.user;
             const session = sessionFromUser(currentIdentityUser);
             renderRecentAccounts();
-            setStatus('Compte créé.', 'success');
+            setStatus(tr('Compte créé.', 'Account created.'), 'success');
             await enterSession(session);
-        } catch (loginError) {
+        } else {
             setStatus(
-                'Compte créé. Vérifie ton e-mail pour le confirmer, puis reconnecte-toi.',
+                tr('Compte créé. Vérifie ton e-mail pour le confirmer, puis reconnecte-toi.', 'Account created. Check your email to confirm it, then sign in again.'),
                 'success'
             );
             closeInlineForms();
@@ -542,7 +601,7 @@ signupForm?.addEventListener('submit', async (event) => {
         }
     } catch (error) {
         console.error('[JAJ Auth] signup failed', error);
-        setStatus(identityErrorMessage(error, 'Création impossible.'), 'error');
+        setStatus(identityErrorMessage(error, tr('Création impossible.', 'Unable to create account.')), 'error');
     } finally {
         setBusy(false);
     }
@@ -550,7 +609,7 @@ signupForm?.addEventListener('submit', async (event) => {
 
 switchUserBtn?.addEventListener('click', async () => {
     await window.AQCloudSync?.flush?.();
-    showWelcome('Choisis une autre session.');
+    showWelcome(tr('Choisis une autre session.', 'Choose another session.'));
     if (typeof window.toggleStartMenu === 'function') window.toggleStartMenu(false);
 });
 
@@ -559,8 +618,7 @@ logoutBtn?.addEventListener('click', async () => {
     setBusy(true);
     try {
         await window.AQCloudSync?.flush?.();
-        const { logout } = await getIdentityApi();
-        await logout();
+        await authApi('POST', { action: 'logout' });
     } catch (error) {
         console.warn('[JAJ Auth] logout warning', error);
     } finally {
@@ -572,21 +630,19 @@ logoutBtn?.addEventListener('click', async () => {
         window.dispatchEvent(new CustomEvent('jaj:session-changed', { detail: null }));
         renderRecentAccounts();
         setBusy(false);
-        showWelcome('Session fermée.');
+        showWelcome(tr('Session fermée.', 'Session closed.'));
         if (typeof window.toggleStartMenu === 'function') window.toggleStartMenu(false);
     }
 });
 
 async function initializeIdentity() {
     try {
-        const { handleAuthCallback, getUser } = await getIdentityApi();
-        const callback = await handleAuthCallback();
-        if (callback?.user) currentIdentityUser = callback.user;
-        currentIdentityUser = (await getUser()) || currentIdentityUser;
-        currentIdentityUser = await refreshUserFromServer(currentIdentityUser);
+        const result = await authApi('GET');
+        currentIdentityUser = result?.authenticated ? (result.user || null) : null;
     } catch (error) {
-        // Guest mode remains fully usable if Identity isn't enabled or the CDN is unreachable.
+        // Guest mode remains fully usable if Identity isn't enabled or AQ Auth is unavailable.
         console.info('[JAJ Auth] Identity unavailable in this environment', error);
+        currentIdentityUser = null;
     }
 
     renderRecentAccounts();
@@ -604,6 +660,9 @@ window.AQAuth = {
     getSession: () => currentSession,
     getIdentityUser: () => currentIdentityUser
 };
+
+window.addEventListener('aq:language-changed', applyAuthLanguage);
+applyAuthLanguage();
 
 window.AQPermissions = {
     hasRole(role) {

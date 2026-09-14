@@ -58,10 +58,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             ];
         }
         return [
-            { title: 'System Message', text: 'Le disque C: est presque plein. Pensez a liberer de l espace.' },
-            { title: 'Network', text: 'Connexion réseau interrompue. Réessayez dans quelques instants.' },
-            { title: 'Printer', text: 'Aucune imprimante detectee sur le port LPT1.' },
-            { title: 'Reminder', text: 'N oubliez pas de sauvegarder votre travail regulierement.' }
+            { title: 'Message système', text: 'Le disque C: est presque plein. Pensez à libérer de l’espace.' },
+            { title: 'Réseau', text: 'Connexion réseau interrompue. Réessayez dans quelques instants.' },
+            { title: 'Imprimante', text: 'Aucune imprimante détectée sur le port LPT1.' },
+            { title: 'Rappel', text: 'N’oubliez pas de sauvegarder votre travail régulièrement.' }
         ];
     }
     function getContextualPopupMessages() {
@@ -76,11 +76,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             };
         }
         return {
-            openInternet: [{ title: 'Network', text: 'Connexion au serveur en cours...' }],
-            openPlayer: [{ title: 'Audio', text: 'Module audio initialise en mode stereo.' }],
-            openTempus: [{ title: 'Security', text: 'Fichier protege. Authentification requise.' }],
-            wrongPassword: [{ title: 'Security', text: 'Acces refuse. Mot de passe invalide.' }],
-            unlockTempus: [{ title: 'Security', text: 'Acces confirme. Nouveau chemin ajoute a Internet.' }],
+            openInternet: [{ title: 'Réseau', text: 'Connexion au serveur en cours...' }],
+            openPlayer: [{ title: 'Audio', text: 'Module audio initialisé en mode stéréo.' }],
+            openTempus: [{ title: 'Sécurité', text: 'Fichier protégé. Authentification requise.' }],
+            wrongPassword: [{ title: 'Sécurité', text: 'Accès refusé. Mot de passe invalide.' }],
+            unlockTempus: [{ title: 'Sécurité', text: 'Accès confirmé. Nouveau chemin ajouté à Navigator.' }],
             playTrack: [{ title: 'Audio', text: 'Lecture en cours. Niveau de sortie stable.' }]
         };
     }
@@ -1018,7 +1018,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             playerTask: 'AQ-Player...',
             playerCfg: 'Réglages',
             playerSettingsTitle: 'Paramètres Player',
-            playerSkinLabel: 'Skin:',
+            playerSkinLabel: 'Apparence :',
             playerNightLabel: 'Mode plein écran nuit',
             playerSettingsHint: 'Astuce: clique hors du panneau pour le fermer.',
             minesTask: 'AQ-Mines',
@@ -1075,9 +1075,9 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             tempusTask: 'Sécurité - tempus_pe...',
             settingsTask: 'Panneau de config...',
             mailFoldersTitle: 'Dossiers',
-            inbox: 'Inbox',
-            sent: 'Sent',
-            trash: 'Trash',
+            inbox: 'Boîte de réception',
+            sent: 'Envoyés',
+            trash: 'Corbeille',
             mailNew: 'Nouveau',
             mailReply: 'Répondre',
             mailDelete: 'Supprimer',
@@ -1258,11 +1258,25 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         appSettings.desktopLanguage = selected;
         document.documentElement.lang = selected;
         const t = tUI();
+        const isEn = selected === 'en';
         const setText = (id, value) => {
             const el = document.getElementById(id);
             if (el) el.textContent = value;
         };
+        const bootTitle = document.querySelector('#boot-screen .boot-title');
+        if (bootTitle) bootTitle.textContent = isEn ? 'Starting Aquerty AQ-NEO...' : 'Démarrage d’Aquerty AQ-NEO...';
         setText('boot-subtitle', t.bootSubtitle);
+        setText('boot-hint', isEn ? 'Tip: the experience is better on a PC.' : 'Astuce : l’expérience est meilleure sur PC.');
+        document.querySelectorAll('.window-minimize-btn').forEach((btn) => {
+            const label = isEn ? 'Minimize' : 'Réduire';
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
+        });
+        document.querySelectorAll('.window-close-btn').forEach((btn) => {
+            const label = isEn ? 'Close' : 'Fermer';
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
+        });
         setText('start-btn', t.menuLabel);
         const startTitles = document.querySelectorAll('#start-menu .start-menu-title');
         if (startTitles[0]) startTitles[0].textContent = t.recents;
@@ -1271,6 +1285,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (startButtons[0]) startButtons[0].textContent = t.settingsTitle;
         if (startButtons[1]) startButtons[1].textContent = t.shutdown;
         if (startButtons[2]) startButtons[2].textContent = t.restart;
+        setText('aq-switch-user-btn', isEn ? 'Switch user' : 'Changer d’utilisateur');
+        setText('aq-logout-btn', isEn ? 'Log out' : 'Déconnexion');
         setText('task-logs', t.logsWindow);
         setText('task-tempus', t.tempusTask);
         setText('task-settings', t.settingsTask);
@@ -1295,6 +1311,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         setText('player-settings-hint', t.playerSettingsHint);
         const desktopTrash = document.querySelector('.desktop-icon[data-desktop-icon="trash"] span');
         if (desktopTrash) desktopTrash.textContent = t.trashLabel;
+        const desktopSettings = document.querySelector('.desktop-icon[data-desktop-icon="settings"] span');
+        if (desktopSettings) desktopSettings.textContent = isEn ? 'Settings' : 'Paramètres';
         const trashWinTitle = document.querySelector('#win-trash .title-bar span');
         if (trashWinTitle) trashWinTitle.textContent = t.trashLabel;
         const trashTexts = document.querySelectorAll('#win-trash p');
@@ -1355,23 +1373,83 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             mobileNow.textContent = selected === 'en' ? 'READY' : 'PRÊT';
         }
         const mobilePlayBtn = document.getElementById('mobile-play-btn');
-        if (mobilePlayBtn) mobilePlayBtn.textContent = selected === 'en' ? 'PLAY / PAUSE' : 'LECTURE / PAUSE';
-        setText('mobile-lite-title', selected === 'en' ? 'Aquerty Mobile Lite' : 'Aquerty Mobile Lite');
-        setText('mobile-lite-subtitle', selected === 'en' ? 'Simplified mode: tracks + essential settings.' : 'Version simplifiée : tracks + réglages essentiels.');
-        setText('mobile-quick-title', selected === 'en' ? 'Quick settings' : 'Réglages rapides');
-        setText('mobile-quick-sounds-label', selected === 'en' ? 'System sounds' : 'Sons système');
-        setText('mobile-quick-volume-label', selected === 'en' ? 'Volume' : 'Volume');
-        setText('mobile-quick-language-label', selected === 'en' ? 'Language' : 'Langue');
-        setText('mobile-exit-lite-btn', selected === 'en' ? 'Exit lite mode' : 'Quitter le mode lite');
+        if (mobilePlayBtn) mobilePlayBtn.textContent = isEn ? 'PLAY / PAUSE' : 'LECTURE / PAUSE';
+        setText('mobile-prev-btn', isEn ? 'PREV' : 'PRÉC.');
+        setText('mobile-next-btn', isEn ? 'NEXT' : 'SUIV.');
+        setText('mobile-lite-title', 'Aquerty Mobile Lite');
+        setText('mobile-lite-subtitle', isEn ? 'Simplified mode: tracks + essential settings.' : 'Version simplifiée : pistes + réglages essentiels.');
+        setText('mobile-quick-title', isEn ? 'Quick settings' : 'Réglages rapides');
+        setText('mobile-quick-sounds-label', isEn ? 'System sounds' : 'Sons système');
+        setText('mobile-quick-volume-label', 'Volume');
+        setText('mobile-quick-language-label', isEn ? 'Language' : 'Langue');
+        setText('mobile-exit-lite-btn', isEn ? 'Exit lite mode' : 'Quitter le mode lite');
+        const mobileTrackTitle = document.querySelector('#mobile-app .mobile-card:nth-of-type(3) .mobile-title');
+        if (mobileTrackTitle) mobileTrackTitle.textContent = isEn ? 'Tracks' : 'Pistes';
+        const mobilePortLabels = {
+            'win-player': 'AQ-Player',
+            'win-ie': 'AQ-Navigator',
+            'win-settings': isEn ? 'Settings' : 'Paramètres',
+            'win-tempus': 'Tempus',
+            'win-myspace': 'MySpace'
+        };
+        document.querySelectorAll('#mobile-port-nav .mobile-port-btn').forEach((btn) => {
+            const key = btn.getAttribute('data-open-win');
+            if (mobilePortLabels[key]) btn.textContent = mobilePortLabels[key];
+        });
         const fab = document.getElementById('lite-exit-fab');
         if (fab) fab.textContent = selected === 'en' ? 'Exit lite' : 'Quitter lite';
 
         const ieHomeBtn = document.getElementById('ie-home-btn');
         if (ieHomeBtn) ieHomeBtn.title = t.ieHome;
-        const ieMenu = document.querySelectorAll('#win-ie .navigator-menubar > span');
+        const ieMenu = document.querySelectorAll('#win-ie .navigator-menu-button');
         t.ieMenu.forEach((txt, i) => { if (ieMenu[i]) ieMenu[i].textContent = txt; });
+
+        const navText = isEn ? {
+            file: ['Home page', 'Open address...', 'Print...', 'Close'],
+            edit: ['Copy', 'Select all'],
+            view: ['Refresh', 'Stop'],
+            favorites: ['Add to favorites...', 'Organize favorites...'],
+            tools: ['Internet Options...'],
+            help: ['Contents and Index', 'About AQ-Navigator'],
+            toolbar: ['Favorites', 'History', '★ Add'],
+            go: 'Go',
+            links: 'Links',
+            back: 'Back',
+            forward: 'Forward',
+            stop: 'Stop',
+            refresh: 'Refresh'
+        } : {
+            file: ['Page d’accueil', 'Ouvrir une adresse...', 'Imprimer...', 'Fermer'],
+            edit: ['Copier', 'Sélectionner tout'],
+            view: ['Actualiser', 'Arrêter'],
+            favorites: ['Ajouter aux favoris...', 'Organiser les favoris...'],
+            tools: ['Options Internet...'],
+            help: ['Sommaire et index', 'À propos d’AQ-Navigator'],
+            toolbar: ['Favoris', 'Historique', '★ Ajouter'],
+            go: 'Aller',
+            links: 'Liens',
+            back: 'Précédente',
+            forward: 'Suivante',
+            stop: 'Arrêter',
+            refresh: 'Actualiser'
+        };
+        ['file','edit','view','favorites','tools','help'].forEach((name) => {
+            const buttons = document.querySelectorAll(`#navigator-menubar [data-menu-panel="${name}"] > button`);
+            (navText[name] || []).forEach((txt, i) => { if (buttons[i]) buttons[i].textContent = txt; });
+        });
+        const navToolbarText = document.querySelectorAll('#win-ie .navigator-toolbar .nav-text-btn');
+        navText.toolbar.forEach((txt, i) => { if (navToolbarText[i]) navToolbarText[i].textContent = txt; });
+        const navToolButtons = document.querySelectorAll('#win-ie .navigator-toolbar .nav-tool-btn');
+        if (navToolButtons[0]) navToolButtons[0].title = navText.back;
+        if (navToolButtons[1]) navToolButtons[1].title = navText.forward;
+        if (navToolButtons[2]) navToolButtons[2].title = navText.stop;
+        if (navToolButtons[3]) navToolButtons[3].title = navText.refresh;
         const ieAddressLabel = document.querySelector('#win-ie .navigator-address-row label');
         if (ieAddressLabel) ieAddressLabel.textContent = t.ieAddress;
+        const ieGoBtn = document.querySelector('#win-ie .navigator-address-row button[type="submit"]');
+        if (ieGoBtn) ieGoBtn.textContent = navText.go;
+        const ieLinksLabel = document.querySelector('#win-ie .navigator-links-label');
+        if (ieLinksLabel) ieLinksLabel.textContent = navText.links;
         updateNavigatorFullscreenMenu();
 
         const logsTitle = document.querySelector('#win-logs .title-bar span');
@@ -1409,6 +1487,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const netStatus = document.getElementById('tray-net-status');
         if (netStatus) netStatus.textContent = t.trayConnected;
 
+        const mailAddressLabel = document.querySelector('#win-mail .mail-account-strip span');
+        if (mailAddressLabel) mailAddressLabel.textContent = isEn ? 'AQ-Mail address:' : 'Adresse AQ-Mail :';
         const mailFoldersTitle = document.querySelector('#win-mail .mail-sidebar .setting-title');
         if (mailFoldersTitle) mailFoldersTitle.textContent = t.mailFoldersTitle;
         const mailFolders = document.querySelectorAll('#win-mail .mail-folder span');
@@ -1437,8 +1517,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         }
         const accFrame = document.querySelector('#win-acc iframe');
         if (accFrame) accFrame.src = accFrame.src;
+        updateModeButtons?.();
         renderSystemLogs();
         renderRecents();
+        window.dispatchEvent(new CustomEvent('aq:language-changed', { detail: { language: selected } }));
     }
 
     function closeSystemPopup() {
@@ -1626,8 +1708,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                             <p style="margin:0 0 10px;font-size:14px;"><strong>C:\\medias\\musique\\Anthem.mp3</strong></p>
                             <audio id="ie-audio-player" src="medias/musique/anthem.mp3"></audio>
                             <div style="display:flex;gap:5px;align-items:center;">
-                                <button onclick="document.getElementById('ie-audio-player').play()" class="retro-btn" style="padding:2px 8px;">PLAY</button>
-                                <button onclick="let p=document.getElementById('ie-audio-player');p.pause();p.currentTime=0;" class="retro-btn" style="padding:2px 8px;">STOP</button>
+                                <button onclick="document.getElementById('ie-audio-player').play()" class="retro-btn" style="padding:2px 8px;">${isEn ? 'PLAY' : 'LECTURE'}</button>
+                                <button onclick="let p=document.getElementById('ie-audio-player');p.pause();p.currentTime=0;" class="retro-btn" style="padding:2px 8px;">${isEn ? 'STOP' : 'ARRÊT'}</button>
                                 <span style="font-size:11px;margin-left:10px;">${tUI().ieVol}</span>
                                 <input type="range" min="0" max="1" step="0.1" value="0.5" style="width:60px;" oninput="document.getElementById('ie-audio-player').volume=this.value">
                             </div>
@@ -1674,7 +1756,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                     return `
                         <div style="display:flex;justify-content:space-between;gap:8px;padding:6px;border-bottom:1px solid #ddd;">
                             <a href="#" onclick="setIEPage('${escapeNavigatorHTML(key)}');return false;">${escapeNavigatorHTML(label)}</a>
-                            <button class="retro-btn" onclick="removeIEFavorite('${escapeNavigatorHTML(key)}')">Suppr.</button>
+                            <button class="retro-btn" onclick="removeIEFavorite('${escapeNavigatorHTML(key)}')">${isEn ? 'Remove' : 'Suppr.'}</button>
                         </div>
                     `;
                 }).join('')
@@ -2356,8 +2438,13 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
 
     function updateModeButtons() {
-        shuffleBtn.innerText = isShuffleEnabled ? 'SHUFFLE ON' : 'SHUFFLE OFF';
-        repeatOneBtn.innerText = isRepeatOneEnabled ? 'REPEAT1 ON' : 'REPEAT1 OFF';
+        const isEn = getCurrentLanguage() === 'en';
+        shuffleBtn.innerText = isEn
+            ? (isShuffleEnabled ? 'SHUFFLE ON' : 'SHUFFLE OFF')
+            : (isShuffleEnabled ? 'ALÉATOIRE OUI' : 'ALÉATOIRE NON');
+        repeatOneBtn.innerText = isEn
+            ? (isRepeatOneEnabled ? 'REPEAT1 ON' : 'REPEAT1 OFF')
+            : (isRepeatOneEnabled ? 'RÉPÉTER1 OUI' : 'RÉPÉTER1 NON');
         shuffleBtn.classList.toggle('active', isShuffleEnabled);
         repeatOneBtn.classList.toggle('active', isRepeatOneEnabled);
     }
@@ -2595,7 +2682,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         });
         player.src = folder + track.file;
         player.play();
-        statusDisplay.innerText = "PLAYING: " + track.title.toUpperCase();
+        statusDisplay.innerText = (getCurrentLanguage() === 'en' ? 'PLAYING: ' : 'LECTURE : ') + track.title.toUpperCase();
         addSystemLog(`Lecture piste: ${track.title}`);
         if (shouldNotify) triggerContextualPopup('playTrack');
         savePlayerState();

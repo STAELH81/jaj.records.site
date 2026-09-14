@@ -293,7 +293,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const container = document.getElementById('recent-list');
         container.innerHTML = '';
         if (recentItems.length === 0) {
-            container.innerHTML = '<p class="start-menu-empty">Aucun élément récent</p>';
+            container.innerHTML = `<p class="start-menu-empty">${getCurrentLanguage() === 'en' ? 'No recent items' : 'Aucun élément récent'}</p>`;
             return;
         }
         recentItems.forEach((key) => {
@@ -330,7 +330,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (!list) return;
         list.innerHTML = '';
         if (systemLogs.length === 0) {
-            list.innerHTML = '<div class="log-entry">Aucun log pour le moment.</div>';
+            list.innerHTML = `<div class="log-entry">${getCurrentLanguage() === 'en' ? 'No logs yet.' : 'Aucun log pour le moment.'}</div>`;
             return;
         }
         systemLogs.forEach((entry) => {
@@ -638,7 +638,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             .filter((win) => win.style.display === 'block');
 
         if (!visibleWindows.length) {
-            setShutdownScreen('Fermeture des applications…', 'Aucune application ouverte.', 45);
+            setShutdownScreen(
+                getCurrentLanguage() === 'en' ? 'Closing applications…' : 'Fermeture des applications…',
+                getCurrentLanguage() === 'en' ? 'No application is open.' : 'Aucune application ouverte.',
+                45
+            );
             await powerDelay(280);
             return;
         }
@@ -648,7 +652,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             const title = win.querySelector('.title-bar > span')?.textContent?.trim() || win.id;
             const progress = 10 + Math.round(((i + 1) / visibleWindows.length) * 42);
 
-            setShutdownScreen('Fermeture des applications…', title, progress);
+            setShutdownScreen(getCurrentLanguage() === 'en' ? 'Closing applications…' : 'Fermeture des applications…', title, progress);
             stopAudioInWindow(win.id);
             win.classList.add('aq-window-shutting-down');
             await powerDelay(150);
@@ -676,9 +680,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         toggleStartMenu(false);
         hideScreensaver();
         toggleAmbientHum(false);
+        const powerTitle = mode === 'restart'
+            ? (getCurrentLanguage() === 'en' ? 'Restarting AQ-NEO…' : 'Redémarrage d’AQ-NEO…')
+            : (getCurrentLanguage() === 'en' ? 'Shutting down AQ-NEO…' : 'Arrêt d’AQ-NEO…');
         setShutdownScreen(
-            mode === 'restart' ? 'Redémarrage d’AQ-NEO…' : 'Arrêt d’AQ-NEO…',
-            'Préparation du système…',
+            powerTitle,
+            getCurrentLanguage() === 'en' ? 'Preparing the system…' : 'Préparation du système…',
             5
         );
 
@@ -686,16 +693,18 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         await closeAppsForPowerTransition();
 
         setShutdownScreen(
-            mode === 'restart' ? 'Redémarrage d’AQ-NEO…' : 'Arrêt d’AQ-NEO…',
-            'Enregistrement de la session…',
+            powerTitle,
+            getCurrentLanguage() === 'en' ? 'Saving session…' : 'Enregistrement de la session…',
             68
         );
         await window.AQCloudSync?.flush?.();
         await powerDelay(320);
 
         setShutdownScreen(
-            mode === 'restart' ? 'Redémarrage d’AQ-NEO…' : 'Arrêt d’AQ-NEO…',
-            mode === 'restart' ? 'Relance des services Aquerty…' : 'Fermeture des services Aquerty…',
+            powerTitle,
+            mode === 'restart'
+                ? (getCurrentLanguage() === 'en' ? 'Restarting Aquerty services…' : 'Relance des services Aquerty…')
+                : (getCurrentLanguage() === 'en' ? 'Closing Aquerty services…' : 'Fermeture des services Aquerty…'),
             88
         );
         await powerDelay(420);
@@ -703,7 +712,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (mode === 'restart') {
             addSystemLog('Redémarrage du système.', 'warn');
             localStorage.removeItem(SESSION_KEY);
-            setShutdownScreen('Redémarrage…', 'AQ-NEO va redémarrer.', 100);
+            setShutdownScreen(
+                getCurrentLanguage() === 'en' ? 'Restarting…' : 'Redémarrage…',
+                getCurrentLanguage() === 'en' ? 'AQ-NEO will restart.' : 'AQ-NEO va redémarrer.',
+                100
+            );
             await powerDelay(420);
             window.location.reload();
             return;
@@ -1287,6 +1300,9 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (startButtons[2]) startButtons[2].textContent = t.restart;
         setText('aq-switch-user-btn', isEn ? 'Switch user' : 'Changer d’utilisateur');
         setText('aq-logout-btn', isEn ? 'Log out' : 'Déconnexion');
+        setText('power-on-btn', isEn ? 'Power on' : 'Allumer');
+        setText('shutdown-title', isEn ? 'Shutting down AQ-NEO…' : 'Arrêt d’AQ-NEO…');
+        setText('shutdown-detail', isEn ? 'Preparing the system…' : 'Préparation du système…');
         setText('task-logs', t.logsWindow);
         setText('task-tempus', t.tempusTask);
         setText('task-settings', t.settingsTask);

@@ -70,7 +70,8 @@ function applyAuthLanguage() {
         if (el) el.textContent = value;
     };
 
-    set('.aq-welcome-brand h1', tr('Bienvenue sur AQ-NEO', 'Welcome to AQ-NEO'));
+    const welcomeTitle = q('.aq-welcome-brand h1');
+    if (welcomeTitle) welcomeTitle.innerHTML = tr('Bienvenue sur <span>AQ-NEO</span>', 'Welcome to <span>AQ-NEO</span>');
     set('.aq-welcome-brand p', tr('Pour commencer, choisissez votre session.', 'To get started, choose your session.'));
     const zone = q('.aq-account-zone');
     if (zone) zone.setAttribute('aria-label', tr('Choix du compte', 'Account selection'));

@@ -1517,7 +1517,16 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         }
         const accFrame = document.querySelector('#win-acc iframe');
         if (accFrame) accFrame.src = accFrame.src;
-        updateModeButtons?.();
+        const shuffleUi = document.getElementById('shuffle-btn');
+        if (shuffleUi) {
+            const on = shuffleUi.classList.contains('active');
+            shuffleUi.textContent = isEn ? (on ? 'SHUFFLE ON' : 'SHUFFLE OFF') : (on ? 'ALÉATOIRE OUI' : 'ALÉATOIRE NON');
+        }
+        const repeatUi = document.getElementById('repeat-one-btn');
+        if (repeatUi) {
+            const on = repeatUi.classList.contains('active');
+            repeatUi.textContent = isEn ? (on ? 'REPEAT1 ON' : 'REPEAT1 OFF') : (on ? 'RÉPÉTER1 OUI' : 'RÉPÉTER1 NON');
+        }
         renderSystemLogs();
         renderRecents();
         window.dispatchEvent(new CustomEvent('aq:language-changed', { detail: { language: selected } }));

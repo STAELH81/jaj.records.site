@@ -11,6 +11,10 @@ let pendingAfterSync = false;
 
 const cloudStatusEl = document.getElementById('aq-cloud-status');
 
+function tr(fr, en) {
+    return document.documentElement.lang === 'en' ? en : fr;
+}
+
 function setCloudStatus(text, state = '') {
     if (!cloudStatusEl) return;
     cloudStatusEl.textContent = text;
@@ -128,7 +132,7 @@ async function uploadSnapshot(snapshot = null) {
     if (!current) return null;
 
     syncing = true;
-    setCloudStatus('Cloud : synchronisation…', 'syncing');
+    setCloudStatus(tr('Cloud : synchronisation…', 'Cloud: syncing…'), 'syncing');
 
     try {
         const result = await apiRequest('PUT', current);
@@ -137,12 +141,12 @@ async function uploadSnapshot(snapshot = null) {
             dirtyAt: 0,
             lastSyncedAt: Date.parse(result.updatedAt || '') || Date.now()
         });
-        setCloudStatus('Cloud : synchronisé', 'synced');
+        setCloudStatus(tr('Cloud : synchronisé', 'Cloud: synced'), 'synced');
         return result;
     } catch (error) {
         console.warn('[AQ Cloud] upload failed', error);
         cacheCurrentState(activeSession, true);
-        setCloudStatus('Cloud : sauvegarde locale', 'error');
+        setCloudStatus(tr('Cloud : sauvegarde locale', 'Cloud: local backup'), 'error');
         return null;
     } finally {
         syncing = false;
@@ -173,11 +177,11 @@ async function prepareGuestSession(session) {
     }
 
     activeSession = session;
-    setCloudStatus('Cloud : session locale', 'local');
+    setCloudStatus(tr('Cloud : session locale', 'Cloud: local session'), 'local');
 }
 
 async function prepareUserSession(session) {
-    setCloudStatus('Cloud : connexion…', 'syncing');
+    setCloudStatus(tr('Cloud : connexion…', 'Cloud: connecting…'), 'syncing');
 
     const cache = readLocalJSON(cacheKey(session), null);
     const meta = getMeta(session);
@@ -202,7 +206,7 @@ async function prepareUserSession(session) {
                 lastSyncedAt: remoteUpdatedAt || Date.now()
             });
             activeSession = session;
-            setCloudStatus('Cloud : synchronisé', 'synced');
+            setCloudStatus(tr('Cloud : synchronisé', 'Cloud: synced'), 'synced');
             return;
         }
 
@@ -229,7 +233,7 @@ async function prepareUserSession(session) {
         activeSession = session;
         cacheCurrentState(session, true);
         setCloudStatus(
-            error?.status === 401 ? 'Cloud : session non authentifiée' : 'Cloud : mode hors ligne',
+            error?.status === 401 ? tr('Cloud : session non authentifiée', 'Cloud: unauthenticated session') : tr('Cloud : mode hors ligne', 'Cloud: offline mode'),
             'error'
         );
     }
@@ -246,7 +250,7 @@ async function activate(session) {
     activeSession = null;
 
     if (!session) {
-        setCloudStatus('Cloud : hors ligne', '');
+        setCloudStatus(tr('Cloud : hors ligne', 'Cloud: offline'), '');
         return;
     }
 
@@ -276,7 +280,7 @@ function deactivate() {
     syncTimer = null;
     if (activeSession) cacheCurrentState(activeSession, false);
     activeSession = null;
-    setCloudStatus('Cloud : hors ligne', '');
+    setCloudStatus(tr('Cloud : hors ligne', 'Cloud: offline'), '');
 }
 
 window.addEventListener('aq:persistence-changed', () => {
@@ -302,3 +306,16 @@ window.AQCloudSync = {
     deactivate,
     getActiveSession: () => activeSession
 };
+
+
+window.addEventListener('aq:language-changed', () => {
+    if (!cloudStatusEl) return;
+    const state = cloudStatusEl.dataset.state || '';
+    if (state === 'syncing') cloudStatusEl.textContent = tr('Cloud : synchronisation…', 'Cloud: syncing…');
+    else if (state === 'synced') cloudStatusEl.textContent = tr('Cloud : synchronisé', 'Cloud: synced');
+    else if (state === 'error') cloudStatusEl.textContent = activeSession?.type === 'user'
+        ? tr('Cloud : mode hors ligne', 'Cloud: offline mode')
+        : tr('Cloud : sauvegarde locale', 'Cloud: local backup');
+    else if (state === 'local') cloudStatusEl.textContent = tr('Cloud : session locale', 'Cloud: local session');
+    else cloudStatusEl.textContent = tr('Cloud : hors ligne', 'Cloud: offline');
+});

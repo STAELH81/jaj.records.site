@@ -3,7 +3,7 @@ import AQCatalog from './catalog.js';
 let activeReleaseId = null;
 let desktopReleaseSelect = null;
 let mobileReleaseSelect = null;
-let releaseLabel = null;
+let desktopReleaseLabel = null;
 let mobileReleaseLabel = null;
 
 function isEnglish() {
@@ -24,63 +24,174 @@ function releaseOptionText(release) {
     return `${artist.name} — ${release.title}${year}`;
 }
 
+function repairMySpaceIconPath() {
+    const src = 'medias/img/myspaceimg.png';
+    document.querySelectorAll('img[alt="AQ-MySpace"]').forEach((img) => {
+        img.style.display = '';
+        img.onerror = function onMySpaceIconError() {
+            this.style.display = 'none';
+        };
+        if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+    });
+}
+
+function installPlayerLibraryStyles() {
+    if (document.getElementById('aq-catalog-player-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'aq-catalog-player-styles';
+    style.textContent = `
+        #win-player .player-content {
+            grid-template-rows: 28px minmax(0, 1fr);
+            gap: 8px 15px;
+        }
+
+        #player-release-strip {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+            padding: 3px 5px;
+            box-sizing: border-box;
+            background: var(--xp-beige);
+            border-top: 2px solid #fff;
+            border-left: 2px solid #fff;
+            border-right: 2px solid #808080;
+            border-bottom: 2px solid #808080;
+            font: 11px Tahoma, sans-serif;
+        }
+
+        #player-release-strip .player-release-label-text {
+            flex: 0 0 auto;
+            font-weight: bold;
+            color: #222;
+        }
+
+        #player-release-select {
+            flex: 1 1 auto;
+            min-width: 0;
+            height: 20px;
+            box-sizing: border-box;
+            border: 2px inset #fff;
+            background: #fff;
+            color: #000;
+            font: 11px Tahoma, sans-serif;
+        }
+
+        #player-release-kind {
+            flex: 0 0 auto;
+            padding: 1px 5px;
+            border: 1px solid #808080;
+            background: #d4d0c8;
+            color: #333;
+            font-size: 9px;
+            line-height: 15px;
+            text-transform: uppercase;
+        }
+
+        #win-player.player-skin-dark #player-release-strip {
+            background: #272727;
+            border-top-color: #555;
+            border-left-color: #555;
+            border-right-color: #111;
+            border-bottom-color: #111;
+        }
+
+        #win-player.player-skin-dark #player-release-strip .player-release-label-text {
+            color: #ddd;
+        }
+
+        #win-player.player-skin-dark #player-release-kind {
+            background: #333;
+            border-color: #666;
+            color: #ddd;
+        }
+
+        #win-player.player-skin-ice #player-release-strip {
+            background: #dcecff;
+        }
+
+        #win-player.player-skin-rose #player-release-strip {
+            background: #ffe3f3;
+        }
+
+        #mobile-release-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0 0;
+            padding-top: 8px;
+            border-top: 1px solid #9a9a9a;
+        }
+
+        #mobile-release-row .mobile-release-label-text {
+            flex: 0 0 auto;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #mobile-release-select {
+            min-width: 0;
+            flex: 1 1 auto;
+            height: 24px;
+            font: 11px Tahoma, sans-serif;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 function ensureReleaseSelectors() {
-    const settingsPanel = document.getElementById('player-settings-panel');
-    const skinLabel = document.getElementById('player-skin-label');
+    const playerContent = document.querySelector('#win-player .player-content');
 
-    if (settingsPanel && !document.getElementById('player-release-select')) {
-        releaseLabel = document.createElement('label');
-        releaseLabel.className = 'setting-row';
-        releaseLabel.id = 'player-release-label';
+    if (playerContent && !document.getElementById('player-release-strip')) {
+        const strip = document.createElement('div');
+        strip.id = 'player-release-strip';
 
-        const text = document.createElement('span');
-        text.className = 'player-release-label-text';
+        desktopReleaseLabel = document.createElement('span');
+        desktopReleaseLabel.className = 'player-release-label-text';
 
         desktopReleaseSelect = document.createElement('select');
         desktopReleaseSelect.id = 'player-release-select';
-        desktopReleaseSelect.style.marginLeft = 'auto';
-        desktopReleaseSelect.style.fontSize = '11px';
+        desktopReleaseSelect.setAttribute('aria-label', tr('Choisir une sortie', 'Choose a release'));
 
-        releaseLabel.append(text, desktopReleaseSelect);
-        if (skinLabel) settingsPanel.insertBefore(releaseLabel, skinLabel);
-        else settingsPanel.appendChild(releaseLabel);
+        const kind = document.createElement('span');
+        kind.id = 'player-release-kind';
+
+        strip.append(desktopReleaseLabel, desktopReleaseSelect, kind);
+        playerContent.insertBefore(strip, playerContent.firstChild);
 
         desktopReleaseSelect.addEventListener('change', () => {
             selectRelease(desktopReleaseSelect.value, { resetPlayback: true, persist: true });
         });
     } else {
-        releaseLabel = document.getElementById('player-release-label');
+        desktopReleaseLabel = document.querySelector('#player-release-strip .player-release-label-text');
         desktopReleaseSelect = document.getElementById('player-release-select');
     }
 
-    const quickCard = document.getElementById('mobile-quick-title')?.parentElement;
-    if (quickCard && !document.getElementById('mobile-release-select')) {
-        mobileReleaseLabel = document.createElement('label');
-        mobileReleaseLabel.id = 'mobile-release-row';
-        mobileReleaseLabel.style.display = 'flex';
-        mobileReleaseLabel.style.justifyContent = 'space-between';
-        mobileReleaseLabel.style.alignItems = 'center';
-        mobileReleaseLabel.style.gap = '10px';
-        mobileReleaseLabel.style.margin = '8px 0';
+    const mobileNowPlayingCard = document.getElementById('mobile-now-playing')?.parentElement;
+    const mobileControls = document.getElementById('mobile-player-controls');
 
-        const text = document.createElement('span');
-        text.className = 'mobile-release-label-text';
+    if (mobileNowPlayingCard && !document.getElementById('mobile-release-row')) {
+        const row = document.createElement('div');
+        row.id = 'mobile-release-row';
+
+        mobileReleaseLabel = document.createElement('span');
+        mobileReleaseLabel.className = 'mobile-release-label-text';
 
         mobileReleaseSelect = document.createElement('select');
         mobileReleaseSelect.id = 'mobile-release-select';
-        mobileReleaseSelect.style.maxWidth = '62%';
+        mobileReleaseSelect.setAttribute('aria-label', tr('Choisir une sortie', 'Choose a release'));
 
-        mobileReleaseLabel.append(text, mobileReleaseSelect);
-
-        const languageRow = document.getElementById('mobile-setting-language')?.closest('label');
-        if (languageRow) quickCard.insertBefore(mobileReleaseLabel, languageRow);
-        else quickCard.appendChild(mobileReleaseLabel);
+        row.append(mobileReleaseLabel, mobileReleaseSelect);
+        if (mobileControls) mobileNowPlayingCard.insertBefore(row, mobileControls);
+        else mobileNowPlayingCard.appendChild(row);
 
         mobileReleaseSelect.addEventListener('change', () => {
             selectRelease(mobileReleaseSelect.value, { resetPlayback: true, persist: true });
         });
     } else {
-        mobileReleaseLabel = document.getElementById('mobile-release-row');
+        mobileReleaseLabel = document.querySelector('#mobile-release-row .mobile-release-label-text');
         mobileReleaseSelect = document.getElementById('mobile-release-select');
     }
 }
@@ -101,11 +212,15 @@ function populateReleaseSelectors() {
 }
 
 function updateReleaseLabels() {
-    const desktopText = releaseLabel?.querySelector('.player-release-label-text');
-    if (desktopText) desktopText.textContent = tr('Sortie :', 'Release:');
+    if (desktopReleaseLabel) desktopReleaseLabel.textContent = tr('Bibliothèque :', 'Library:');
+    if (mobileReleaseLabel) mobileReleaseLabel.textContent = tr('Sortie :', 'Release:');
 
-    const mobileText = mobileReleaseLabel?.querySelector('.mobile-release-label-text');
-    if (mobileText) mobileText.textContent = tr('Sortie', 'Release');
+    if (desktopReleaseSelect) {
+        desktopReleaseSelect.setAttribute('aria-label', tr('Choisir une sortie', 'Choose a release'));
+    }
+    if (mobileReleaseSelect) {
+        mobileReleaseSelect.setAttribute('aria-label', tr('Choisir une sortie', 'Choose a release'));
+    }
 
     populateReleaseSelectors();
 }
@@ -123,6 +238,12 @@ function updateReleaseMetadata(release) {
 
     const copyright = document.querySelector('#win-player .player-content p');
     if (copyright) copyright.textContent = release.copyright || `© ${release.year || ''} ${release.label || 'JAJ Records'}`.trim();
+
+    const kind = document.getElementById('player-release-kind');
+    if (kind) {
+        const type = String(release.type || 'release').toUpperCase();
+        kind.textContent = release.year ? `${type} · ${release.year}` : type;
+    }
 
     if (desktopReleaseSelect) desktopReleaseSelect.value = release.id;
     if (mobileReleaseSelect) mobileReleaseSelect.value = release.id;
@@ -220,6 +341,9 @@ function installTrackSourceResolver() {
 }
 
 function initCatalogPlayer() {
+    repairMySpaceIconPath();
+    installPlayerLibraryStyles();
+
     if (typeof myTracks === 'undefined' || typeof renderPlaylist !== 'function') {
         console.warn('[AQ Catalog Player] AQ-Player is not initialized yet.');
         return;

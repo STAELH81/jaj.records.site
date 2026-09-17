@@ -1,4 +1,4 @@
-// AQ-Player Phase 6B visualizer entrypoint.
-// The first implementation could render a black surface after opening a hidden view.
-// v2 owns sizing/rendering and guarantees a visible procedural fallback.
-import './visualizer-v2.js';
+// AQ-Player Phase 6 visualizer/theme entrypoint.
+// SVG is used for the procedural engine so the hidden-view canvas sizing bug cannot blank the screen.
+import './visualizer-svg.js';
+import './player-theme-upgrade.js';

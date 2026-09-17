@@ -1,4 +1,6 @@
 import './catalog-player.js';
+import './visualizer.js';
+import './player-phase6-hotfix.js';
 
 const API_PATH = '/api/aq-sync';
 const LEGACY_CLAIM_KEY = 'jaj_phase3_legacy_profile_claimed_v1';

@@ -1,15 +1,21 @@
 import AQCatalog from './catalog.js';
 
 let activeReleaseId = null;
-let playerWindow = null;
-let playerModeBar = null;
-let playerLibraryView = null;
-let libraryTabButton = null;
-let nowPlayingTabButton = null;
-let libraryList = null;
-let libraryHeading = null;
-let libraryCount = null;
-let libraryBrand = null;
+let currentView = 'library';
+let libraryFilter = 'albums';
+
+const ui = {
+    win: null,
+    shell: null,
+    sidebar: null,
+    toolbarTitle: null,
+    toolbarContext: null,
+    libraryView: null,
+    libraryTree: null,
+    libraryRows: null,
+    nowView: null,
+    visualView: null
+};
 
 function isEnglish() {
     return document.documentElement.lang === 'en';
@@ -34,105 +40,147 @@ function repairMySpaceIconPath() {
     });
 }
 
-function installPlayerLibraryStyles() {
-    if (document.getElementById('aq-catalog-player-styles')) return;
+function installStyles() {
+    if (document.getElementById('aq-player-6a-styles')) return;
 
     const style = document.createElement('style');
-    style.id = 'aq-catalog-player-styles';
+    style.id = 'aq-player-6a-styles';
     style.textContent = `
-        #player-modebar {
-            height: 31px;
-            display: flex;
-            align-items: flex-end;
-            gap: 2px;
-            padding: 3px 6px 0;
+        #win-player.aqmp-window {
+            min-width: 760px;
+            min-height: 500px;
+            background: #0b2851;
+            border: 2px solid #0b3b7a;
+            border-radius: 15px 15px 12px 12px;
+            box-shadow: 0 10px 28px rgba(0,0,0,.48), inset 0 0 0 1px #8dc1ff;
+            overflow: hidden;
+        }
+
+        #win-player.aqmp-window > .title-bar {
+            height: 29px;
             box-sizing: border-box;
-            background: linear-gradient(to bottom, #f7f6ef 0%, #d9d6c8 100%);
-            border-bottom: 1px solid #8b8b8b;
+            padding: 4px 8px 4px 13px;
+            border-radius: 12px 12px 0 0;
+            border-bottom: 1px solid #051f4c;
+            background:
+                linear-gradient(to bottom, rgba(255,255,255,.42) 0 8%, transparent 9% 100%),
+                linear-gradient(to bottom, #2e7bd4 0%, #0c4f9d 48%, #07346f 52%, #0a438d 100%);
+            box-shadow: inset 0 1px 0 #b9dcff, inset 0 -1px 0 #041a3e;
+            color: #fff;
+            text-shadow: 0 1px 1px #062a60;
+            font: bold 12px Tahoma, sans-serif;
+        }
+
+        #win-player.aqmp-window .window-controls { gap: 3px; }
+
+        #win-player.aqmp-window .title-bar .retro-btn {
+            min-width: 23px;
+            height: 20px;
+            padding: 0 5px;
+            border: 1px solid #8fafd0;
+            border-radius: 7px;
+            background: linear-gradient(to bottom, #f7fbff 0%, #c4d8ed 47%, #7ea1c4 52%, #e7f2fb 100%);
+            box-shadow: inset 0 1px 0 #fff, 0 1px 1px rgba(0,0,0,.35);
+            color: #0b335d;
+            font: bold 9px Tahoma, sans-serif;
+            text-shadow: none;
+        }
+
+        #win-player.aqmp-window .title-bar .window-close-btn { color: #7e1010; }
+
+        #win-player.aqmp-window #player-settings-panel {
+            top: 34px;
+            right: 8px;
+            z-index: 1300;
+            width: 230px;
+            border: 1px solid #6e8ba9;
+            background: #eaf1f8;
+            box-shadow: 2px 3px 8px rgba(0,0,0,.38);
+        }
+
+        #aqmp-shell {
+            height: calc(100% - 29px);
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            background: #d9e2ec;
             font: 11px Tahoma, sans-serif;
         }
 
-        #player-modebar .player-mode-tab {
-            height: 24px;
-            min-width: 108px;
-            padding: 2px 12px;
-            border-top: 1px solid #fff;
-            border-left: 1px solid #fff;
-            border-right: 1px solid #7f7f7f;
-            border-bottom: 1px solid #7f7f7f;
-            background: #d4d0c8;
-            color: #111;
+        #aqmp-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 148px minmax(0, 1fr);
+            background: #f4f6f8;
+        }
+
+        #aqmp-sidebar {
+            min-width: 0;
+            padding: 8px 5px 10px;
+            background: linear-gradient(to right, rgba(255,255,255,.96) 0%, rgba(240,247,255,.98) 70%, rgba(191,216,242,.98) 100%);
+            border-right: 1px solid #7894b3;
+            box-shadow: inset -8px 0 14px rgba(104,150,196,.18);
+        }
+
+        .aqmp-side-button {
+            position: relative;
+            display: block;
+            width: 100%;
+            min-height: 37px;
+            margin: 0 0 2px;
+            padding: 5px 7px 5px 12px;
+            border: 1px solid transparent;
+            border-radius: 12px 2px 2px 12px;
+            background: transparent;
+            color: #18304f;
+            text-align: left;
             font: bold 10px Tahoma, sans-serif;
+            line-height: 1.15;
             cursor: pointer;
         }
 
-        #player-modebar .player-mode-tab.active {
-            background: #fff;
-            border-top-color: #7f7f7f;
-            border-left-color: #7f7f7f;
-            border-right-color: #fff;
-            border-bottom-color: #fff;
-            color: #003c8f;
-        }
-
-        #player-modebar .player-mode-spacer {
-            flex: 1 1 auto;
-        }
-
-        #player-library-brand {
-            padding: 0 4px 6px;
-            color: #555;
-            font-size: 9px;
-            letter-spacing: .4px;
-            text-transform: uppercase;
-        }
-
-        #player-library-view {
-            height: calc(100% - 58px);
-            min-height: 0;
-            display: grid;
-            grid-template-columns: 150px minmax(0, 1fr);
-            background: #f3f3f3;
-            font: 11px Tahoma, sans-serif;
-        }
-
-        #player-library-nav {
-            min-width: 0;
-            padding: 9px 7px;
-            background: linear-gradient(to right, #e3e8ef 0%, #cbd5e2 100%);
-            border-right: 1px solid #8d99a8;
-            color: #1f2f44;
-        }
-
-        #player-library-nav .library-nav-title {
-            margin: 0 0 7px;
-            padding: 3px 5px 5px;
-            border-bottom: 1px solid #8d99a8;
-            font-weight: bold;
-            color: #173a6b;
-        }
-
-        #player-library-nav .library-nav-item {
-            display: block;
-            width: 100%;
-            margin: 1px 0;
-            padding: 5px 7px 5px 20px;
-            box-sizing: border-box;
-            border: 1px solid transparent;
+        .aqmp-side-button::before {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 50%;
+            width: 4px;
+            height: 18px;
+            transform: translateY(-50%);
+            border-radius: 4px;
             background: transparent;
-            color: #22364d;
-            text-align: left;
-            font: 11px Tahoma, sans-serif;
         }
 
-        #player-library-nav .library-nav-item.active {
-            border-color: #7f9db9;
-            background: #fff;
-            color: #003c8f;
-            font-weight: bold;
+        .aqmp-side-button:hover {
+            border-color: #8daed0;
+            background: linear-gradient(to right, #fff 0%, #dfefff 100%);
         }
 
-        #player-library-main {
+        .aqmp-side-button.active {
+            border-color: #5c87b5;
+            background: linear-gradient(to right, #fff 0%, #cfe5fb 70%, #a9c9ea 100%);
+            color: #073f82;
+            box-shadow: inset 0 1px 0 #fff;
+        }
+
+        .aqmp-side-button.active::before { background: #0a65b9; }
+
+        .aqmp-side-button small {
+            display: block;
+            margin-top: 2px;
+            color: #697b90;
+            font-size: 8px;
+            font-weight: normal;
+        }
+
+        .aqmp-side-separator {
+            height: 1px;
+            margin: 6px 8px;
+            background: linear-gradient(to right, transparent, #9db0c6, transparent);
+        }
+
+        #aqmp-stage {
             min-width: 0;
             min-height: 0;
             display: flex;
@@ -140,300 +188,566 @@ function installPlayerLibraryStyles() {
             background: #fff;
         }
 
-        #player-library-header {
+        #aqmp-toolbar {
+            flex: 0 0 35px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            min-height: 38px;
-            padding: 5px 9px;
+            gap: 6px;
+            padding: 4px 8px;
             box-sizing: border-box;
-            background: linear-gradient(to bottom, #ffffff 0%, #e7e7e7 100%);
-            border-bottom: 1px solid #a6a6a6;
+            border-bottom: 1px solid #7d91a8;
+            background: linear-gradient(to bottom, #fdfefe 0%, #e4ebf2 46%, #c7d3df 52%, #edf3f7 100%);
+            box-shadow: inset 0 1px 0 #fff;
         }
 
-        #player-library-heading {
-            color: #173a6b;
-            font-size: 14px;
+        #aqmp-toolbar-title {
+            color: #193e6e;
+            font-size: 12px;
             font-weight: bold;
         }
 
-        #player-library-count {
-            color: #666;
-            font-size: 10px;
+        #aqmp-toolbar-context {
+            color: #667b91;
+            font-size: 9px;
         }
 
-        #player-library-list {
+        .aqmp-tool-spacer { flex: 1 1 auto; }
+
+        .aqmp-tool-pill {
+            height: 23px;
+            padding: 0 8px;
+            border: 1px solid #8097ae;
+            border-radius: 7px;
+            background: linear-gradient(to bottom, #fff, #dbe6f0);
+            color: #183c68;
+            font: 9px Tahoma, sans-serif;
+            cursor: pointer;
+        }
+
+        .aqmp-view {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: none;
+        }
+
+        .aqmp-view.active { display: flex; }
+
+        #aqmp-library-view { background: #fff; }
+
+        #aqmp-library-tree {
+            flex: 0 0 168px;
+            min-width: 0;
+            padding: 8px 6px;
+            box-sizing: border-box;
+            border-right: 1px solid #9daebe;
+            background: linear-gradient(to right, #edf2f7 0%, #dce5ee 100%);
+            overflow: auto;
+        }
+
+        .aqmp-tree-title {
+            margin: 0 0 6px;
+            padding: 4px 6px;
+            border-bottom: 1px solid #9eafbf;
+            color: #264c76;
+            font-weight: bold;
+        }
+
+        .aqmp-tree-item {
+            display: block;
+            width: 100%;
+            margin: 1px 0;
+            padding: 4px 5px 4px 18px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #263b53;
+            text-align: left;
+            font: 10px Tahoma, sans-serif;
+            cursor: pointer;
+        }
+
+        .aqmp-tree-item::before {
+            content: '▸';
+            margin-left: -12px;
+            margin-right: 5px;
+            color: #52779d;
+        }
+
+        .aqmp-tree-item.active {
+            border-color: #7f9db9;
+            background: #fff;
+            color: #003c84;
+            font-weight: bold;
+        }
+
+        #aqmp-library-main {
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+
+        #aqmp-list-head,
+        .aqmp-release-row {
+            display: grid;
+            grid-template-columns: minmax(190px, 1.7fr) minmax(105px, .9fr) 58px 72px 72px;
+            align-items: center;
+        }
+
+        #aqmp-list-head {
+            flex: 0 0 23px;
+            border-bottom: 1px solid #a7a7a7;
+            background: linear-gradient(to bottom, #fff 0%, #e4e4e4 100%);
+            color: #3d4e60;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        #aqmp-list-head span {
+            height: 100%;
+            padding: 5px 7px;
+            box-sizing: border-box;
+            border-right: 1px solid #c3c3c3;
+        }
+
+        #aqmp-library-rows {
             flex: 1 1 auto;
             min-height: 0;
             overflow: auto;
             background: #fff;
         }
 
-        .player-library-row {
-            display: grid;
-            grid-template-columns: 68px minmax(0, 1fr) 82px 82px 64px;
-            gap: 8px;
-            align-items: center;
-            min-height: 76px;
-            padding: 6px 8px;
-            box-sizing: border-box;
-            border-bottom: 1px solid #dedede;
+        .aqmp-release-row {
+            min-height: 50px;
+            border-bottom: 1px solid #e1e1e1;
+            color: #27384c;
             cursor: default;
         }
 
-        .player-library-row:hover,
-        .player-library-row:focus-visible {
+        .aqmp-release-row:hover,
+        .aqmp-release-row:focus-visible {
             outline: none;
-            background: #e8f1fb;
+            background: #dbeaff;
         }
 
-        .player-library-cover {
-            width: 58px;
-            height: 58px;
+        .aqmp-release-row.selected { background: #b9d7fa; }
+
+        .aqmp-release-main {
+            min-width: 0;
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr);
+            gap: 7px;
+            align-items: center;
+            padding: 4px 6px;
+        }
+
+        .aqmp-release-cover {
+            width: 38px;
+            height: 38px;
+            border: 1px solid #707070;
             object-fit: cover;
-            border: 1px solid #777;
-            background: #ddd;
-            box-shadow: 1px 1px 2px rgba(0,0,0,.3);
+            background: #d6d6d6;
+            box-shadow: 1px 1px 2px rgba(0,0,0,.25);
         }
 
-        .player-library-title {
-            margin-bottom: 3px;
-            color: #123f77;
-            font-size: 12px;
+        .aqmp-release-title {
+            overflow: hidden;
+            color: #153f72;
             font-weight: bold;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .player-library-artist {
-            color: #333;
+        .aqmp-release-sub {
+            margin-top: 2px;
+            overflow: hidden;
+            color: #75808b;
+            font-size: 8px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .player-library-meta {
-            margin-top: 4px;
-            color: #777;
+        .aqmp-cell {
+            min-width: 0;
+            padding: 4px 7px;
+            overflow: hidden;
+            color: #3d4b5c;
             font-size: 9px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .player-library-col {
-            color: #454545;
-            font-size: 10px;
-        }
-
-        .player-library-open {
-            justify-self: end;
-            padding: 3px 7px;
-            background: #ece9d8;
-            border-top: 2px solid #fff;
-            border-left: 2px solid #fff;
-            border-right: 2px solid #808080;
-            border-bottom: 2px solid #808080;
-            color: #111;
-            font: bold 9px Tahoma, sans-serif;
-            cursor: pointer;
-        }
-
-        .player-library-open:active {
-            border-top-color: #808080;
-            border-left-color: #808080;
-            border-right-color: #fff;
-            border-bottom-color: #fff;
-        }
-
-        #win-player.catalog-library-mode .player-content,
-        #win-player.catalog-library-mode #player-bottom-bar {
-            display: none !important;
-        }
-
-        #win-player:not(.catalog-library-mode) #player-library-view {
+        #aqmp-now-view.player-content {
             display: none;
+            grid-template-columns: 210px minmax(0,1fr);
+            gap: 8px;
+            height: auto;
+            padding: 8px;
+            background: radial-gradient(circle at 18% 20%, rgba(23,100,174,.28), transparent 34%), linear-gradient(to bottom, #0d274b 0%, #07192e 100%);
         }
 
-        #win-player:not(.catalog-library-mode) .player-content {
-            height: calc(100% - 101px);
+        #aqmp-now-view.player-content.active { display: grid; }
+
+        #aqmp-now-view > div:first-child {
+            min-width: 0;
+            padding: 9px;
+            box-sizing: border-box;
+            border: 1px solid #4b6a8a;
+            background: linear-gradient(to bottom, #163b65, #091d35);
+            box-shadow: inset 0 0 18px rgba(0,0,0,.45);
         }
 
-        #win-player #player-settings-panel {
-            top: 62px;
+        #aqmp-now-view > div:first-child img {
+            width: min(180px, 100%) !important;
+            height: auto !important;
+            aspect-ratio: 1 / 1;
+            border: 1px solid #9fc4e8 !important;
+            box-shadow: 0 4px 14px rgba(0,0,0,.55);
         }
 
-        #win-player.player-skin-dark #player-modebar {
-            background: linear-gradient(to bottom, #353535 0%, #202020 100%);
-            border-bottom-color: #555;
+        #aqmp-now-view > div:first-child p { color: #a8c4e1 !important; }
+
+        #aqmp-now-view .tracklist-window {
+            min-height: 0;
+            border: 1px solid #6381a0;
+            background: #f7f8fa;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,.22);
         }
 
-        #win-player.player-skin-dark #player-modebar .player-mode-tab {
-            background: #333;
-            border-color: #666 #111 #111 #666;
-            color: #ddd;
+        #aqmp-now-view #playlist li {
+            min-height: 24px;
+            padding: 5px 8px;
+            border-bottom: 1px solid #e0e4e8;
+            color: #24364b;
         }
 
-        #win-player.player-skin-dark #player-modebar .player-mode-tab.active {
-            background: #111;
-            color: #fff;
+        #aqmp-now-view #playlist li:hover:not(.locked):not(.unavailable) { background: #dbeaff; }
+        #aqmp-now-view #playlist li.active { background: #1b5da4; color: #fff; }
+
+        #aqmp-visual-view {
+            position: relative;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 45%, rgba(0,137,255,.55) 0%, rgba(0,48,128,.32) 20%, transparent 47%), #000717;
         }
 
-        #win-player.player-skin-dark #player-library-brand {
-            color: #aaa;
+        #aqmp-visual-field { position: absolute; inset: 0; overflow: hidden; filter: saturate(1.35) contrast(1.08); }
+
+        .aqmp-orb,
+        .aqmp-wave { position: absolute; border-radius: 50%; mix-blend-mode: screen; pointer-events: none; }
+
+        .aqmp-orb {
+            width: 190px;
+            height: 190px;
+            left: 50%;
+            top: 50%;
+            margin: -95px;
+            background: radial-gradient(circle, #dfffff 0%, #34b7ff 16%, #1649ff 36%, transparent 70%);
+            box-shadow: 0 0 60px #1789ff, 0 0 120px #1c45ff;
+            animation: aqmpPulse 2.7s ease-in-out infinite alternate;
         }
 
-        #win-player.player-skin-dark #player-library-nav {
-            background: #252525;
-            border-right-color: #555;
-            color: #ddd;
+        .aqmp-wave {
+            width: 75%;
+            height: 12px;
+            left: 12%;
+            top: 48%;
+            border: 2px solid rgba(132,230,255,.9);
+            border-left-color: transparent;
+            border-right-color: transparent;
+            box-shadow: 0 0 10px #59e4ff, 0 0 24px #2569ff;
+            animation: aqmpWave 4.6s linear infinite;
         }
 
-        #win-player.player-skin-dark #player-library-nav .library-nav-title,
-        #win-player.player-skin-dark #player-library-nav .library-nav-item {
-            color: #ddd;
+        .aqmp-wave.w2 { transform: rotate(28deg); animation-duration: 5.3s; }
+        .aqmp-wave.w3 { transform: rotate(-31deg); animation-duration: 3.9s; }
+
+        #aqmp-visual-copy {
+            position: relative;
+            z-index: 3;
+            margin-top: 235px;
+            padding: 5px 9px;
+            border: 1px solid rgba(118,190,255,.45);
+            background: rgba(0,13,36,.66);
+            color: #a9d9ff;
+            font-size: 9px;
+            letter-spacing: .6px;
         }
 
-        #win-player.player-skin-dark #player-library-nav .library-nav-item.active {
-            background: #111;
-            color: #fff;
+        @keyframes aqmpPulse {
+            from { transform: scale(.78) rotate(-8deg); opacity: .62; }
+            to { transform: scale(1.2) rotate(10deg); opacity: 1; }
         }
 
-        #win-player.player-skin-dark #player-library-main,
-        #win-player.player-skin-dark #player-library-list {
-            background: #111;
+        @keyframes aqmpWave {
+            0% { translate: -4% -18px; scale: .8 1; opacity: .35; }
+            50% { translate: 4% 18px; scale: 1.08 1.6; opacity: 1; }
+            100% { translate: -4% -18px; scale: .8 1; opacity: .35; }
         }
 
-        #win-player.player-skin-dark #player-library-header {
-            background: #252525;
-            border-bottom-color: #555;
+        #win-player.aqmp-window #player-bottom-bar {
+            position: relative !important;
+            flex: 0 0 73px;
+            bottom: auto !important;
+            width: auto !important;
+            padding: 8px 12px 6px !important;
+            box-sizing: border-box;
+            border-top: 1px solid #4e6d8d !important;
+            border-radius: 0 0 10px 10px;
+            background: linear-gradient(to bottom, rgba(255,255,255,.82) 0%, rgba(255,255,255,.18) 9%, transparent 10%), linear-gradient(to bottom, #cad9e7 0%, #819fbc 46%, #527798 52%, #b8ccdc 100%) !important;
+            box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #466786;
         }
 
-        #win-player.player-skin-dark #player-library-heading,
-        #win-player.player-skin-dark .player-library-title {
-            color: #b7d4ff;
+        #win-player.aqmp-window #player-controls-row { display: flex !important; align-items: center !important; gap: 5px !important; }
+
+        #win-player.aqmp-window #player-controls-row .retro-btn {
+            min-width: 28px;
+            height: 27px;
+            padding: 0 7px;
+            border: 1px solid #607f9e;
+            border-radius: 14px;
+            background: linear-gradient(to bottom, #fff 0%, #d8e5ef 42%, #7196b8 49%, #e7f0f7 100%);
+            box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,.36);
+            color: #0d355e;
+            font: bold 8px Tahoma, sans-serif;
         }
 
-        #win-player.player-skin-dark .player-library-row {
-            border-bottom-color: #333;
+        #win-player.aqmp-window .seek-bar-container {
+            height: 8px;
+            border: 1px solid #6e879e;
+            border-radius: 6px;
+            background: #eef5fa;
+            overflow: hidden;
         }
 
-        #win-player.player-skin-dark .player-library-row:hover,
-        #win-player.player-skin-dark .player-library-row:focus-visible {
-            background: #26374f;
+        #win-player.aqmp-window #seek-bar { background: linear-gradient(to right, #64ba28, #b7ed70); }
+
+        #win-player.aqmp-window #now-playing {
+            margin-top: 4px !important;
+            color: #143e6a !important;
+            font-size: 9px !important;
+            text-shadow: 0 1px 0 rgba(255,255,255,.65);
         }
 
-        #win-player.player-skin-dark .player-library-artist,
-        #win-player.player-skin-dark .player-library-col,
-        #win-player.player-skin-dark .player-library-meta,
-        #win-player.player-skin-dark #player-library-count {
-            color: #ccc;
-        }
-
-        @media (max-width: 700px) {
-            #player-library-view {
-                grid-template-columns: 105px minmax(0, 1fr);
-            }
-
-            .player-library-row {
-                grid-template-columns: 54px minmax(0, 1fr) 54px;
-            }
-
-            .player-library-cover {
-                width: 46px;
-                height: 46px;
-            }
-
-            .player-library-col.library-year,
-            .player-library-col.library-type {
-                display: none;
-            }
-
-            #player-modebar .player-mode-tab {
-                min-width: 88px;
-                padding-left: 6px;
-                padding-right: 6px;
-            }
+        @media (max-width: 760px) {
+            #aqmp-body { grid-template-columns: 110px minmax(0,1fr); }
+            .aqmp-side-button { min-height: 31px; padding-left: 8px; font-size: 9px; }
+            #aqmp-library-tree { display: none; }
+            #aqmp-list-head,
+            .aqmp-release-row { grid-template-columns: minmax(150px,1fr) 65px; }
+            #aqmp-list-head span:nth-child(2),
+            #aqmp-list-head span:nth-child(4),
+            #aqmp-list-head span:nth-child(5),
+            .aqmp-cell.artist,
+            .aqmp-cell.type,
+            .aqmp-cell.status { display: none; }
         }
     `;
     document.head.appendChild(style);
 }
 
-function ensurePlayerShell() {
-    playerWindow = document.getElementById('win-player');
-    if (!playerWindow) return false;
+function buildShell() {
+    ui.win = document.getElementById('win-player');
+    if (!ui.win) return false;
 
+    repairMySpaceIconPath();
+    installStyles();
+
+    ui.win.classList.add('aqmp-window');
+    ui.win.style.minWidth = '760px';
+    ui.win.style.minHeight = '500px';
+
+    if (ui.win.dataset.phase6aSized !== '1') {
+        const width = parseInt(ui.win.style.width || '0', 10);
+        const height = parseInt(ui.win.style.height || '0', 10);
+        if (!width || width <= 760) ui.win.style.width = '860px';
+        if (!height || height <= 460) ui.win.style.height = '560px';
+        ui.win.dataset.phase6aSized = '1';
+    }
+
+    const playerContent = ui.win.querySelector('.player-content');
+    const bottomBar = document.getElementById('player-bottom-bar');
+    const titleBar = ui.win.querySelector('.title-bar');
+    if (!playerContent || !bottomBar || !titleBar) return false;
+
+    document.getElementById('player-modebar')?.remove();
+    document.getElementById('player-library-view')?.remove();
     document.getElementById('player-release-strip')?.remove();
     document.getElementById('mobile-release-row')?.remove();
 
-    if (!document.getElementById('player-modebar')) {
-        playerModeBar = document.createElement('div');
-        playerModeBar.id = 'player-modebar';
+    if (!document.getElementById('aqmp-shell')) {
+        const shell = document.createElement('div');
+        shell.id = 'aqmp-shell';
 
-        libraryTabButton = document.createElement('button');
-        libraryTabButton.id = 'player-library-tab';
-        libraryTabButton.className = 'player-mode-tab';
-        libraryTabButton.type = 'button';
-        libraryTabButton.addEventListener('click', showLibraryMode);
+        const body = document.createElement('div');
+        body.id = 'aqmp-body';
 
-        nowPlayingTabButton = document.createElement('button');
-        nowPlayingTabButton.id = 'player-now-playing-tab';
-        nowPlayingTabButton.className = 'player-mode-tab';
-        nowPlayingTabButton.type = 'button';
-        nowPlayingTabButton.addEventListener('click', showPlaybackMode);
+        const sidebar = document.createElement('aside');
+        sidebar.id = 'aqmp-sidebar';
+
+        const stage = document.createElement('main');
+        stage.id = 'aqmp-stage';
+
+        const toolbar = document.createElement('div');
+        toolbar.id = 'aqmp-toolbar';
+
+        const toolbarTitle = document.createElement('div');
+        toolbarTitle.id = 'aqmp-toolbar-title';
+
+        const toolbarContext = document.createElement('div');
+        toolbarContext.id = 'aqmp-toolbar-context';
 
         const spacer = document.createElement('div');
-        spacer.className = 'player-mode-spacer';
+        spacer.className = 'aqmp-tool-spacer';
 
-        libraryBrand = document.createElement('div');
-        libraryBrand.id = 'player-library-brand';
+        const backButton = document.createElement('button');
+        backButton.type = 'button';
+        backButton.className = 'aqmp-tool-pill';
+        backButton.dataset.action = 'library';
+        backButton.addEventListener('click', () => showView('library'));
 
-        playerModeBar.append(libraryTabButton, nowPlayingTabButton, spacer, libraryBrand);
-        playerWindow.querySelector('.title-bar')?.insertAdjacentElement('afterend', playerModeBar);
-    } else {
-        playerModeBar = document.getElementById('player-modebar');
-        libraryTabButton = document.getElementById('player-library-tab');
-        nowPlayingTabButton = document.getElementById('player-now-playing-tab');
-        libraryBrand = document.getElementById('player-library-brand');
-    }
+        toolbar.append(toolbarTitle, toolbarContext, spacer, backButton);
 
-    if (!document.getElementById('player-library-view')) {
-        playerLibraryView = document.createElement('div');
-        playerLibraryView.id = 'player-library-view';
+        const libraryView = document.createElement('section');
+        libraryView.id = 'aqmp-library-view';
+        libraryView.className = 'aqmp-view';
 
-        const nav = document.createElement('aside');
-        nav.id = 'player-library-nav';
-        nav.innerHTML = `
-            <div class="library-nav-title"></div>
-            <button type="button" class="library-nav-item">♫ ${tr('Musique', 'Music')}</button>
-            <button type="button" class="library-nav-item active">▣ ${tr('Albums', 'Albums')}</button>
-            <button type="button" class="library-nav-item">☺ ${tr('Artistes', 'Artists')}</button>
-            <button type="button" class="library-nav-item">□ ${tr('Archives', 'Archives')}</button>
+        const libraryTree = document.createElement('aside');
+        libraryTree.id = 'aqmp-library-tree';
+
+        const libraryMain = document.createElement('div');
+        libraryMain.id = 'aqmp-library-main';
+
+        const listHead = document.createElement('div');
+        listHead.id = 'aqmp-list-head';
+        listHead.innerHTML = '<span data-col="title"></span><span data-col="artist"></span><span data-col="year"></span><span data-col="type"></span><span data-col="status"></span>';
+
+        const libraryRows = document.createElement('div');
+        libraryRows.id = 'aqmp-library-rows';
+
+        libraryMain.append(listHead, libraryRows);
+        libraryView.append(libraryTree, libraryMain);
+
+        const visualView = document.createElement('section');
+        visualView.id = 'aqmp-visual-view';
+        visualView.className = 'aqmp-view';
+        visualView.innerHTML = `
+            <div id="aqmp-visual-field" aria-hidden="true">
+                <div class="aqmp-orb"></div>
+                <div class="aqmp-wave w1"></div>
+                <div class="aqmp-wave w2"></div>
+                <div class="aqmp-wave w3"></div>
+            </div>
+            <div id="aqmp-visual-copy"></div>
         `;
 
-        const main = document.createElement('section');
-        main.id = 'player-library-main';
+        playerContent.id = 'aqmp-now-view';
+        playerContent.classList.add('aqmp-view');
 
-        const header = document.createElement('div');
-        header.id = 'player-library-header';
-        libraryHeading = document.createElement('div');
-        libraryHeading.id = 'player-library-heading';
-        libraryCount = document.createElement('div');
-        libraryCount.id = 'player-library-count';
-        header.append(libraryHeading, libraryCount);
-
-        libraryList = document.createElement('div');
-        libraryList.id = 'player-library-list';
-
-        main.append(header, libraryList);
-        playerLibraryView.append(nav, main);
-        playerModeBar.insertAdjacentElement('afterend', playerLibraryView);
-    } else {
-        playerLibraryView = document.getElementById('player-library-view');
-        libraryHeading = document.getElementById('player-library-heading');
-        libraryCount = document.getElementById('player-library-count');
-        libraryList = document.getElementById('player-library-list');
+        stage.append(toolbar, libraryView, playerContent, visualView);
+        body.append(sidebar, stage);
+        shell.append(body, bottomBar);
+        titleBar.insertAdjacentElement('afterend', shell);
     }
 
+    ui.shell = document.getElementById('aqmp-shell');
+    ui.sidebar = document.getElementById('aqmp-sidebar');
+    ui.toolbarTitle = document.getElementById('aqmp-toolbar-title');
+    ui.toolbarContext = document.getElementById('aqmp-toolbar-context');
+    ui.libraryView = document.getElementById('aqmp-library-view');
+    ui.libraryTree = document.getElementById('aqmp-library-tree');
+    ui.libraryRows = document.getElementById('aqmp-library-rows');
+    ui.nowView = document.getElementById('aqmp-now-view');
+    ui.visualView = document.getElementById('aqmp-visual-view');
+
+    buildSidebar();
+    renderLibraryTree();
+    polishTransport();
     return true;
 }
 
+function buildSidebar() {
+    if (!ui.sidebar) return;
+    ui.sidebar.innerHTML = '';
+
+    const items = [
+        { view: 'now', fr: 'Lecture en cours', en: 'Now Playing', hintFr: 'piste + pochette', hintEn: 'track + cover' },
+        { view: 'library', fr: 'Bibliothèque média', en: 'Media Library', hintFr: 'albums, artistes', hintEn: 'albums, artists' },
+        { view: 'visual', fr: 'Visualisations', en: 'Visualizations', hintFr: 'moteur visuel', hintEn: 'visual engine' }
+    ];
+
+    items.forEach((item) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'aqmp-side-button';
+        button.dataset.view = item.view;
+        button.innerHTML = `${tr(item.fr, item.en)}<small>${tr(item.hintFr, item.hintEn)}</small>`;
+        button.addEventListener('click', () => showView(item.view));
+        ui.sidebar.appendChild(button);
+    });
+
+    const sep1 = document.createElement('div');
+    sep1.className = 'aqmp-side-separator';
+    ui.sidebar.appendChild(sep1);
+
+    [tr('Copier depuis un CD', 'Copy from CD'), tr('Radio JAJ', 'JAJ Radio'), tr('Copier vers un appareil', 'Copy to Device')].forEach((text) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'aqmp-side-button';
+        button.disabled = true;
+        button.style.opacity = '.48';
+        button.innerHTML = `${text}<small>${tr('indisponible', 'unavailable')}</small>`;
+        ui.sidebar.appendChild(button);
+    });
+
+    const sep2 = document.createElement('div');
+    sep2.className = 'aqmp-side-separator';
+    ui.sidebar.appendChild(sep2);
+
+    const skin = document.createElement('button');
+    skin.type = 'button';
+    skin.className = 'aqmp-side-button';
+    skin.innerHTML = `${tr('Sélecteur de skins', 'Skin Chooser')}<small>CFG</small>`;
+    skin.addEventListener('click', () => {
+        if (typeof togglePlayerSettingsPanel === 'function') togglePlayerSettingsPanel();
+    });
+    ui.sidebar.appendChild(skin);
+}
+
+function renderLibraryTree() {
+    if (!ui.libraryTree) return;
+
+    const filters = [
+        { id: 'all', fr: 'Toute la musique', en: 'All Music' },
+        { id: 'albums', fr: 'Albums', en: 'Albums' },
+        { id: 'artists', fr: 'Artistes', en: 'Artists' },
+        { id: 'archives', fr: 'Archives', en: 'Archives' }
+    ];
+
+    ui.libraryTree.innerHTML = `<div class="aqmp-tree-title">${tr('Bibliothèque', 'Library')}</div>`;
+
+    filters.forEach((filter) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'aqmp-tree-item';
+        button.dataset.filter = filter.id;
+        button.textContent = tr(filter.fr, filter.en);
+        button.classList.toggle('active', libraryFilter === filter.id);
+        button.addEventListener('click', () => {
+            libraryFilter = filter.id;
+            renderLibraryTree();
+            renderLibrary();
+        });
+        ui.libraryTree.appendChild(button);
+    });
+}
+
 function releaseTypeLabel(release) {
-    const type = String(release?.type || 'release').toLowerCase();
-    if (type === 'album') return tr('Album', 'Album');
-    if (type === 'single') return tr('Single', 'Single');
+    const type = String(release?.type || '').toLowerCase();
+    if (type === 'album') return 'Album';
+    if (type === 'single') return 'Single';
     if (type === 'ep') return 'EP';
     return tr('Sortie', 'Release');
 }
@@ -446,136 +760,126 @@ function releaseStatusLabel(release) {
     return status || '—';
 }
 
-function renderLibrary() {
-    if (!libraryList) return;
-
+function filteredReleases() {
     const releases = AQCatalog.getReleases();
-    libraryList.innerHTML = '';
+    if (libraryFilter === 'archives') return releases.filter((release) => release.status === 'archive');
+    return releases;
+}
 
-    const navTitle = document.querySelector('#player-library-nav .library-nav-title');
-    if (navTitle) navTitle.textContent = tr('Bibliothèque', 'Library');
+function renderLibrary() {
+    if (!ui.libraryRows) return;
 
-    const navItems = document.querySelectorAll('#player-library-nav .library-nav-item');
-    const navLabels = isEnglish()
-        ? ['♫ Music', '▣ Albums', '☺ Artists', '□ Archives']
-        : ['♫ Musique', '▣ Albums', '☺ Artistes', '□ Archives'];
-    navItems.forEach((item, index) => {
-        if (navLabels[index]) item.textContent = navLabels[index];
+    const labels = {
+        title: tr('Titre', 'Title'),
+        artist: tr('Artiste', 'Artist'),
+        year: tr('Année', 'Year'),
+        type: 'Type',
+        status: tr('Statut', 'Status')
+    };
+
+    document.querySelectorAll('#aqmp-list-head [data-col]').forEach((cell) => {
+        cell.textContent = labels[cell.dataset.col] || '';
     });
 
-    if (libraryHeading) libraryHeading.textContent = tr('Albums disponibles', 'Available albums');
-    if (libraryCount) {
-        libraryCount.textContent = `${releases.length} ${releases.length > 1 ? tr('sorties', 'releases') : tr('sortie', 'release')}`;
-    }
-    if (libraryBrand) libraryBrand.textContent = 'JAJ Records Media Library';
+    const releases = filteredReleases();
+    ui.libraryRows.innerHTML = '';
 
     releases.forEach((release) => {
         const artist = getReleaseArtist(release);
         const row = document.createElement('div');
-        row.className = 'player-library-row';
+        row.className = 'aqmp-release-row';
         row.tabIndex = 0;
         row.dataset.releaseId = release.id;
-        row.setAttribute('role', 'button');
-        row.setAttribute('aria-label', `${release.title} — ${artist.name}`);
+        row.classList.toggle('selected', release.id === activeReleaseId);
+
+        const main = document.createElement('div');
+        main.className = 'aqmp-release-main';
 
         const cover = document.createElement('img');
-        cover.className = 'player-library-cover';
+        cover.className = 'aqmp-release-cover';
         cover.src = release.cover || 'medias/img/albumimg.png';
         cover.alt = '';
 
-        const info = document.createElement('div');
-        const title = document.createElement('div');
-        title.className = 'player-library-title';
-        title.textContent = release.title;
-        const artistEl = document.createElement('div');
-        artistEl.className = 'player-library-artist';
-        artistEl.textContent = artist.name;
-        const meta = document.createElement('div');
-        meta.className = 'player-library-meta';
-        meta.textContent = `${release.tracks?.length || 0} ${tr('pistes', 'tracks')} · ${releaseStatusLabel(release)}`;
-        info.append(title, artistEl, meta);
+        const copy = document.createElement('div');
+        copy.innerHTML = '<div class="aqmp-release-title"></div><div class="aqmp-release-sub"></div>';
+        copy.querySelector('.aqmp-release-title').textContent = release.title;
+        copy.querySelector('.aqmp-release-sub').textContent = `${release.tracks?.length || 0} ${tr('pistes', 'tracks')} · ${release.label || 'JAJ Records'}`;
+        main.append(cover, copy);
 
-        const year = document.createElement('div');
-        year.className = 'player-library-col library-year';
-        year.textContent = release.year || '—';
+        const cells = [
+            ['artist', artist.name],
+            ['year', release.year || '—'],
+            ['type', releaseTypeLabel(release)],
+            ['status', releaseStatusLabel(release)]
+        ].map(([className, value]) => {
+            const cell = document.createElement('div');
+            cell.className = `aqmp-cell ${className}`;
+            cell.textContent = value;
+            return cell;
+        });
 
-        const type = document.createElement('div');
-        type.className = 'player-library-col library-type';
-        type.textContent = releaseTypeLabel(release);
+        row.append(main, ...cells);
 
-        const open = document.createElement('button');
-        open.className = 'player-library-open';
-        open.type = 'button';
-        open.textContent = tr('Ouvrir', 'Open');
-
-        const openRelease = () => {
-            selectRelease(release.id, {
-                resetPlayback: true,
-                persist: true,
-                enterPlayback: true
-            });
+        const open = () => {
+            selectRelease(release.id, { resetPlayback: true, persist: true });
+            showView('now');
         };
 
-        row.addEventListener('dblclick', openRelease);
-        row.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                openRelease();
-            }
+        row.addEventListener('dblclick', open);
+        row.addEventListener('click', () => {
+            document.querySelectorAll('.aqmp-release-row.selected').forEach((el) => el.classList.remove('selected'));
+            row.classList.add('selected');
         });
-        open.addEventListener('click', (event) => {
-            event.stopPropagation();
-            openRelease();
+        row.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') open();
         });
 
-        row.append(cover, info, year, type, open);
-        libraryList.appendChild(row);
+        ui.libraryRows.appendChild(row);
     });
 }
 
-function updateModeLabels() {
-    if (libraryTabButton) libraryTabButton.textContent = tr('Bibliothèque', 'Library');
-    if (nowPlayingTabButton) nowPlayingTabButton.textContent = tr('Lecture en cours', 'Now Playing');
-    renderLibrary();
+function polishTransport() {
+    const controls = document.querySelectorAll('#player-controls-row .retro-btn');
+    if (controls[0]) controls[0].textContent = '◀◀';
+    if (controls[1]) controls[1].textContent = '▶';
+    if (controls[2]) controls[2].textContent = 'Ⅱ';
+    if (controls[3]) controls[3].textContent = '■';
+    if (controls[4]) controls[4].textContent = '▶▶';
 }
 
-function showLibraryMode() {
-    if (!playerWindow) return;
-    playerWindow.classList.add('catalog-library-mode');
-    libraryTabButton?.classList.add('active');
-    nowPlayingTabButton?.classList.remove('active');
+function showView(view) {
+    const safe = ['library', 'now', 'visual'].includes(view) ? view : 'library';
+    currentView = safe;
 
-    const title = playerWindow.querySelector('.title-bar > span');
-    if (title) title.textContent = 'AQ-Player | JAJ Records Media Library';
+    const map = { library: ui.libraryView, now: ui.nowView, visual: ui.visualView };
+    Object.values(map).forEach((element) => element?.classList.remove('active'));
+    map[safe]?.classList.add('active');
 
-    renderLibrary();
-}
+    document.querySelectorAll('#aqmp-sidebar [data-view]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.view === safe);
+    });
 
-function showPlaybackMode() {
-    if (!playerWindow) return;
-    playerWindow.classList.remove('catalog-library-mode');
-    libraryTabButton?.classList.remove('active');
-    nowPlayingTabButton?.classList.add('active');
-
-    const release = AQCatalog.getRelease(activeReleaseId) || AQCatalog.getRelease(AQCatalog.defaultReleaseId);
-    if (release) updateReleaseMetadata(release);
-}
-
-function updateReleaseMetadata(release) {
-    const artist = getReleaseArtist(release);
-    const title = document.querySelector('#win-player .title-bar > span');
-    if (title && !playerWindow?.classList.contains('catalog-library-mode')) {
-        title.textContent = `AQ-Player | ${release.label || 'JAJ Records'} / ${release.title} - ${artist.name}`;
+    const back = document.querySelector('#aqmp-toolbar [data-action="library"]');
+    if (back) {
+        back.textContent = tr('← Bibliothèque', '← Library');
+        back.style.display = safe === 'library' ? 'none' : '';
     }
 
-    const cover = document.querySelector('#win-player .player-content img');
-    if (cover && release.cover) {
-        cover.src = release.cover;
-        cover.alt = `${release.title} — ${artist.name}`;
+    if (safe === 'library') {
+        ui.toolbarTitle.textContent = tr('Bibliothèque média', 'Media Library');
+        ui.toolbarContext.textContent = tr('JAJ Records // catalogue local', 'JAJ Records // local catalog');
+        renderLibrary();
+    } else if (safe === 'now') {
+        const release = AQCatalog.getRelease(activeReleaseId);
+        const artist = getReleaseArtist(release);
+        ui.toolbarTitle.textContent = tr('Lecture en cours', 'Now Playing');
+        ui.toolbarContext.textContent = release ? `${artist.name} — ${release.title}` : '';
+    } else {
+        ui.toolbarTitle.textContent = tr('Visualisations', 'Visualizations');
+        ui.toolbarContext.textContent = tr('Aperçu du moteur visuel', 'Visual engine preview');
+        const copy = document.getElementById('aqmp-visual-copy');
+        if (copy) copy.textContent = tr('VISUAL ENGINE // STANDBY // audio-réactif en Phase 6B', 'VISUAL ENGINE // STANDBY // audio reactive in Phase 6B');
     }
-
-    const copyright = document.querySelector('#win-player .player-content p');
-    if (copyright) copyright.textContent = release.copyright || `© ${release.year || ''} ${release.label || 'JAJ Records'}`.trim();
 }
 
 function clearPlaybackForReleaseSwitch() {
@@ -607,13 +911,26 @@ function applyPlayerTracks(release) {
     return true;
 }
 
-function selectRelease(releaseId, options = {}) {
-    const {
-        resetPlayback = false,
-        persist = false,
-        enterPlayback = false
-    } = options;
+function updateReleaseMetadata(release) {
+    const artist = getReleaseArtist(release);
 
+    const title = document.querySelector('#win-player .title-bar > span');
+    if (title) title.textContent = `AQ-Player | ${artist.name} — ${release.title}`;
+
+    const cover = document.querySelector('#aqmp-now-view > div:first-child img');
+    if (cover && release.cover) {
+        cover.src = release.cover;
+        cover.alt = `${release.title} — ${artist.name}`;
+    }
+
+    const copyright = document.querySelector('#aqmp-now-view > div:first-child p');
+    if (copyright) copyright.textContent = release.copyright || `© ${release.year || ''} ${release.label || 'JAJ Records'}`.trim();
+
+    renderLibrary();
+}
+
+function selectRelease(releaseId, options = {}) {
+    const { resetPlayback = false, persist = false } = options;
     const release = AQCatalog.getRelease(releaseId) || AQCatalog.getRelease(AQCatalog.defaultReleaseId);
     if (!release) return false;
 
@@ -624,30 +941,18 @@ function selectRelease(releaseId, options = {}) {
     activeReleaseId = release.id;
     updateReleaseMetadata(release);
 
-    if (persist && typeof updateSetting === 'function') {
-        updateSetting('playerReleaseId', release.id, false);
-    }
-
-    if (resetPlayback && changed && typeof savePlayerState === 'function') {
-        savePlayerState();
-    }
-
-    if (enterPlayback) showPlaybackMode();
+    if (persist && typeof updateSetting === 'function') updateSetting('playerReleaseId', release.id, false);
+    if (resetPlayback && changed && typeof savePlayerState === 'function') savePlayerState();
 
     window.dispatchEvent(new CustomEvent('aq:catalog-release-changed', {
-        detail: {
-            releaseId: release.id,
-            artistId: release.artistId
-        }
+        detail: { releaseId: release.id, artistId: release.artistId }
     }));
 
     return true;
 }
 
 function releaseFromSettings() {
-    if (typeof appSettings !== 'undefined' && appSettings?.playerReleaseId) {
-        return appSettings.playerReleaseId;
-    }
+    if (typeof appSettings !== 'undefined' && appSettings?.playerReleaseId) return appSettings.playerReleaseId;
     return AQCatalog.defaultReleaseId;
 }
 
@@ -656,10 +961,8 @@ function syncReleaseFromSettings() {
     if (!wanted) return;
     selectRelease(wanted, {
         resetPlayback: !!activeReleaseId && activeReleaseId !== wanted,
-        persist: false,
-        enterPlayback: false
+        persist: false
     });
-    renderLibrary();
 }
 
 function installTrackSourceResolver() {
@@ -671,47 +974,37 @@ function installTrackSourceResolver() {
     };
 }
 
-function initCatalogPlayer() {
-    repairMySpaceIconPath();
-    installPlayerLibraryStyles();
+function refreshLanguage() {
+    buildSidebar();
+    renderLibraryTree();
+    renderLibrary();
+    showView(currentView);
+}
 
+function initCatalogPlayer() {
     if (typeof myTracks === 'undefined' || typeof renderPlaylist !== 'function') {
         console.warn('[AQ Catalog Player] AQ-Player is not initialized yet.');
         return;
     }
 
+    repairMySpaceIconPath();
     installTrackSourceResolver();
-    if (!ensurePlayerShell()) return;
+    if (!buildShell()) return;
 
-    selectRelease(releaseFromSettings(), {
-        resetPlayback: false,
-        persist: false,
-        enterPlayback: false
-    });
-    updateModeLabels();
-    showLibraryMode();
+    selectRelease(releaseFromSettings(), { resetPlayback: false, persist: false });
+    showView('library');
 
-    window.addEventListener('aq:language-changed', () => {
-        updateModeLabels();
-        if (playerWindow?.classList.contains('catalog-library-mode')) showLibraryMode();
-        else showPlaybackMode();
-    });
-
-    window.addEventListener('jaj:session-changed', () => {
-        queueMicrotask(syncReleaseFromSettings);
-    });
+    window.addEventListener('aq:language-changed', refreshLanguage);
+    window.addEventListener('jaj:session-changed', () => queueMicrotask(syncReleaseFromSettings));
 }
 
 window.AQPlayerCatalog = {
-    selectRelease: (releaseId) => selectRelease(releaseId, {
-        resetPlayback: true,
-        persist: true,
-        enterPlayback: true
-    }),
-    showLibrary: showLibraryMode,
-    showPlayer: showPlaybackMode,
+    selectRelease: (releaseId) => selectRelease(releaseId, { resetPlayback: true, persist: true }),
     getCurrentRelease: () => AQCatalog.getRelease(activeReleaseId),
     getCurrentReleaseId: () => activeReleaseId,
+    showLibrary: () => showView('library'),
+    showNowPlaying: () => showView('now'),
+    showVisualizations: () => showView('visual'),
     refresh: syncReleaseFromSettings
 };
 

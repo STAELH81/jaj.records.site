@@ -5,6 +5,8 @@ const path = require('node:path');
 (async () => {
     const { fixture } = await import('./publisher-fixture.mjs');
     const f = fixture();
+    const { createAudioHandler } = await import('../netlify/functions/_shared/publisher-media.mjs');
+    const { createCatalogHandler } = await import('../netlify/functions/_shared/public-catalog.mjs');
     const browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {}) });
     try {
         const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -22,6 +24,17 @@ const path = require('node:path');
                 ...(incoming.postData() ? { body: incoming.postData() } : {}),
             }), {});
             await route.fulfill({ status: response.status, contentType:'application/json', body: await response.text() });
+        });
+        for (const [pattern, handler] of [
+            ['**/api/artist-audio**', createAudioHandler(f.deps)],
+            ['**/api/catalog**', createCatalogHandler(() => f.store)],
+        ]) await page.route(pattern, async route => {
+            const incoming = route.request(), url = new URL(incoming.url());
+            const response = await handler(new Request(`https://site.test${url.pathname}${url.search}`, {
+                method: incoming.method(), headers: { ...incoming.headers(), origin:'https://site.test' },
+                ...(incoming.postDataBuffer() ? { body:incoming.postDataBuffer() } : {}),
+            }), {});
+            await route.fulfill({ status:response.status, headers:Object.fromEntries(response.headers), body:Buffer.from(await response.arrayBuffer()) });
         });
         await page.addInitScript(() => {
             if (!localStorage.getItem('aquerty_settings_v1')) localStorage.setItem('aquerty_settings_v1', JSON.stringify({ bootEnabled:false, systemPopups:false, crtEnabled:false }));
@@ -78,9 +91,46 @@ const path = require('node:path');
         failSave = false;
         await page.getByRole('button',{name:'Enregistrer le brouillon',exact:true}).click();
         await page.waitForFunction(() => document.querySelector('#publisher-status')?.textContent === 'Brouillon enregistré.');
+        // Real WAV payload exercises browser decoding and seeking through the actual media handler.
+        const pcmSize = 48000 * 2 * 2, wav = Buffer.alloc(44 + pcmSize);
+        wav.write('RIFF'); wav.writeUInt32LE(wav.length - 8,4); wav.write('WAVEfmt ',8);
+        wav.writeUInt32LE(16,16); wav.writeUInt16LE(1,20); wav.writeUInt16LE(1,22);
+        wav.writeUInt32LE(48000,24); wav.writeUInt32LE(96000,28); wav.writeUInt16LE(2,32); wav.writeUInt16LE(16,34);
+        wav.write('data',36); wav.writeUInt32LE(pcmSize,40);
+        for (let index=0; index<2; index++) {
+            await page.locator('[data-audio-upload]').nth(index).setInputFiles({name:`song-${index}.wav`,mimeType:'audio/wav',buffer:wav});
+            await page.waitForFunction(index => document.querySelectorAll('.publisher-audio-name').length === index+1, index);
+        }
+        await page.getByRole('button',{name:'Publier',exact:true}).click();
+        assert.match(await page.locator('#publisher-status').innerText(), /Enregistre le brouillon/);
+        await page.getByRole('button',{name:'Enregistrer le brouillon',exact:true}).click();
+        await page.waitForFunction(() => document.querySelector('#publisher-status')?.textContent === 'Brouillon enregistré.');
+        await page.getByRole('button',{name:'Publier',exact:true}).click();
+        await page.waitForFunction(() => document.querySelector('#publisher-status')?.textContent.startsWith('Sortie publiée'));
+        const id = await page.evaluate(() => AQCatalog.getReleases().find(r=>r.title==='Updated EP')?.id);
+        assert.ok(id);
+        await page.evaluate(id => { openWindow('win-ie','task-ie'); setIEPage(`release:${id}`); },id);
+        await page.locator(`[data-player-release="${id}"]`).click();
+        assert.equal(await page.evaluate(()=>AQPlayerCatalog.getCurrentReleaseId()),id);
+        await page.evaluate(()=>playTrackAtIndex(0,true));
+        await page.waitForFunction(()=>player.duration===2 && !player.paused);
+        await page.evaluate(()=>{player.currentTime=1;player.pause();});
+        await page.reload();
+        await page.locator('#aq-guest-btn').click();
+        await page.waitForFunction(id=>window.AQPlayerCatalog?.getCurrentReleaseId()===id,id);
+        await enter(artist); await open(); await page.locator('[data-draft-id]').click();
+        await page.waitForFunction(()=>document.querySelectorAll('.publisher-audio-name').length===2);
+        await page.locator('[name="title"]').fill('Private next version');
+        await page.getByRole('button',{name:'Enregistrer le brouillon',exact:true}).click();
+        await page.waitForFunction(() => document.querySelector('#publisher-status')?.textContent === 'Brouillon enregistré.');
+        await page.evaluate(()=>AQCatalog.refresh());
+        assert.equal(await page.evaluate(id=>AQCatalog.getRelease(id).title,id),'Updated EP');
+        await page.getByRole('button',{name:'Republier',exact:true}).click();
+        await page.waitForFunction(()=>document.querySelector('#publisher-status')?.textContent.startsWith('Sortie publiée'));
+        assert.equal(await page.evaluate(id=>AQCatalog.getRelease(id).title,id),'Private next version');
         await page.evaluate(() => updateSetting('desktopLanguage','en'));
         assert.equal(await page.getByRole('button',{name:'Save draft',exact:true}).count(), 1);
-        assert.equal(await page.locator('[name="title"]').inputValue(), 'Updated EP');
+        assert.equal(await page.locator('[name="title"]').inputValue(), 'Private next version');
         if (process.env.QA_DIR) await page.screenshot({ path:path.join(process.env.QA_DIR,'publisher-desktop.png') });
         await page.setViewportSize({width:390,height:844});
         await page.waitForFunction(() => document.body.classList.contains('mobile-mode'));
@@ -101,6 +151,6 @@ const path = require('node:path');
         assert.equal(await page.locator('#publisher-form').count(), 0);
         assert.equal(await page.locator('#publisher-preview img').count(), 0);
         assert.deepEqual(errors, []);
-        console.log('PASS: guest gate, artist draft create/save/reload/edit/cover/order, failure recovery, FR/EN, mobile, account isolation, admin view');
+        console.log('PASS: guest gate, artist draft create/save/reload/edit/cover/order, failure recovery, FR/EN, mobile, account isolation, admin view, audio import/decode/seek, publication/republish, Navigator, Player, persisted release');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -60,7 +60,7 @@ Netlify Identity roles are read from `app_metadata.roles`.
 
 Supported roles:
 - `user` — normal JAJ/AQ-NEO account
-- `artist` — artist account; shows an ARTIST badge and enables the future publishing permission hook
+- `artist` — artist account; shows an ARTIST badge and enables Artist Publisher
 - `admin` — admin account; implicitly has artist publishing permission
 
 The frontend exposes:
@@ -68,7 +68,7 @@ The frontend exposes:
 - `window.AQPermissions.isAdmin()`
 - `window.AQPermissions.canPublish()`
 
-Artist Publisher is available to ARTIST and ADMIN sessions (Phase 7A below).
+Artist Publisher is available to ARTIST and ADMIN sessions (Phases 7A–7B below).
 
 
 ## Phase 6C regression check
@@ -87,21 +87,33 @@ It checks catalogue navigation, FR/EN, release/track/theme/preset restoration, e
 mobile navigation and window bounds, and JavaScript errors. No fixture is published in the catalogue.
 Account services and cloud uploads require a Netlify environment and are not covered by the static-server test.
 
-## Phase 7A — Artist Publisher drafts
+## Phases 7A–7B — Artist Publisher
 
 Open **Artist Publisher** from the desktop, start menu or mobile navigation after signing
 in as an ARTIST or ADMIN. The temporary icon is `medias/img/exeimg.png`.
 
 Create, reopen and edit private release drafts with a title, artist name, album/EP/single
 type, optional planned date, uploaded PNG/JPEG/WebP cover (up to 1 MiB), and up to 50
-ordered tracks. Audio URLs are optional; binary track uploads and public publication
-are deferred to Phase 7B. A live preview shows the cover, release details and track order.
+ordered tracks. Save the draft once to import MP3/WAV/Ogg files (up to 15 MiB per track),
+or supply HTTPS audio URLs. Every track needs audio before publication. A live preview shows the cover, release details and track order.
 Saving is explicit. Failed saves retain the form; switching drafts warns about unsaved changes.
 
 `/api/artist-drafts` uses Netlify Identity's current server-controlled roles. Artists can
 access their own drafts; admins can access all drafts without changing ownership.
-Drafts always retain `status: draft` and never enter AQCatalog, Navigator or Player.
-The existing Dual catalogue remains intact.
+Draft edits remain private. **Publish** atomically records a public snapshot inside the
+same draft record; later saves leave that snapshot unchanged until **Publish changes**.
+Publication is immediate, even when the optional release date is in the future.
+`/api/catalog` exposes only public metadata, with covers served by `/api/catalog-cover`.
+The catalogue loads before session restoration and merges publications with bundled Dual.
+Navigator refresh and successful publication reload it without interrupting active playback.
+
+`/api/artist-audio` imports 1 MiB chunks under the saved draft's ownership, verifies
+length/signature, and makes completed uploads immutable. GET/HEAD support byte ranges
+for seeking. Unpublished files require the owning artist or an admin; anonymous access
+is available only while a file belongs to a published snapshot. All responses use
+no-store caching. Preview and production media share the same separation as drafts.
+Interrupted/replaced uploads remain in private storage; automatic orphan cleanup and
+storage quotas are not part of this phase.
 
 Production uses the strongly consistent `aq-artist-drafts-v1-production` site store.
 Previews use a separate, branch-scoped site store so drafts survive preview redeploys
@@ -113,9 +125,11 @@ See [Netlify's conditional-write documentation](https://docs.netlify.com/build/d
 Validation:
 
 - `npm run test:publisher`: real handler with in-memory Identity/Blobs dependencies;
-  checks permissions, ownership, validation and concurrent writes.
+  checks permissions, ownership, validation, concurrent writes, chunked uploads, byte ranges,
+  draft/public isolation and publication snapshots.
 - `npm run test:publisher:ui`: static server and Playwright setup as above; routes draft
   requests through that handler with simulated identities, and exercises the full UI,
-  save/reopen/edit, cover, track order, failed saves, FR/EN, mobile and session isolation.
+  save/reopen/edit, cover, track order, failed saves, FR/EN, mobile and session isolation;
+  WAV upload/playback/seek, publish/republish, Navigator → Player and selected-release restoration.
 - Real Identity login and durable Blobs storage require the deployed Netlify preview;
   the fixtures do not claim to validate those external services.

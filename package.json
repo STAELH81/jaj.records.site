@@ -10,7 +10,7 @@
   },
   "scripts": {
     "test:phase6c": "node tests/phase6c.cjs",
-    "test:publisher": "node --test tests/publisher-api.test.mjs",
+    "test:publisher": "node --test tests/publisher-api.test.mjs tests/publisher-media.test.mjs",
     "test:publisher:ui": "node tests/publisher-ui.cjs"
   },
   "devDependencies": {

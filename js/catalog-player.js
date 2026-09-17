@@ -925,6 +925,11 @@ function initCatalogPlayer() {
     selectRelease(releaseFromSettings(), { resetPlayback: false, persist: false });
     showView('library');
 
+    window.addEventListener('aq:catalog-updated', () => {
+        renderLibraryTree(); renderLibrary();
+        // Leave an ongoing queue intact; refreshed releases load on the next selection.
+        if (typeof player !== 'undefined' && player.paused) syncReleaseFromSettings();
+    });
     window.addEventListener('aq:language-changed', refreshLanguage);
     window.addEventListener('jaj:session-changed', () => queueMicrotask(syncReleaseFromSettings));
 }

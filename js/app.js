@@ -1893,7 +1893,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         setIEPage(ieHistory[ieHistoryIndex], true);
     }
 
-    function refreshIENavigator() {
+    async function refreshIENavigator() {
+        await window.AQCatalog?.refresh();
         setIEPage(currentIEPage, true);
     }
 
@@ -2550,7 +2551,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 : (track.status === 'snippet'
                     ? ` ${snippetTag}`
                     : (track.status === 'unavailable' ? ` ${unavailableTag}` : ''));
-            row.textContent = `${trackNum}. ${escapeNavigatorHTML(track.title)}${tag}`;
+            row.textContent = `${trackNum}. ${track.title}${tag}`;
             row.addEventListener('click', () => {
                 if (track.status === 'locked' || track.status === 'unavailable') return;
                 playTrackAtIndex(index, true);
@@ -3474,3 +3475,5 @@ window.addEventListener('aq:language-changed', () => {
 
 // Initialize responsive navigation after playback controls exist.
 setupMobileLite();
+
+window.addEventListener('aq:catalog-updated', () => setIEPage(currentIEPage, true));

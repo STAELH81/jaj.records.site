@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { audioKey } from './publisher-media.mjs';
 
 const MAX_BODY_BYTES = 1500000;
 const MAX_COVER_BYTES = 1024 * 1024;
@@ -54,11 +55,13 @@ export function sanitizeDraft(value) {
         number: index + 1,
         title: text(track?.title, 160, 'tracks', true),
         audioUrl: audioSource(track?.audioUrl),
+        audioAssetId: track?.audioAssetId ? (validId(track.audioAssetId) ? track.audioAssetId : invalid('audioAssetId')) : '',
     }));
     return { title, artist, type: value.type, releaseDate, cover: coverImage(value.cover), tracks };
 }
 
-const summary = ({ cover, tracks, ...draft }) => ({ ...draft, trackCount: tracks.length, hasCover: !!cover });
+const view = ({ publication, ...draft }) => ({ ...draft, publishedAt: publication?.publishedAt || '', publishedRevision: publication?.revision || '' });
+const summary = record => { const { cover, tracks, ...draft } = view(record); return { ...draft, trackCount: tracks.length, hasCover: !!cover }; };
 
 // Dependency injection lets regression tests exercise the actual authorization and storage flow.
 export function createDraftHandler({ getUser, liveUser, verifyOrigin, getStore }) {
@@ -81,7 +84,7 @@ export function createDraftHandler({ getUser, liveUser, verifyOrigin, getStore }
                     if (!validId(id)) return json({ error: 'not_found' }, 404);
                     const draft = await store.get(`drafts/${id}.json`, { type: 'json' });
                     if (!draft || !canEdit(draft)) return json({ error: 'not_found' }, 404);
-                    return json({ draft });
+                    return json({ draft: view(draft) });
                 }
                 const { blobs } = await store.list({ prefix: 'drafts/' });
                 const drafts = [];
@@ -108,8 +111,19 @@ export function createDraftHandler({ getUser, liveUser, verifyOrigin, getStore }
             if ((saved?.data.revision || '') !== (payload.revision || '')) return json({ error: 'conflict' }, 409);
             const metadata = user?.user_metadata || user?.userMetadata || {};
             const now = new Date().toISOString();
+            if (payload.action && payload.action !== 'publish') return json({ error: 'invalid_action' }, 400);
+            if (payload.action === 'publish' && !saved) return json({ error: 'not_found' }, 404);
+            const content = sanitizeDraft(payload.action === 'publish' ? saved.data : payload.draft);
+            for (const track of content.tracks) {
+                if (!track.audioAssetId) continue;
+                const asset = await store.get(audioKey(track.audioAssetId), { type: 'json' });
+                if (!asset?.complete || asset.draftId !== payload.id) return json({ error: 'invalid_audio' }, 400);
+                track.audioName = asset.name;
+                track.audioUrl = '';
+            }
+            if (payload.action === 'publish' && (!content.tracks.length || content.tracks.some(track => !track.audioAssetId && !track.audioUrl))) return json({ error: 'missing_audio' }, 400);
             const draft = {
-                ...sanitizeDraft(payload.draft),
+                ...content,
                 id: payload.id,
                 ownerId: saved?.data.ownerId || session.id,
                 ownerName: saved?.data.ownerName || String(metadata.display_name || metadata.full_name || 'Artist').slice(0, 80),
@@ -118,10 +132,14 @@ export function createDraftHandler({ getUser, liveUser, verifyOrigin, getStore }
                 createdAt: saved?.data.createdAt || now,
                 updatedAt: now,
                 updatedBy: session.id,
+                ...(saved?.data.publication ? { publication: saved.data.publication } : {}),
             };
+            if (payload.action === 'publish') {
+                draft.publication = { ...content, revision: draft.revision, publishedAt: now };
+            }
             const result = await store.setJSON(key, draft, saved ? { onlyIfMatch: saved.etag } : { onlyIfNew: true });
             if (!result.modified) return json({ error: 'conflict' }, 409);
-            return json({ draft }, saved ? 200 : 201);
+            return json({ draft: view(draft) }, saved ? 200 : 201);
         } catch (error) {
             if (error.status === 400) return json({ error: error.message, field: error.field }, 400);
             console.error('[Artist Publisher] request failed', error);

@@ -7,6 +7,13 @@ const isAdmin = () => state.session?.roles?.includes('admin');
 
 function message(code) {
     const messages = {
+        uploading: ['Import audio en cours…', 'Uploading audio…'],
+        audio_size: ['Le fichier audio doit faire entre 12 octets et 15 Mo.', 'Audio files must be between 12 bytes and 15 MB.'],
+        audio_type: ['Choisis un fichier MP3, WAV ou Ogg valide.', 'Choose a valid MP3, WAV or Ogg file.'],
+        invalid_audio: ['Ce fichier audio est inaccessible. Importe-le à nouveau.', 'This audio file is unavailable. Upload it again.'],
+        missing_audio: ['Ajoute au moins une piste et un fichier ou lien audio pour chaque piste.', 'Add at least one track and an audio file or link for every track.'],
+        needs_save: ['Enregistre le brouillon avant de continuer.', 'Save the draft before continuing.'],
+        publishing: ['Publication…', 'Publishing…'], published: ['Sortie publiée dans AQ-Navigator et AQ-Player.', 'Release published in AQ-Navigator and AQ-Player.'],
         loading: ['Chargement…', 'Loading…'], saving: ['Enregistrement…', 'Saving…'],
         saved: ['Brouillon enregistré.', 'Draft saved.'], unsaved: ['Modifications non enregistrées', 'Unsaved changes'],
         unauthorized: ['Ta session a expiré. Reconnecte-toi pour continuer.', 'Your session expired. Sign in again to continue.'],
@@ -124,18 +131,73 @@ async function saveDraft(event) {
     }
 }
 
+async function audioRequest(query, body, jsonBody = false) {
+    const response = await fetch(`/api/artist-audio?${query}`, {
+        method: 'POST', credentials: 'same-origin', cache: 'no-store',
+        headers: { 'Content-Type': jsonBody ? 'application/json' : 'application/octet-stream' },
+        body: jsonBody ? JSON.stringify(body) : body,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'service_unavailable');
+    return data;
+}
+
+async function uploadAudio(file, index) {
+    if (!file || state.busy || !allowed()) return;
+    if (!state.draft?.revision) { status('needs_save', true); return; }
+    if (file.size < 12 || file.size > 15 * 1024 * 1024) { status('audio_size', true); return; }
+    if (!/\.(mp3|wav|ogg)$/i.test(file.name)) { status('audio_type', true); return; }
+    const epoch = state.epoch;
+    const draft = state.draft;
+    setBusy(true); status('uploading');
+    try {
+        const upload = await audioRequest('action=start', { draftId:draft.id, name:file.name.slice(0,180), size:file.size }, true);
+        for (let offset = 0, part = 0; offset < file.size; offset += upload.chunkSize, part++) {
+            if (epoch !== state.epoch) return;
+            await audioRequest(`action=chunk&id=${upload.id}&part=${part}`, file.slice(offset, offset + upload.chunkSize));
+            if (epoch !== state.epoch) return;
+            const progress = root.querySelector('#publisher-status');
+            if (progress) progress.textContent = `${message('uploading')} ${Math.min(100, Math.round((offset + upload.chunkSize) / file.size * 100))} %`;
+        }
+        if (epoch !== state.epoch) return;
+        const { asset } = await audioRequest(`action=complete&id=${upload.id}`, '{}');
+        if (epoch !== state.epoch) return;
+        Object.assign(draft.tracks[index], { audioAssetId:asset.id, audioName:asset.name, audioUrl:'' });
+        markDirty();
+    } catch (error) { if (epoch === state.epoch) status(error.message, true); }
+    finally { if (epoch === state.epoch) { state.busy = false; render(); } }
+}
+
+async function publishDraft() {
+    if (!allowed() || state.busy || !state.draft) return;
+    if (state.dirty || !state.draft.revision) { status('needs_save', true); return; }
+    if (!window.confirm(tr('Publier maintenant cette version ? Elle sera visible et écoutable par tout le monde.', 'Publish this version now? Everyone will be able to see and listen to it.'))) return;
+    const epoch = state.epoch;
+    setBusy(true); status('publishing');
+    try {
+        const { draft } = await api('POST', { action:'publish', id:state.draft.id, revision:state.draft.revision });
+        if (epoch !== state.epoch) return;
+        state.draft = draft;
+        const { cover, tracks, ...summary } = draft;
+        state.drafts = [{ ...summary, trackCount:tracks.length }, ...state.drafts.filter(item => item.id !== draft.id)];
+        status('published');
+        await window.AQCatalog?.refresh();
+    } catch (error) { if (epoch === state.epoch) status(error.message, true); }
+    finally { if (epoch === state.epoch) { state.busy = false; render(); } }
+}
+
 function renderPreview() {
     const target = root.querySelector('#publisher-preview');
     const draft = state.draft;
     if (!target || !draft) return;
     target.innerHTML = `
         <div class="publisher-preview-cover">${draft.cover ? `<img src="${esc(draft.cover)}" alt="${esc(tr('Pochette', 'Cover'))}">` : '<span aria-hidden="true">♫</span>'}</div>
-        <div class="publisher-badge">${tr('BROUILLON PRIVÉ', 'PRIVATE DRAFT')}</div>
+        <div class="publisher-badge">${draft.publishedAt ? tr('VERSION PUBLIÉE DISPONIBLE', 'PUBLISHED VERSION AVAILABLE') : tr('BROUILLON PRIVÉ', 'PRIVATE DRAFT')}</div>
         <h2>${esc(draft.title || tr('Sans titre', 'Untitled'))}</h2>
         <p>${esc(draft.artist || tr('Artiste', 'Artist'))}</p>
         <p class="publisher-muted">${esc(draft.type.toUpperCase())}${draft.releaseDate ? ` · ${esc(draft.releaseDate)}` : ''}</p>
         <ol>${draft.tracks.map(track => `<li><span>${esc(track.title || tr('Piste sans titre', 'Untitled track'))}</span></li>`).join('')}</ol>
-        <p class="publisher-muted">${tr('Visible par toi et les administrateurs. Aucune sortie publique à ce stade.', 'Visible to you and administrators. Nothing is published at this stage.')}</p>`;
+        <p class="publisher-muted">${draft.publishedAt ? tr('Cet aperçu montre le brouillon. Les modifications restent privées jusqu’à la prochaine publication.', 'This preview shows the draft. Changes stay private until you publish again.') : tr('Visible par toi et les administrateurs. Aucune sortie publique à ce stade.', 'Visible to you and administrators. Nothing is published at this stage.')}</p>`;
 }
 
 function render() {
@@ -162,10 +224,10 @@ function render() {
                 </div>
                 <div class="publisher-cover-input"><label>${tr('Pochette — PNG, JPEG ou WebP, 1 Mo max.', 'Cover — PNG, JPEG or WebP, up to 1 MB')}<input type="file" id="publisher-cover" accept="image/png,image/jpeg,image/webp"></label>${draft.cover ? `<button type="button" class="retro-btn" data-action="remove-cover">${tr('Retirer', 'Remove')}</button>` : ''}</div>
                 <h3>${tr('Pistes', 'Tracks')} <small>(${draft.tracks.length}/50)</small></h3>
-                <p class="publisher-muted">${tr('Prépare l’ordre et les titres. Un lien audio HTTPS est facultatif pour le brouillon.', 'Prepare the order and titles. An HTTPS audio link is optional for a draft.')}</p>
-                <div class="publisher-tracks">${draft.tracks.map((track,index) => `<div class="publisher-track" data-track="${index}"><span class="publisher-track-number">${index+1}</span><div><label>${tr('Titre de la piste', 'Track title')}<input data-track-field="title" maxlength="160" required value="${esc(track.title)}"></label><label>${tr('Lien audio (facultatif)', 'Audio link (optional)')}<input data-track-field="audioUrl" maxlength="2048" placeholder="https://…" value="${esc(track.audioUrl)}"></label></div><div class="publisher-track-actions"><button type="button" class="retro-btn" data-action="up" ${index === 0 ? 'disabled' : ''} aria-label="${tr('Monter la piste', 'Move track up')}">↑</button><button type="button" class="retro-btn" data-action="down" ${index === draft.tracks.length-1 ? 'disabled' : ''} aria-label="${tr('Descendre la piste', 'Move track down')}">↓</button><button type="button" class="retro-btn" data-action="remove-track" aria-label="${tr('Retirer la piste', 'Remove track')}">×</button></div></div>`).join('')}</div>
+                <p class="publisher-muted">${tr('Enregistre une première fois pour importer des fichiers MP3, WAV ou Ogg (15 Mo maximum par piste). Un lien HTTPS peut aussi servir de source audio.', 'Save once to upload MP3, WAV or Ogg files (up to 15 MB per track). You can also use an HTTPS audio link.')}</p>
+                <div class="publisher-tracks">${draft.tracks.map((track,index) => `<div class="publisher-track" data-track="${index}"><span class="publisher-track-number">${index+1}</span><div><label>${tr('Titre de la piste', 'Track title')}<input data-track-field="title" maxlength="160" required value="${esc(track.title)}"></label><label class="publisher-audio-input">${tr('Importer un fichier audio', 'Upload audio file')}<input type="file" data-audio-upload accept=".mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg" ${!draft.revision ? 'disabled' : ''}></label>${track.audioAssetId ? `<p class="publisher-audio-name">${esc(track.audioName || tr('Audio importé', 'Uploaded audio'))}</p><audio controls preload="none" src="/api/artist-audio?id=${esc(track.audioAssetId)}"></audio><button type="button" class="retro-btn" data-action="remove-audio">${tr('Retirer le fichier audio', 'Remove audio file')}</button>` : ''}<label>${tr('Lien audio (facultatif)', 'Audio link (optional)')}<input data-track-field="audioUrl" ${track.audioAssetId ? 'disabled' : ''} maxlength="2048" placeholder="https://…" value="${esc(track.audioUrl)}"></label></div><div class="publisher-track-actions"><button type="button" class="retro-btn" data-action="up" ${index === 0 ? 'disabled' : ''} aria-label="${tr('Monter la piste', 'Move track up')}">↑</button><button type="button" class="retro-btn" data-action="down" ${index === draft.tracks.length-1 ? 'disabled' : ''} aria-label="${tr('Descendre la piste', 'Move track down')}">↓</button><button type="button" class="retro-btn" data-action="remove-track" aria-label="${tr('Retirer la piste', 'Remove track')}">×</button></div></div>`).join('')}</div>
                 <button type="button" class="retro-btn" data-action="add-track" ${draft.tracks.length >= 50 ? 'disabled' : ''}>${tr('+ Ajouter une piste', '+ Add track')}</button>
-                <div class="publisher-save"><button type="submit" class="retro-btn publisher-primary">${tr('Enregistrer le brouillon', 'Save draft')}</button>${draft.revision ? `<button type="button" class="retro-btn" data-action="reload">${tr('Recharger', 'Reload')}</button>` : ''}</div>
+                <div class="publisher-save"><button type="submit" class="retro-btn publisher-primary">${tr('Enregistrer le brouillon', 'Save draft')}</button>${draft.revision ? `<button type="button" class="retro-btn" data-action="reload">${tr('Recharger', 'Reload')}</button>` : ''}<button type="button" class="retro-btn publisher-primary" data-action="publish">${draft.publishedAt ? tr('Republier', 'Publish changes') : tr('Publier', 'Publish')}</button>${draft.publishedAt ? `<button type="button" class="retro-btn" data-action="open-release">${tr('Ouvrir dans AQ-Player', 'Open in AQ-Player')}</button>` : ''}</div>
             </fieldset></form><aside class="publisher-preview-wrap"><h2>${tr('Aperçu', 'Preview')}</h2><div id="publisher-preview"></div></aside>` : `<div class="publisher-empty"><span aria-hidden="true">♫</span><h2>${tr('De l’idée à la sortie.', 'From idea to release.')}</h2><p>${tr('Rassemble la pochette, les titres et les premières pistes dans un brouillon privé.', 'Bring your cover, titles and first tracks together in a private draft.')}</p><button type="button" class="retro-btn" data-action="new">${tr('Créer un brouillon', 'Create a draft')}</button></div>`}
         </div>`;
     renderPreview();
@@ -184,6 +246,7 @@ root.addEventListener('input', event => {
 });
 
 root.addEventListener('change', async event => {
+    if (event.target.matches('[data-audio-upload]')) { void uploadAudio(event.target.files?.[0], Number(event.target.closest('[data-track]').dataset.track)); return; }
     if (event.target.id !== 'publisher-cover' || !state.draft || state.busy) return;
     const file = event.target.files?.[0];
     if (!file) return;
@@ -219,9 +282,18 @@ root.addEventListener('click', event => {
     if (action === 'new') return newDraft();
     if (action === 'refresh') { void loadList(); return; }
     if (!state.draft) return;
+    if (action === 'publish') { void publishDraft(); return; }
+    if (action === 'open-release') {
+        if (window.AQPlayerCatalog?.selectRelease(`release-${state.draft.id}`)) {
+            window.AQPlayerCatalog.showNowPlaying();
+            window.openWindow('win-player', 'task-player');
+        }
+        return;
+    }
     if (action === 'reload') { void loadDraft(state.draft.id); return; }
     const index = Number(button.closest('[data-track]')?.dataset.track);
     if (action === 'add-track' && state.draft.tracks.length < 50) state.draft.tracks.push({ title:'', audioUrl:'' });
+    else if (action === 'remove-audio') Object.assign(state.draft.tracks[index], { audioAssetId:'', audioName:'' });
     else if (action === 'remove-cover') state.draft.cover = '';
     else if (action === 'remove-track') state.draft.tracks.splice(index, 1);
     else if (action === 'up' || action === 'down') {
@@ -250,5 +322,5 @@ function sessionChanged() {
 window.addEventListener('jaj:session-changed', sessionChanged);
 window.addEventListener('aq:publisher-open', () => { if (!state.draft) void loadList(); });
 window.addEventListener('aq:language-changed', render);
-window.addEventListener('beforeunload', event => { if (state.dirty) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('beforeunload', event => { if (state.dirty || state.busy) { event.preventDefault(); event.returnValue = ''; } });
 sessionChanged();

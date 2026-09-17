@@ -63,3 +63,7 @@
     .publisher-toolbar { padding: 7px; }
     .publisher-empty { padding: 25px 16px; }
 }
+
+.publisher-track audio { display:block; width:100%; max-width:100%; height:32px; margin:8px 0; }
+.publisher-audio-name { overflow-wrap:anywhere; font-size:12px; }
+.publisher-audio-input { margin-top:10px; }

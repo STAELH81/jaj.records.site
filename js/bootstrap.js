@@ -1,5 +1,6 @@
 // Load catalogue data before the classic desktop restores its saved session.
-import './catalog.js';
+import AQCatalog from './catalog.js';
+await AQCatalog.refresh();
 await new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = 'js/app.js';

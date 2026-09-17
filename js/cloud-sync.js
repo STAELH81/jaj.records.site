@@ -1,3 +1,4 @@
+
 const API_PATH = '/api/aq-sync';
 const LEGACY_CLAIM_KEY = 'jaj_phase3_legacy_profile_claimed_v1';
 const CACHE_PREFIX = 'jaj_profile_cache_v1:';
@@ -306,7 +307,6 @@ window.AQCloudSync = {
     deactivate,
     getActiveSession: () => activeSession
 };
-
 
 window.addEventListener('aq:language-changed', () => {
     if (!cloudStatusEl) return;

@@ -161,7 +161,6 @@
             <span>AQ-Player | JAJ Records / Dual - Cha</span>
             <div class="window-controls">
                 <button class="retro-btn player-cfg-title-btn" id="player-cfg-btn" title="Réglages du lecteur" aria-label="Réglages du lecteur" onclick="togglePlayerSettingsPanel()">CFG</button>
-                <button class="retro-btn" id="player-exit-night-btn" style="display:none;" onclick="setPlayerNightMode(false); savePlayerState();">NUIT OFF</button>
                 <button class="retro-btn window-minimize-btn" type="button" title="Réduire" aria-label="Réduire" onclick="toggleWindow('win-player', 'task-player')">_</button>
                 <button class="retro-btn window-close-btn" type="button" title="Fermer" aria-label="Fermer" onclick="closeWindow('win-player', 'task-player')">X</button>
             </div>
@@ -176,7 +175,6 @@
                     <option value="rose">Rose OG</option>
                 </select>
             </label>
-            <label class="setting-row"><input type="checkbox" id="player-night-mode"><span id="player-night-label"> Mode plein écran nuit</span></label>
             <div style="font-size:10px; color:#555;" id="player-settings-hint">Astuce: clique hors du panneau pour le fermer.</div>
         </div>
         <div class="player-content">
@@ -296,6 +294,8 @@
 
             <div class="navigator-linksbar">
                 <span class="navigator-links-label">Liens</span>
+                <button class="retro-btn" id="ie-catalog-btn" type="button" onclick="setIEPage('info')">Catalogue</button>
+                <button class="retro-btn" id="ie-tempus-btn" type="button" style="display:none" onclick="setIEPage('tempus')">Tempus Perit</button>
             </div>
 
             <div class="navigator-page-wrap">
@@ -733,9 +733,7 @@
 </div>
 <button id="lite-exit-fab" class="retro-btn" type="button" style="display:none; position:fixed; right:10px; bottom:10px; z-index:9000;">Quitter lite</button>
 
-<script src="js/app.js"></script>
-<script type="module" src="js/auth.js"></script>
-<script type="module" src="js/myspace.js"></script>
+<script type="module" src="js/bootstrap.js"></script>
 
 </body>
 </html>

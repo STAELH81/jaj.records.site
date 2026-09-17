@@ -1,4 +1,5 @@
 import AQCatalog from './catalog.js';
+import { showSkinView, installSkinChooser } from './player-skin.js';
 
 let activeReleaseId = null;
 let currentView = 'library';
@@ -433,60 +434,6 @@ function installStyles() {
             background: radial-gradient(circle at 50% 45%, rgba(0,137,255,.55) 0%, rgba(0,48,128,.32) 20%, transparent 47%), #000717;
         }
 
-        #aqmp-visual-field { position: absolute; inset: 0; overflow: hidden; filter: saturate(1.35) contrast(1.08); }
-
-        .aqmp-orb,
-        .aqmp-wave { position: absolute; border-radius: 50%; mix-blend-mode: screen; pointer-events: none; }
-
-        .aqmp-orb {
-            width: 190px;
-            height: 190px;
-            left: 50%;
-            top: 50%;
-            margin: -95px;
-            background: radial-gradient(circle, #dfffff 0%, #34b7ff 16%, #1649ff 36%, transparent 70%);
-            box-shadow: 0 0 60px #1789ff, 0 0 120px #1c45ff;
-            animation: aqmpPulse 2.7s ease-in-out infinite alternate;
-        }
-
-        .aqmp-wave {
-            width: 75%;
-            height: 12px;
-            left: 12%;
-            top: 48%;
-            border: 2px solid rgba(132,230,255,.9);
-            border-left-color: transparent;
-            border-right-color: transparent;
-            box-shadow: 0 0 10px #59e4ff, 0 0 24px #2569ff;
-            animation: aqmpWave 4.6s linear infinite;
-        }
-
-        .aqmp-wave.w2 { transform: rotate(28deg); animation-duration: 5.3s; }
-        .aqmp-wave.w3 { transform: rotate(-31deg); animation-duration: 3.9s; }
-
-        #aqmp-visual-copy {
-            position: relative;
-            z-index: 3;
-            margin-top: 235px;
-            padding: 5px 9px;
-            border: 1px solid rgba(118,190,255,.45);
-            background: rgba(0,13,36,.66);
-            color: #a9d9ff;
-            font-size: 9px;
-            letter-spacing: .6px;
-        }
-
-        @keyframes aqmpPulse {
-            from { transform: scale(.78) rotate(-8deg); opacity: .62; }
-            to { transform: scale(1.2) rotate(10deg); opacity: 1; }
-        }
-
-        @keyframes aqmpWave {
-            0% { translate: -4% -18px; scale: .8 1; opacity: .35; }
-            50% { translate: 4% 18px; scale: 1.08 1.6; opacity: 1; }
-            100% { translate: -4% -18px; scale: .8 1; opacity: .35; }
-        }
-
         #win-player.aqmp-window #player-bottom-bar {
             position: relative !important;
             flex: 0 0 73px;
@@ -633,15 +580,6 @@ function buildShell() {
         const visualView = document.createElement('section');
         visualView.id = 'aqmp-visual-view';
         visualView.className = 'aqmp-view';
-        visualView.innerHTML = `
-            <div id="aqmp-visual-field" aria-hidden="true">
-                <div class="aqmp-orb"></div>
-                <div class="aqmp-wave w1"></div>
-                <div class="aqmp-wave w2"></div>
-                <div class="aqmp-wave w3"></div>
-            </div>
-            <div id="aqmp-visual-copy"></div>
-        `;
 
         playerContent.id = 'aqmp-now-view';
         playerContent.classList.add('aqmp-view');
@@ -709,9 +647,10 @@ function buildSidebar() {
     const skin = document.createElement('button');
     skin.type = 'button';
     skin.className = 'aqmp-side-button';
+    skin.dataset.view = 'skin';
     skin.innerHTML = `${tr('Sélecteur de skins', 'Skin Chooser')}<small>CFG</small>`;
     skin.addEventListener('click', () => {
-        if (typeof togglePlayerSettingsPanel === 'function') togglePlayerSettingsPanel();
+        showSkinView();
     });
     ui.sidebar.appendChild(skin);
 }
@@ -852,7 +791,7 @@ function showView(view) {
     currentView = safe;
 
     const map = { library: ui.libraryView, now: ui.nowView, visual: ui.visualView };
-    Object.values(map).forEach((element) => element?.classList.remove('active'));
+    document.querySelectorAll('#aqmp-stage > .aqmp-view').forEach(element => element.classList.remove('active'));
     map[safe]?.classList.add('active');
 
     document.querySelectorAll('#aqmp-sidebar [data-view]').forEach((button) => {
@@ -876,9 +815,7 @@ function showView(view) {
         ui.toolbarContext.textContent = release ? `${artist.name} — ${release.title}` : '';
     } else {
         ui.toolbarTitle.textContent = tr('Visualisations', 'Visualizations');
-        ui.toolbarContext.textContent = tr('Aperçu du moteur visuel', 'Visual engine preview');
-        const copy = document.getElementById('aqmp-visual-copy');
-        if (copy) copy.textContent = tr('VISUAL ENGINE // STANDBY // audio-réactif en Phase 6B', 'VISUAL ENGINE // STANDBY // audio reactive in Phase 6B');
+        ui.toolbarContext.textContent = tr('Moteur procédural audio-réactif', 'Audio-reactive procedural engine');
     }
 }
 
@@ -908,6 +845,7 @@ function applyPlayerTracks(release) {
 
     myTracks = AQCatalog.toPlayerTracks(release.id);
     if (typeof renderPlaylist === 'function') renderPlaylist();
+    document.querySelectorAll('#playlist li').forEach((row, index) => row.classList.toggle('active', index === currentTrackIndex));
     return true;
 }
 
@@ -915,11 +853,13 @@ function updateReleaseMetadata(release) {
     const artist = getReleaseArtist(release);
 
     const title = document.querySelector('#win-player .title-bar > span');
-    if (title) title.textContent = `AQ-Player | ${artist.name} — ${release.title}`;
+    if (title) title.textContent = 'AQ-Player';
 
     const cover = document.querySelector('#aqmp-now-view > div:first-child img');
-    if (cover && release.cover) {
-        cover.src = release.cover;
+    if (cover) {
+        cover.hidden = !release.cover;
+        if (release.cover) cover.src = release.cover;
+        else cover.removeAttribute('src');
         cover.alt = `${release.title} — ${artist.name}`;
     }
 
@@ -965,15 +905,6 @@ function syncReleaseFromSettings() {
     });
 }
 
-function installTrackSourceResolver() {
-    if (typeof getTrackFolder !== 'function') return;
-    const legacyResolver = getTrackFolder;
-    getTrackFolder = function catalogTrackFolder(track) {
-        if (track?.audioBase) return track.audioBase;
-        return legacyResolver(track);
-    };
-}
-
 function refreshLanguage() {
     buildSidebar();
     renderLibraryTree();
@@ -988,8 +919,8 @@ function initCatalogPlayer() {
     }
 
     repairMySpaceIconPath();
-    installTrackSourceResolver();
     if (!buildShell()) return;
+    installSkinChooser();
 
     selectRelease(releaseFromSettings(), { resetPlayback: false, persist: false });
     showView('library');

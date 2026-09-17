@@ -7,5 +7,11 @@
     "@netlify/blobs": "latest",
     "@netlify/functions": "latest",
     "@netlify/identity": "latest"
+  },
+  "scripts": {
+    "test:phase6c": "node tests/phase6c.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

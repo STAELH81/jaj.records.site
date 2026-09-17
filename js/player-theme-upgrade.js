@@ -28,7 +28,6 @@ function writeSavedTheme(themeId) {
   try {
     const state = JSON.parse(localStorage.getItem(PLAYER_STATE_KEY) || '{}');
     state.playerSkin = themeId;
-    state.isPlayerNightMode = false;
     localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify(state));
     window.dispatchEvent(new CustomEvent('aq:persistence-changed', { detail: { kind: 'player-preferences', at: Date.now() } }));
   } catch (_) {}
@@ -175,9 +174,6 @@ function init() {
   }
 }
 
-queueMicrotask(init);
-requestAnimationFrame(init);
-setTimeout(init, 200);
-setTimeout(init, 900);
+init();
 window.addEventListener('aq:language-changed', () => setTimeout(translatePlayerUI, 0));
 window.addEventListener('aq:catalog-release-changed', forceSimpleTitle);

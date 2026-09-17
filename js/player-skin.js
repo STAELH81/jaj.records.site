@@ -1,24 +1,14 @@
-// AQ-Player Phase 6 integration fixes: in-app Skin Chooser + visualizer wakeup.
+// AQ-Player integrated skin chooser and view lifecycle.
 function tr(fr,en){return document.documentElement.lang==='en'?en:fr;}
 
-function disableLegacyNightMode(){
-  const win=document.getElementById('win-player');
-  document.body.classList.remove('player-night-mode');
-  win?.classList.remove('player-night-fullscreen');
-  const night=document.getElementById('player-night-mode');
-  if(night){night.checked=false;night.closest('label')?.remove();}
-  document.getElementById('player-exit-night-btn')?.remove();
-  document.getElementById('player-cfg-btn')?.remove();
-}
-
 function installSkinStyles(){
-  if(document.getElementById('aqmp-skin-hotfix-styles'))return;
-  const style=document.createElement('style'); style.id='aqmp-skin-hotfix-styles';
+  if(document.getElementById('aqmp-skin-styles'))return;
+  const style=document.createElement('style'); style.id='aqmp-skin-styles';
   style.textContent=`#player-cfg-btn{display:none!important}#aqmp-skin-view{background:linear-gradient(to bottom,#f8fbfe,#dbe7f2);overflow:auto}#aqmp-skin-view.active{display:block}.aqmp-skin-layout{width:min(520px,calc(100% - 40px));margin:28px auto;padding:18px;box-sizing:border-box;border:1px solid #7896b3;background:#f4f8fb;box-shadow:inset 0 1px 0 #fff,2px 3px 7px rgba(35,70,105,.24);color:#183b63;font:11px Tahoma,sans-serif}.aqmp-skin-title{font-size:18px;font-weight:bold;color:#174d86;margin-bottom:3px}.aqmp-skin-sub{color:#667b91;margin-bottom:15px}.aqmp-skin-panel-host{border:1px solid #9bacbd;background:#fff;padding:12px;box-shadow:inset 1px 1px 2px rgba(0,0,0,.12)}#aqmp-skin-view #player-settings-panel{position:static!important;display:block!important;width:auto!important;top:auto!important;right:auto!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:#203a55}#aqmp-skin-view #player-settings-panel .setting-title{color:#164b82;border-bottom:1px solid #b7c6d5;padding-bottom:5px;margin-bottom:10px}#aqmp-skin-view #player-settings-panel .setting-row{display:flex;align-items:center;min-height:28px;margin:0 0 8px}#aqmp-skin-view #player-settings-panel select{min-width:180px;height:24px}.aqmp-skin-note{margin-top:12px;padding-top:9px;border-top:1px solid #b8c8d7;color:#6b7d8e;font-size:9px}`;
   document.head.appendChild(style);
 }
 
-function showSkinView(){
+export function showSkinView(){
   if(!installSkinChooser())return;
   document.querySelectorAll('#aqmp-stage > .aqmp-view').forEach(v=>v.classList.remove('active'));
   document.getElementById('aqmp-skin-view')?.classList.add('active');
@@ -28,28 +18,17 @@ function showSkinView(){
   if(back){back.textContent=tr('← Bibliothèque','← Library');back.style.display='';}
 }
 
-function installSkinChooser(){
+export function installSkinChooser(){
   const stage=document.getElementById('aqmp-stage'),sidebar=document.getElementById('aqmp-sidebar'),panel=document.getElementById('player-settings-panel');
   if(!stage||!sidebar||!panel)return false;
-  disableLegacyNightMode(); installSkinStyles();
+   installSkinStyles();
   let view=document.getElementById('aqmp-skin-view');
   if(!view){view=document.createElement('section');view.id='aqmp-skin-view';view.className='aqmp-view';view.innerHTML=`<div class="aqmp-skin-layout"><div class="aqmp-skin-title">${tr('Sélecteur de skins','Skin Chooser')}</div><div class="aqmp-skin-sub">${tr('Personnalise l’apparence d’AQ-Player.','Customize AQ-Player appearance.')}</div><div class="aqmp-skin-panel-host"></div><div class="aqmp-skin-note">${tr('Les réglages du lecteur sont intégrés directement dans l’application.','Player settings are integrated directly into the application.')}</div></div>`;stage.appendChild(view);}
   const host=view.querySelector('.aqmp-skin-panel-host'); if(host&&panel.parentElement!==host)host.appendChild(panel); panel.classList.remove('open');
   const hint=document.getElementById('player-settings-hint'); if(hint)hint.textContent=tr('Choisis un skin pour AQ-Player.','Choose a skin for AQ-Player.');
-  let button=Array.from(sidebar.querySelectorAll('.aqmp-side-button')).find(b=>b.textContent.includes('Sélecteur de skins')||b.textContent.includes('Skin Chooser')||b.querySelector('small')?.textContent==='CFG');
-  if(button&&button.dataset.phase6SkinWired!=='1'){const repl=button.cloneNode(true);repl.dataset.phase6SkinWired='1';repl.dataset.view='skin';repl.disabled=false;repl.style.opacity='';repl.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showSkinView();});button.replaceWith(repl);}
   return true;
 }
 
-function wakeVisualizer(){
-  try{window.AQVisualizer?.wake?.();window.AQVisualizer?.resize?.();}catch(err){console.warn('[AQ Player] visualizer wake failed',err);}
-}
-function installVisualizerWakeup(){
-  const view=document.getElementById('aqmp-visual-view'); if(!view)return false;
-  if(view.dataset.phase6WakeObserved!=='1'){const mo=new MutationObserver(()=>{if(view.classList.contains('active'))requestAnimationFrame(wakeVisualizer);});mo.observe(view,{attributes:true,attributeFilter:['class']});view.dataset.phase6WakeObserved='1';}
-  window.addEventListener('resize',wakeVisualizer,{passive:true}); if(view.classList.contains('active'))wakeVisualizer(); return true;
-}
-function nativeNavigation(e){const skin=document.getElementById('aqmp-skin-view');if(!skin?.classList.contains('active'))return;const btn=e.target.closest?.('#aqmp-sidebar [data-view]:not([data-view="skin"]),#aqmp-toolbar [data-action="library"]');if(btn)skin.classList.remove('active');}
-function repair(){disableLegacyNightMode();installSkinChooser();installVisualizerWakeup();}
-queueMicrotask(repair);requestAnimationFrame(repair);setTimeout(repair,150);setTimeout(repair,800);
-document.addEventListener('click',nativeNavigation,true);window.addEventListener('aq:language-changed',()=>setTimeout(repair,0));window.addEventListener('aq:catalog-release-changed',()=>setTimeout(repair,0));
+// The procedural SVG visualizer owns its own visibility and audio lifecycle.
+installSkinChooser();
+window.addEventListener('aq:language-changed', installSkinChooser);

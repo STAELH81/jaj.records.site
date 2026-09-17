@@ -69,3 +69,20 @@ The frontend exposes:
 - `window.AQPermissions.canPublish()`
 
 No Publisher UI is included in this patch yet.
+
+
+## Phase 6C regression check
+
+The Navigator and Player share `js/catalog.js`. `js/bootstrap.js` loads the catalogue
+before restoring the classic desktop, then initializes Player, skins, visualizer and account UI.
+Legacy Dual addresses remain aliases for its catalogue release page; album notes live with its catalogue entry.
+
+Run a static server at the repository root (`python -m http.server 8765`), install
+project dependencies and Chromium (`npm install`, `npx playwright install chromium`),
+then run `npm run test:phase6c`. `BASE_URL` overrides the server URL and `BROWSER_CHANNEL`
+can select an installed browser such as `msedge`.
+
+The browser regression adds a second artist/release only to intercepted test responses.
+It checks catalogue navigation, FR/EN, release/track/theme/preset restoration, eight visual presets,
+mobile navigation and window bounds, and JavaScript errors. No fixture is published in the catalogue.
+Account services and cloud uploads require a Netlify environment and are not covered by the static-server test.

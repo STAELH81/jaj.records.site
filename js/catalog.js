@@ -1,5 +1,3 @@
-import './visualizer.js';
-
 // JAJ Records / Aquerty AQ-NEO — Phase 6 dynamic catalogue
 // Single source of truth for artists, releases and tracks.
 
@@ -31,6 +29,20 @@ const catalog = {
             status: 'archive',
             cover: 'medias/img/albumimg.png',
             copyright: '© 2026 JAJ Records',
+            navigatorNotes: (isEn) => `                    <p><strong>Hey!</strong> ${isEn ? 'Thanks for taking the time to read this.' : 'Merci de prendre le temps de lire ceci.'}</p>
+                    <p>
+                        ${isEn
+                            ? 'Originally, this album was meant to be a collection of all my SoundCloud releases. Then I recovered older projects (thanks Clancy &lt;3), and putting everything together made more sense.'
+                            : "À l'origine, cet album devait être une collection de toutes mes sorties SoundCloud. Puis j'ai récupéré d'anciens projets (merci Clancy &lt;3), et les réunir dans un seul ensemble faisait beaucoup plus sens."}
+                    </p>
+                    <p>
+                        ${isEn
+                            ? "The name <strong>Dual</strong> is about duality: identity, daily choices and two possible paths."
+                            : "Le nom <strong>Dual</strong> parle de dualité : identité, choix du quotidien et deux chemins possibles."}
+                    </p>
+                    <p><strong>LRJR</strong> = <em>Lost Records of JAJ Records</em> : ${isEn ? 'lost recordings, experiments and sketches.' : 'enregistrements perdus, expérimentations et essais.'}</p>
+                    <p><strong>${isEn ? 'System key' : 'Clé système'} :</strong> <span style="color:#000080;font-weight:bold;">NdZkLa</span></p>
+`,
             tracks: [
                 { id: 'dual-01', number: 1, title: 'Just Not Enough For It (Remastered)', availability: 'unavailable' },
                 { id: 'dual-02', number: 2, title: 'Feelings Of Nostalgia', availability: 'full', audio: 'medias/musique/sorti/01.mp3' },

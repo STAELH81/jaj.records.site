@@ -242,25 +242,7 @@
         }
         #player-settings-panel.open { display: block; }
         #player-settings-panel .setting-row { margin-bottom: 8px; }
-        #win-player.player-night-fullscreen {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            z-index: 7000 !important;
-            border-radius: 0;
-            resize: none;
-            box-shadow: none;
-        }
-        body.player-night-mode #desktop {
-            background: #04070f !important;
-            filter: brightness(0.68) saturate(0.8);
-        }
-        body.player-night-mode #taskbar {
-            display: none !important;
-        }
-        body.player-night-mode #start-menu { filter: brightness(0.7); }
+
         ul { list-style: none; padding: 0; margin: 0; }
         li { padding: 6px 10px; cursor: pointer; font-size: 11px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; }
         li:hover:not(.locked) { background: #eef6ff; }
@@ -938,6 +920,9 @@
             display: none;
         }
         body.mobile-mode .window {
+            box-sizing: border-box;
+            min-width: 0 !important;
+            min-height: 0 !important;
             position: fixed !important;
             top: 44px !important;
             left: 0 !important;
@@ -1099,9 +1084,7 @@
         body.mobile-mode #win-player #now-playing {
             font-size: 11px !important;
         }
-        body.mobile-mode #win-player #player-settings-panel label.setting-row:has(#player-night-mode) {
-            display: none !important;
-        }
+
     
 /* Dual archive: released tracks whose master file is not present in this repo */
 #win-player li.unavailable,
@@ -1254,8 +1237,7 @@ button {
 }
 
 body.mobile-mode .window,
-body.desktop-lite-mode #win-player,
-#win-player.player-night-fullscreen {
+body.desktop-lite-mode #win-player {
     max-width: none;
     max-height: none;
 }
@@ -2381,7 +2363,7 @@ body.global-dark #win-ie .aq-page {
 
 @media (max-width: 760px) {
     .navigator-shell {
-        grid-template-rows: 0 34px 29px 23px minmax(0, 1fr) 20px;
+        grid-template-rows: 34px 29px 23px minmax(0, 1fr) 20px;
     }
 
     .navigator-menubar {
@@ -2561,4 +2543,69 @@ body.global-dark #win-ie .aq-page {
 .navigator-dropdown button:hover {
     background: #0a246a;
     color: #fff;
+}
+
+/* Procedural visualizer layout */
+
+  #win-player #aqmp-visual-view.active{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
+  }
+  #win-player #aqmp-visual-stage{
+    position:relative!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:160px!important;
+    align-self:stretch!important;
+    flex:1 1 0!important;
+    box-sizing:border-box!important;
+  }
+  #win-player #aqmp-visual-svg{
+    position:absolute!important;
+    inset:0!important;
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:100%!important;
+    min-height:100%!important;
+    z-index:1!important;
+  }
+  #win-player #aqmp-visual-scanlines{z-index:2!important}
+  #win-player #aqmp-visual-controls{
+    width:100%!important;
+    align-self:stretch!important;
+    flex:0 0 40px!important;
+    box-sizing:border-box!important;
+    z-index:3!important;
+  }
+
+.navigator-release { overflow-wrap: anywhere; }
+.navigator-release-cover { width: 160px; max-width: 100%; height: auto; }
+.navigator-release .retro-btn { white-space: normal; min-height: 32px; }
+.navigator-release li { margin-bottom: 7px; }
+
+/* AQ-Player catalogue layout on narrow screens. */
+@media (max-width: 760px) {
+    body.mobile-mode #win-player.aqmp-window { min-width: 0 !important; min-height: 0 !important; }
+    body.mobile-mode #win-player #aqmp-body { grid-template-columns: 94px minmax(0, 1fr); }
+    body.mobile-mode #win-player #aqmp-stage { min-width: 0; }
+    body.mobile-mode #win-player #aqmp-now-view { overflow-y: auto; }
+    body.mobile-mode #win-player #aqmp-now-view > div:first-child { display: none; }
+    body.mobile-mode #win-player #aqmp-list-head,
+    body.mobile-mode #win-player .aqmp-release-row { grid-template-columns: minmax(0, 1fr) 42px; }
+    body.mobile-mode #win-player #aqmp-visual-controls { flex-wrap: wrap; height: auto; flex-basis: auto !important; }
+    body.mobile-mode #win-player .aqmp-skin-layout { width: calc(100% - 12px); margin: 6px; padding: 8px; }
+    body.mobile-mode #win-player #aqmp-skin-view #player-settings-panel select { min-width: 0; max-width: 100%; }
+    body.mobile-mode #win-player #player-controls-row { flex-wrap: wrap; }
+    body.mobile-mode #win-player #player-bottom-bar { flex-basis: auto; min-height: 73px; }
+    body.mobile-mode #win-player #aqmp-toolbar { flex-wrap: wrap; height: auto; min-height: 36px; }
+    body.mobile-mode #win-player #aqmp-toolbar-context { white-space: normal; }
+}
+
+@media (max-width: 760px) {
+    body.mobile-mode #win-player #aqmp-toolbar { flex: 0 0 auto; padding: 5px; gap: 3px; }
+    body.mobile-mode #win-player #aqmp-visual-controls label { display: inline-flex; align-items: center; }
+    body.mobile-mode #win-player #aqmp-visual-controls { overflow: visible; min-height: 62px; }
 }

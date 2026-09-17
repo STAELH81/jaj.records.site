@@ -179,7 +179,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             });
             if (saved.currentIEPage) {
                 const restoredPage = pageKeyFromAddress(saved.currentIEPage) || saved.currentIEPage;
-                if (['info', 'dual', 'tempus', '__favorites', '__history', '__help', '__about'].includes(restoredPage)) {
+                if ((getIEPages(getCurrentLanguage())[pageKeyFromAddress(restoredPage) || restoredPage] || ['__favorites', '__history', '__help', '__about'].includes(restoredPage))) {
                     setIEPage(restoredPage);
                 }
             }
@@ -1032,7 +1032,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             playerCfg: 'Réglages',
             playerSettingsTitle: 'Paramètres Player',
             playerSkinLabel: 'Apparence :',
-            playerNightLabel: 'Mode plein écran nuit',
             playerSettingsHint: 'Astuce: clique hors du panneau pour le fermer.',
             minesTask: 'AQ-Mines',
             logsSession: 'Logs techniques de session',
@@ -1129,7 +1128,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             playerCfg: 'Settings',
             playerSettingsTitle: 'Player Settings',
             playerSkinLabel: 'Skin:',
-            playerNightLabel: 'Night fullscreen mode',
             playerSettingsHint: 'Tip: click outside the panel to close it.',
             minesTask: 'AQ-Mines',
             logsSession: 'Session technical logs',
@@ -1323,7 +1321,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             });
             playerSkinLabel.prepend(`${t.playerSkinLabel} `);
         }
-        setText('player-night-label', ` ${t.playerNightLabel}`);
         setText('player-settings-hint', t.playerSettingsHint);
         const desktopTrash = document.querySelector('.desktop-icon[data-desktop-icon="trash"] span');
         if (desktopTrash) desktopTrash.textContent = t.trashLabel;
@@ -1464,6 +1461,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (ieAddressLabel) ieAddressLabel.textContent = t.ieAddress;
         const ieGoBtn = document.querySelector('#win-ie .navigator-address-row button[type="submit"]');
         if (ieGoBtn) ieGoBtn.textContent = navText.go;
+        setText('ie-catalog-btn', isEn ? 'Catalog' : 'Catalogue');
         const ieLinksLabel = document.querySelector('#win-ie .navigator-links-label');
         if (ieLinksLabel) ieLinksLabel.textContent = navText.links;
         updateNavigatorFullscreenMenu();
@@ -1679,6 +1677,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     function getIEPages(lang) {
         const isEn = lang === 'en';
         return {
+            ...getCatalogNavigatorPages(isEn),
             info: {
                 address: 'http://www.jaj-records.com/home.html',
                 title: 'JAJ Records',
@@ -1688,37 +1687,14 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                     <p><strong>${isEn ? 'Welcome to the JAJ Records network.' : 'Bienvenue sur le réseau JAJ Records.'}</strong></p>
                     <p>
                         ${isEn
-                            ? 'AQ-NEO is the label portal for music, archives, applications and web experiments. The original Dual experience remains available in the catalogue.'
-                            : "AQ-NEO sert de portail du label pour la musique, les archives, les applications et les expériences web. L'expérience Dual d'origine reste disponible dans le catalogue."}
+                            ? 'AQ-NEO is the label portal for music, archives, applications and web experiments. Browse releases and artists in the catalogue.'
+                            : "AQ-NEO sert de portail du label pour la musique, les archives, les applications et les expériences web. Retrouve les sorties et les artistes dans le catalogue."}
                     </p>
                     <div style="border:1px solid #aca899; background:#f4f4f4; padding:10px; margin:12px 0;">
                         <strong>${isEn ? 'Catalogue / Archives' : 'Catalogue / Archives'}</strong>
-                        <p style="margin-bottom:0;">
-                            <a href="#" style="color:#0000ee;" onclick="setIEPage('dual'); return false;">Dual - Cha (2026)</a>
-                        </p>
+                        <div>${renderNavigatorCatalog(isEn)}</div>
                     </div>
                     <p style="font-size:10px; color:#555;">JAJ Records // Aquerty AQ-NEO</p>
-                `
-            },
-            dual: {
-                address: 'http://www.jaj-records.com/releases/dual.html',
-                title: 'Dual - Cha',
-                content: `
-                    <h2 style="color:#000080; font-size:16px;">Dual - Cha</h2>
-                    <hr>
-                    <p><strong>Hey!</strong> ${isEn ? 'Thanks for taking the time to read this.' : 'Merci de prendre le temps de lire ceci.'}</p>
-                    <p>
-                        ${isEn
-                            ? 'Originally, this album was meant to be a collection of all my SoundCloud releases. Then I recovered older projects (thanks Clancy &lt;3), and putting everything together made more sense.'
-                            : "À l'origine, cet album devait être une collection de toutes mes sorties SoundCloud. Puis j'ai récupéré d'anciens projets (merci Clancy &lt;3), et les réunir dans un seul ensemble faisait beaucoup plus sens."}
-                    </p>
-                    <p>
-                        ${isEn
-                            ? "The name <strong>Dual</strong> is about duality: identity, daily choices and two possible paths."
-                            : "Le nom <strong>Dual</strong> parle de dualité : identité, choix du quotidien et deux chemins possibles."}
-                    </p>
-                    <p><strong>LRJR</strong> = <em>Lost Records of JAJ Records</em> : ${isEn ? 'lost recordings, experiments and sketches.' : 'enregistrements perdus, expérimentations et essais.'}</p>
-                    <p><strong>${isEn ? 'System key' : 'Clé système'} :</strong> <span style="color:#000080;font-weight:bold;">NdZkLa</span></p>
                 `
             },
             tempus: {
@@ -1751,7 +1727,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (!raw) return 'info';
 
         if (['info', 'home', 'aq://home', 'http://www.jaj-records.com/home.html'].includes(lower)) return 'info';
-        if (['dual', 'aq://archive/dual', 'http://www.jaj-records.com/releases/dual.html'].includes(lower)) return 'dual';
+        const release = window.AQCatalog.getReleases().find(release =>
+            [release.slug, `release:${release.id}`, `aq://release/${release.id}`, `aq://archive/${release.slug}`,
+             `http://www.jaj-records.com/releases/${encodeURIComponent(release.slug || release.id)}.html`]
+                .some(address => typeof address === 'string' && address.toLowerCase() === lower));
+        if (release) return `release:${release.id}`;
         if (['tempus', 'aq://archive/tempus', 'http://127.0.0.1/tempus_perit/index_files/'].includes(lower)) return 'tempus';
         if (lower === 'favorites' || lower === 'favoris') return '__favorites';
         if (lower === 'history' || lower === 'historique') return '__history';
@@ -1838,6 +1818,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
 
     function setIEPage(pageKey, fromHistory = false) {
+        pageKey = pageKeyFromAddress(pageKey) || pageKey;
         const pages = getIEPages(getCurrentLanguage());
         if (pageKey === 'tempus' && !isTempusUnlocked) return;
         const isUtility = pageKey.startsWith('__');
@@ -2082,7 +2063,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         if (
             document.body.classList.contains('mobile-mode') ||
             document.body.classList.contains('desktop-lite-mode') ||
-            win.classList.contains('player-night-fullscreen') ||
             win.classList.contains('navigator-fullscreen')
         ) return;
 
@@ -2160,7 +2140,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             }
         }
         if (!isRestoringSession) addSystemLog(`Fenetre ouverte: ${winId}`);
-        if (winId === 'win-player') updatePlayerNightEffects();
         updateMobilePortNav();
         saveSessionState();
     }
@@ -2173,7 +2152,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         stopAudioInWindow(winId);
         document.getElementById(winId).style.display = 'none';
         document.getElementById(taskId).style.display = 'none';
-        if (winId === 'win-player') updatePlayerNightEffects();
         updateMobilePortNav();
         addSystemLog(`Fenetre fermee: ${winId}`);
         saveSessionState();
@@ -2189,7 +2167,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             task.classList.add('active');
             document.querySelectorAll('.window').forEach(w => w.style.zIndex = 10);
             win.style.zIndex = 100;
-            if (winId === 'win-player') updatePlayerNightEffects();
         } else {
             if (win.style.zIndex != 100) {
                 document.querySelectorAll('.window').forEach(w => w.style.zIndex = 10);
@@ -2201,7 +2178,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 stopAudioInWindow(winId);
                 win.style.display = 'none';
                 task.classList.remove('active');
-                if (winId === 'win-player') updatePlayerNightEffects();
                 addSystemLog(`Fenetre reduite: ${winId}`);
             }
         }
@@ -2341,28 +2317,9 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     if (!hasSavedSession) setIEPage('info');
 
     // --- PLAYLIST ---
-    // Dual est maintenant une archive sortie : plus aucun verrou temporel.
-    // Les masters absents du repo sont marques "unavailable" au lieu d'etre faux-verrouilles.
-    let myTracks = [
-        { title: "Just Not Enough For It (Remastered)", file: "09.mp3", status: "unavailable" },
-        { title: "Feelings Of Nostalgia", file: "01.mp3", status: "full" },
-        { title: "The Lobby", file: "02.mp3", status: "unavailable" },
-        { title: "LRJR_3", file: "03.mp3", status: "full" },
-        { title: "Reverie", file: "04_prev.mp3", status: "snippet" },
-        { title: "Warsaw", file: "05.mp3", status: "full" },
-        { title: "Just Not Enough For It (Speech Intro)", file: "11.mp3", status: "unavailable" },
-        { title: "LRJR_1 / Figured Out", file: "15_prev.mp3", status: "snippet" },
-        { title: "Cloudy Awakening", file: "06.mp3", status: "unavailable" },
-        { title: "LRJR_2", file: "07.mp3", status: "full" },
-        { title: "The Red Willow Hotel's Lounge", file: "08.mp3", status: "full" },
-        { title: "Inconsistent Use Of Tabs", file: "14.mp3", status: "unavailable" },
-        { title: "The Emergency", file: "10.mp3", status: "full" },
-        { title: "Huxley", file: "16.mp3", status: "unavailable" },
-        { title: "LRJR_4", file: "12.mp3", status: "full" },
-        { title: "Loosing", file: "13.mp3", status: "full" },
-        { title: "Feelings Of Nostalgia (Alt)", file: "17.mp3", status: "unavailable" },
-        { title: "LRJR_5 / Gender Mess", file: "18.mp3", status: "unavailable" }
-    ];
+    let myTracks = window.AQCatalog.toPlayerTracks(
+        window.AQCatalog.getRelease(appSettings.playerReleaseId)?.id || window.AQCatalog.defaultReleaseId
+    );
 
     const playlist = document.getElementById('playlist');
     const player = document.getElementById('audio-player');
@@ -2374,13 +2331,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     const repeatOneBtn = document.getElementById('repeat-one-btn');
     const playerWindow = document.getElementById('win-player');
     const playerSkinSelect = document.getElementById('player-skin-select');
-    const playerNightModeToggle = document.getElementById('player-night-mode');
     const playerSettingsPanel = document.getElementById('player-settings-panel');
     let currentTrackIndex = -1;
     let isShuffleEnabled = false;
     let isRepeatOneEnabled = false;
     let playerSkin = 'classic';
-    let isPlayerNightMode = false;
     let lastSavedPlayerSecond = -1;
 
     function savePlayerState() {
@@ -2391,7 +2346,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             isShuffleEnabled,
             isRepeatOneEnabled,
             playerSkin,
-            isPlayerNightMode
         };
         localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify(payload));
     }
@@ -2406,7 +2360,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 isShuffleEnabled: !!saved.isShuffleEnabled,
                 isRepeatOneEnabled: !!saved.isRepeatOneEnabled,
                 playerSkin: typeof saved.playerSkin === 'string' ? saved.playerSkin : 'classic',
-                isPlayerNightMode: !!saved.isPlayerNightMode
             };
         } catch (_) {
             return {
@@ -2416,7 +2369,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 isShuffleEnabled: false,
                 isRepeatOneEnabled: false,
                 playerSkin: 'classic',
-                isPlayerNightMode: false
             };
         }
     }
@@ -2434,27 +2386,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             playerWindow.classList.add('player-skin-classic');
         }
         playerSkinSelect.value = playerSkin;
-    }
-
-    function updatePlayerNightEffects() {
-        const isPlayerVisible = playerWindow.style.display === 'block';
-        const shouldApply = isPlayerNightMode && isPlayerVisible;
-        document.body.classList.toggle('player-night-mode', shouldApply);
-        playerWindow.classList.toggle('player-night-fullscreen', shouldApply);
-        const exitBtn = document.getElementById('player-exit-night-btn');
-        if (exitBtn) exitBtn.style.display = isPlayerNightMode ? '' : 'none';
-    }
-
-    function setPlayerNightMode(enabled) {
-        if (document.body.classList.contains('mobile-mode')) {
-            isPlayerNightMode = false;
-            playerNightModeToggle.checked = false;
-            updatePlayerNightEffects();
-            return;
-        }
-        isPlayerNightMode = enabled;
-        playerNightModeToggle.checked = enabled;
-        updatePlayerNightEffects();
     }
 
     function togglePlayerSettingsPanel() {
@@ -2498,6 +2429,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
 
     function getTrackFolder(track) {
+        if (track.audioBase) return track.audioBase;
         if (track.sourceFolder === 'locked') return 'medias/musique/locked/';
         if (track.status === 'snippet') return 'medias/musique/snippets/';
         return 'medias/musique/sorti/';
@@ -2609,14 +2541,14 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             if (index === currentTrackIndex) row.classList.add('active');
             const trackNum = String(index + 1).padStart(2, '0');
             const lockedTag = getCurrentLanguage() === 'en' ? '[LOCKED]' : '[LOCK]';
-            const snippetTag = getCurrentLanguage() === 'en' ? '[PREVIEW]' : '[PREVIEW]';
-            const unavailableTag = getCurrentLanguage() === 'en' ? '[ARCHIVE N/A]' : '[ARCHIVE INDISPO]';
+            const snippetTag = getCurrentLanguage() === 'en' ? '[PREVIEW]' : '[EXTRAIT]';
+            const unavailableTag = getCurrentLanguage() === 'en' ? '[UNAVAILABLE]' : '[INDISPONIBLE]';
             const tag = track.status === 'locked'
                 ? ` ${lockedTag}`
                 : (track.status === 'snippet'
                     ? ` ${snippetTag}`
                     : (track.status === 'unavailable' ? ` ${unavailableTag}` : ''));
-            row.textContent = `${trackNum}. ${track.title}${tag}`;
+            row.textContent = `${trackNum}. ${escapeNavigatorHTML(track.title)}${tag}`;
             row.addEventListener('click', () => {
                 if (track.status === 'locked' || track.status === 'unavailable') return;
                 playTrackAtIndex(index, true);
@@ -2752,6 +2684,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
 
     function renderPlaylist() {
+        const isEn = getCurrentLanguage() === 'en';
         playlist.innerHTML = '';
         myTracks.forEach((track, index) => {
             let li = document.createElement('li');
@@ -2760,10 +2693,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 let folder = getTrackFolder(track);
                 li.setAttribute('data-src', folder + track.file);
             }
-            li.innerHTML = `<span>${trackNum}. ${track.title}</span>` +
-               (track.status === 'locked' ? ' <span style="color:#ff4444; font-size:9px;">[CHIFFRE]</span>' : '') +
-               (track.status === 'snippet' ? ' <span style="color:#245edb; font-size:9px;">[PREVIEW]</span>' : '') +
-               (track.status === 'unavailable' ? ' <span style="color:#777; font-size:9px;">[ARCHIVE INDISPO]</span>' : '');
+            li.innerHTML = `<span>${trackNum}. ${escapeNavigatorHTML(track.title)}</span>` +
+               (track.status === 'locked' ? ` <span style="color:#ff4444; font-size:9px;">${isEn ? '[LOCKED]' : '[VERROUILLÉ]'}</span>` : '') +
+               (track.status === 'snippet' ? ` <span style="color:#245edb; font-size:9px;">${isEn ? '[PREVIEW]' : '[EXTRAIT]'}</span>` : '') +
+               (track.status === 'unavailable' ? ` <span style="color:#777; font-size:9px;">${isEn ? '[UNAVAILABLE]' : '[INDISPONIBLE]'}</span>` : '');
             if (track.status === 'locked') li.className = "locked";
             if (track.status === 'unavailable') li.className = "unavailable";
             li.onclick = () => {
@@ -2780,7 +2713,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     isShuffleEnabled = savedPlayerState.isShuffleEnabled;
     isRepeatOneEnabled = savedPlayerState.isRepeatOneEnabled;
     applyPlayerSkin(savedPlayerState.playerSkin);
-    setPlayerNightMode(savedPlayerState.isPlayerNightMode);
     player.volume = savedPlayerState.volume;
     volumeSlider.value = String(savedPlayerState.volume);
     updateModeButtons();
@@ -2795,7 +2727,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             document.querySelectorAll('#playlist li').forEach((el, liIndex) => {
                 el.classList.toggle('active', liIndex === currentTrackIndex);
             });
-            statusDisplay.innerText = "PRET: " + track.title.toUpperCase();
+            statusDisplay.innerText = (getCurrentLanguage() === 'en' ? 'READY: ' : 'PRÊT : ') + track.title.toUpperCase();
             player.addEventListener('loadedmetadata', function restoreTimeOnce() {
                 if (savedPlayerState.currentTime > 0 && savedPlayerState.currentTime < player.duration) {
                     player.currentTime = savedPlayerState.currentTime;
@@ -2821,12 +2753,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     });
     playerSkinSelect.addEventListener('change', (e) => {
         applyPlayerSkin(e.target.value);
-        savePlayerState();
-        notifyPersistenceChange('player-preferences');
-        playSystemSound('click');
-    });
-    playerNightModeToggle.addEventListener('change', (e) => {
-        setPlayerNightMode(e.target.checked);
         savePlayerState();
         notifyPersistenceChange('player-preferences');
         playSystemSound('click');
@@ -2884,7 +2810,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             isShuffleEnabled: !!isShuffleEnabled,
             isRepeatOneEnabled: !!isRepeatOneEnabled,
             playerSkin: typeof playerSkin === 'string' ? playerSkin : 'classic',
-            isPlayerNightMode: !!isPlayerNightMode
         };
     }
 
@@ -2915,7 +2840,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 isShuffleEnabled: false,
                 isRepeatOneEnabled: false,
                 playerSkin: 'classic',
-                isPlayerNightMode: false
             }
         };
     }
@@ -2972,7 +2896,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 isShuffleEnabled: !!playerPrefs.isShuffleEnabled,
                 isRepeatOneEnabled: !!playerPrefs.isRepeatOneEnabled,
                 playerSkin: typeof playerPrefs.playerSkin === 'string' ? playerPrefs.playerSkin : 'classic',
-                isPlayerNightMode: !!playerPrefs.isPlayerNightMode
             }));
 
             isPoweredOff = false;
@@ -2980,6 +2903,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             document.getElementById('ie-tempus-btn').style.display = isTempusUnlocked ? 'inline-block' : 'none';
 
             applyVisualSettings();
+            applyClientMode();
             updateWallpaperUnlockState();
             applyWallpaper();
             applyDefaultDesktopLayoutIfMissing();
@@ -2988,7 +2912,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             isShuffleEnabled = !!playerPrefs.isShuffleEnabled;
             isRepeatOneEnabled = !!playerPrefs.isRepeatOneEnabled;
             applyPlayerSkin(typeof playerPrefs.playerSkin === 'string' ? playerPrefs.playerSkin : 'classic');
-            setPlayerNightMode(!!playerPrefs.isPlayerNightMode);
             player.volume = typeof playerPrefs.volume === 'number'
                 ? Math.max(0, Math.min(1, playerPrefs.volume))
                 : 0.3;
@@ -3495,3 +3418,57 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     mailRenderList();
     mailRenderView();
     applyLanguage(getCurrentLanguage());
+
+// Catalogue-backed Navigator pages. Data attributes keep titles and IDs out of inline code.
+function navigatorReleaseLink(release) {
+    const artist = window.AQCatalog.getArtist(release.artistId);
+    return `<a href="aq://release/${encodeURIComponent(release.id)}" data-catalog-page="release:${escapeNavigatorHTML(release.id)}">${escapeNavigatorHTML(release.title)} — ${escapeNavigatorHTML(artist?.name || release.artistId)} (${escapeNavigatorHTML(release.year || '')})</a>`;
+}
+
+function renderNavigatorCatalog(isEn) {
+    const releases = window.AQCatalog.getReleases();
+    if (!releases.length) return isEn ? 'No releases yet.' : 'Aucune sortie pour le moment.';
+    return window.AQCatalog.data.artists.map(artist => {
+        const items = releases.filter(release => release.artistId === artist.id);
+        return items.length ? `<section><h3>${escapeNavigatorHTML(artist.name)}</h3><ul>${items.map(release => `<li>${navigatorReleaseLink(release)}</li>`).join('')}</ul></section>` : '';
+    }).join('');
+}
+
+function getCatalogNavigatorPages(isEn) {
+    return Object.fromEntries(window.AQCatalog.getReleases().map(release => {
+        const artist = window.AQCatalog.getArtist(release.artistId);
+        const title = `${release.title} — ${artist?.name || release.artistId}`;
+        const statuses = isEn ? {full:'Available',snippet:'Preview',unavailable:'Unavailable',locked:'Locked'} : {full:'Disponible',snippet:'Extrait',unavailable:'Indisponible',locked:'Verrouillé'};
+        return [`release:${release.id}`, {
+            address: `http://www.jaj-records.com/releases/${encodeURIComponent(release.slug || release.id)}.html`,
+            title,
+            content: `<article class="navigator-release"><h2>${escapeNavigatorHTML(title)}</h2>
+                ${release.cover ? `<img class="navigator-release-cover" src="${escapeNavigatorHTML(release.cover)}" alt="${escapeNavigatorHTML(title)}">` : ''}
+                <p>${escapeNavigatorHTML(({album:'Album',single:'Single',ep:'EP'})[release.type] || release.type)} · ${escapeNavigatorHTML(release.year || '')} · ${escapeNavigatorHTML(release.label || '')}</p>
+                <button type="button" class="retro-btn" data-player-release="${escapeNavigatorHTML(release.id)}">${isEn ? 'Open in AQ-Player' : 'Ouvrir dans AQ-Player'}</button>
+                ${release.navigatorNotes?.(isEn) || ''}
+                <h3>${isEn ? 'Tracks' : 'Pistes'}</h3><ol>${(release.tracks || []).map(track => `<li>${escapeNavigatorHTML(track.title)} <small>— ${statuses[track.availability] || statuses.unavailable}</small></li>`).join('')}</ol>
+                <p>${escapeNavigatorHTML(release.copyright || '')}</p></article>`
+        }];
+    }));
+}
+
+document.getElementById('ie-content-box').addEventListener('click', event => {
+    const link = event.target.closest('[data-catalog-page]');
+    if (link) {
+        event.preventDefault();
+        setIEPage(link.dataset.catalogPage);
+    }
+    const button = event.target.closest('[data-player-release]');
+    if (!button || !window.AQPlayerCatalog?.selectRelease(button.dataset.playerRelease)) return;
+    window.AQPlayerCatalog.showNowPlaying();
+    openWindow('win-player', 'task-player');
+});
+
+window.addEventListener('aq:language-changed', () => {
+    renderPlaylist();
+    document.querySelectorAll('#playlist li').forEach((row, index) => row.classList.toggle('active', index === currentTrackIndex));
+});
+
+// Initialize responsive navigation after playback controls exist.
+setupMobileLite();

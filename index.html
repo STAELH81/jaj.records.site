@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/account.css">
     <link rel="stylesheet" href="css/myspace.css">
+    <link rel="stylesheet" href="css/artist-publisher.css">
 </head>
 <body>
 <div id="boot-screen">
@@ -148,6 +149,10 @@
         <div class="desktop-icon" data-desktop-icon="mail" data-open-win="win-mail" data-open-task="task-mail">
             <img src="medias/img/mailimg.png" class="window-icon-img" alt="Mail.exe" onerror="this.src='medias/img/exeimg.png'">
             <span>AQ-Mail</span>
+        </div>
+        <div class="desktop-icon publisher-entry" data-desktop-icon="publisher" data-open-win="win-publisher" data-open-task="task-publisher" hidden>
+            <img src="medias/img/exeimg.png" class="window-icon-img" alt="Artist Publisher">
+            <span>Artist Publisher</span>
         </div>
         <div class="desktop-icon" data-desktop-icon="myspace" data-open-win="win-myspace" data-open-task="task-myspace">
             <img src="myspaceimg.png?v=20260914" class="window-icon-img" alt="AQ-MySpace" onerror="this.style.display='none'">
@@ -586,11 +591,19 @@
         </div>
     </div>
 
+<div class="window" id="win-publisher" style="display:none;top:45px;left:160px;">
+    <div class="title-bar"><span>Artist Publisher</span><div class="window-controls">
+        <button class="retro-btn window-minimize-btn" type="button" aria-label="Réduire" onclick="toggleWindow('win-publisher','task-publisher')">_</button>
+        <button class="retro-btn window-close-btn" type="button" aria-label="Fermer" onclick="closeWindow('win-publisher','task-publisher')">X</button>
+    </div></div>
+    <div id="publisher-root"></div>
+</div>
 </div>
 
 <div id="taskbar">
     <button id="start-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="start-menu">MENU</button>
     <div class="task-area">
+        <div class="task-item" id="task-publisher" style="display:none" onclick="toggleWindow('win-publisher', 'task-publisher')">Artist Publisher</div>
         <div class="task-item active" id="task-player" style="display: none;" onclick="toggleWindow('win-player', 'task-player')">AQ-Player...</div>
         <div class="task-item active" id="task-ie" style="display: none;" onclick="toggleWindow('win-ie', 'task-ie')">AQ-Navigator...</div>
         <div class="task-item active" id="task-tempus" style="display: none;" onclick="toggleWindow('win-tempus', 'task-tempus')">Sécurité - tempus_pe...</div>
@@ -653,6 +666,7 @@
             </div>
         </div>
     </div>
+    <div class="start-menu-section publisher-entry" hidden><button class="retro-btn" type="button" onclick="openWindow('win-publisher','task-publisher');toggleStartMenu(false);">Artist Publisher</button></div>
     <div class="start-menu-section">
         <div class="start-menu-title">Récents</div>
         <div id="recent-list"></div>
@@ -684,6 +698,7 @@
     </div>
 </div>
 <div id="mobile-port-nav">
+    <button class="mobile-port-btn publisher-entry" data-open-win="win-publisher" data-open-task="task-publisher" hidden>Publisher</button>
     <button class="mobile-port-btn" data-open-win="win-player" data-open-task="task-player">Player</button>
     <button class="mobile-port-btn" data-open-win="win-ie" data-open-task="task-ie">Navigator</button>
     <button class="mobile-port-btn" data-open-win="win-settings" data-open-task="task-settings">Paramètres</button>

@@ -68,7 +68,7 @@ The frontend exposes:
 - `window.AQPermissions.isAdmin()`
 - `window.AQPermissions.canPublish()`
 
-No Publisher UI is included in this patch yet.
+Artist Publisher is available to ARTIST and ADMIN sessions (Phase 7A below).
 
 
 ## Phase 6C regression check
@@ -86,3 +86,36 @@ The browser regression adds a second artist/release only to intercepted test res
 It checks catalogue navigation, FR/EN, release/track/theme/preset restoration, eight visual presets,
 mobile navigation and window bounds, and JavaScript errors. No fixture is published in the catalogue.
 Account services and cloud uploads require a Netlify environment and are not covered by the static-server test.
+
+## Phase 7A — Artist Publisher drafts
+
+Open **Artist Publisher** from the desktop, start menu or mobile navigation after signing
+in as an ARTIST or ADMIN. The temporary icon is `medias/img/exeimg.png`.
+
+Create, reopen and edit private release drafts with a title, artist name, album/EP/single
+type, optional planned date, uploaded PNG/JPEG/WebP cover (up to 1 MiB), and up to 50
+ordered tracks. Audio URLs are optional; binary track uploads and public publication
+are deferred to Phase 7B. A live preview shows the cover, release details and track order.
+Saving is explicit. Failed saves retain the form; switching drafts warns about unsaved changes.
+
+`/api/artist-drafts` uses Netlify Identity's current server-controlled roles. Artists can
+access their own drafts; admins can access all drafts without changing ownership.
+Drafts always retain `status: draft` and never enter AQCatalog, Navigator or Player.
+The existing Dual catalogue remains intact.
+
+Production uses the strongly consistent `aq-artist-drafts-v1-production` site store.
+Previews use a separate, branch-scoped site store so drafts survive preview redeploys
+without touching production drafts. The API verifies request origin, validates media
+and payload size, and uses revision checks plus conditional ETag writes to reject
+concurrent edits. A conflict leaves the form intact so changes can be copied before reload.
+See [Netlify's conditional-write documentation](https://docs.netlify.com/build/data-and-storage/netlify-blobs/).
+
+Validation:
+
+- `npm run test:publisher`: real handler with in-memory Identity/Blobs dependencies;
+  checks permissions, ownership, validation and concurrent writes.
+- `npm run test:publisher:ui`: static server and Playwright setup as above; routes draft
+  requests through that handler with simulated identities, and exercises the full UI,
+  save/reopen/edit, cover, track order, failed saves, FR/EN, mobile and session isolation.
+- Real Identity login and durable Blobs storage require the deployed Netlify preview;
+  the fixtures do not claim to validate those external services.

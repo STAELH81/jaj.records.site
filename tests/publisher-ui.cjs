@@ -1,0 +1,106 @@
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+
+(async () => {
+    const { fixture } = await import('./publisher-fixture.mjs');
+    const f = fixture();
+    const browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {}) });
+    try {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+        const errors = [];
+        let failSave = false;
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('dialog', dialog => dialog.accept());
+        await page.route('**/api/aq-auth', route => route.fulfill({ json: { authenticated: false, user: null } }));
+        await page.route('**/api/artist-drafts**', async route => {
+            const incoming = route.request();
+            if (failSave && incoming.method() === 'POST') return route.fulfill({ status:503, json:{error:'service_unavailable'} });
+            const url = new URL(incoming.url());
+            const response = await f.handler(new Request(`https://site.test${url.pathname}${url.search}`, {
+                method: incoming.method(), headers: { 'content-type':'application/json', origin:'https://site.test' },
+                ...(incoming.postData() ? { body: incoming.postData() } : {}),
+            }), {});
+            await route.fulfill({ status: response.status, contentType:'application/json', body: await response.text() });
+        });
+        await page.addInitScript(() => {
+            if (!localStorage.getItem('aquerty_settings_v1')) localStorage.setItem('aquerty_settings_v1', JSON.stringify({ bootEnabled:false, systemPopups:false, crtEnabled:false }));
+        });
+        async function enter(user) {
+            f.identity.user = user;
+            await page.evaluate(user => {
+                window.JAJSession = user ? { ...user, type:'user', displayName:user.user_metadata?.display_name || 'Test account' } : {type:'guest', roles:[]};
+                window.dispatchEvent(new CustomEvent('jaj:session-changed', { detail:window.JAJSession }));
+            }, user);
+        }
+        async function open() {
+            await page.evaluate(() => openWindow('win-publisher','task-publisher'));
+            await page.waitForFunction(() => document.querySelector('#publisher-status')?.textContent !== 'Chargement…');
+        }
+        await page.goto(process.env.BASE_URL || 'http://127.0.0.1:8765');
+        await page.locator('#aq-guest-btn').click();
+        assert.equal(await page.locator('[data-desktop-icon="publisher"]').isVisible(), false);
+        await open();
+        assert.match(await page.locator('#publisher-root').innerText(), /réservé/);
+        const artist = { id:'artist-a', roles:['artist'], user_metadata:{display_name:'Cha'} };
+        await enter(artist);
+        await open();
+        assert.equal(await page.locator('[data-desktop-icon="publisher"]').isVisible(), true);
+        assert.match(await page.locator('[data-desktop-icon="publisher"] img').getAttribute('src'), /exeimg.png$/);
+        await page.locator('[data-action="new"]').first().click();
+        await page.locator('[name="title"]').fill('Night sketches <demo>');
+        await page.locator('[name="type"]').selectOption('ep');
+        await page.locator('[name="releaseDate"]').fill('2026-11-20');
+        await page.locator('#publisher-cover').setInputFiles(path.resolve('medias/img/exeimg.png'));
+        await page.waitForFunction(() => !!document.querySelector('#publisher-preview img'));
+        for (const title of ['First track', 'Second track']) {
+            await page.locator('[data-action="add-track"]').click();
+            await page.locator('[data-track-field="title"]').last().fill(title);
+        }
+        await page.locator('[data-track="1"] [data-action="up"]').click();
+        assert.equal(await page.locator('[data-track-field="title"]').first().inputValue(), 'Second track');
+        await page.getByRole('button', { name:'Enregistrer le brouillon', exact:true }).click();
+        await page.waitForFunction(() => document.querySelector('#publisher-status')?.textContent === 'Brouillon enregistré.');
+        assert.equal(f.records.size, 1);
+        assert.equal([...f.records.values()][0].data.tracks[0].title, 'Second track');
+        await page.reload();
+        await page.locator('#aq-guest-btn').click();
+        await enter(artist);
+        await open();
+        await page.locator('[data-draft-id]').click();
+        assert.equal(await page.locator('[name="title"]').inputValue(), 'Night sketches <demo>');
+        assert.equal(await page.locator('#publisher-preview img').count(), 1);
+        await page.locator('[name="title"]').fill('Updated EP');
+        failSave = true;
+        await page.getByRole('button',{name:'Enregistrer le brouillon',exact:true}).click();
+        await page.waitForFunction(() => document.querySelector('#publisher-status')?.classList.contains('error'));
+        assert.equal(await page.locator('[name="title"]').inputValue(), 'Updated EP');
+        failSave = false;
+        await page.getByRole('button',{name:'Enregistrer le brouillon',exact:true}).click();
+        await page.waitForFunction(() => document.querySelector('#publisher-status')?.textContent === 'Brouillon enregistré.');
+        await page.evaluate(() => updateSetting('desktopLanguage','en'));
+        assert.equal(await page.getByRole('button',{name:'Save draft',exact:true}).count(), 1);
+        assert.equal(await page.locator('[name="title"]').inputValue(), 'Updated EP');
+        if (process.env.QA_DIR) await page.screenshot({ path:path.join(process.env.QA_DIR,'publisher-desktop.png') });
+        await page.setViewportSize({width:390,height:844});
+        await page.waitForFunction(() => document.body.classList.contains('mobile-mode'));
+        assert.ok(await page.locator('#win-publisher').evaluate(el => el.getBoundingClientRect().right <= innerWidth+1));
+        assert.ok(await page.locator('#publisher-root').evaluate(el => el.scrollWidth <= el.clientWidth+1));
+        await page.getByRole('button',{name:'Save draft',exact:true}).click();
+        await page.waitForFunction(() => document.querySelector('#publisher-status')?.textContent === 'Draft saved.');
+        if (process.env.QA_DIR) await page.screenshot({ path:path.join(process.env.QA_DIR,'publisher-mobile.png') });
+        await enter({id:'artist-b',roles:['artist']});
+        await open();
+        await page.waitForFunction(() => !document.querySelector('#publisher-form'));
+        assert.equal(await page.locator('[data-draft-id]').count(), 0);
+        await enter({id:'admin',roles:['admin']});
+        await open();
+        await page.locator('[data-draft-id]').click();
+        assert.match(await page.locator('#publisher-form').innerText(), /Owner account: Cha/);
+        await enter(null);
+        assert.equal(await page.locator('#publisher-form').count(), 0);
+        assert.equal(await page.locator('#publisher-preview img').count(), 0);
+        assert.deepEqual(errors, []);
+        console.log('PASS: guest gate, artist draft create/save/reload/edit/cover/order, failure recovery, FR/EN, mobile, account isolation, admin view');
+    } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

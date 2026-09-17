@@ -778,7 +778,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         acc: { left: '110px', top: '110px' },
         mines: { left: '110px', top: '205px' },
         mail: { left: '110px', top: '300px' },
-        myspace: { left: '205px', top: '15px' }
+        myspace: { left: '205px', top: '15px' },
+        publisher: { left: '205px', top: '110px' }
     };
     const ICON_GRID_X = 95;
     const ICON_GRID_Y = 95;
@@ -2134,6 +2135,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             if (winId === 'win-ie') triggerContextualPopup('openInternet');
             if (winId === 'win-tempus') triggerContextualPopup('openTempus');
             if (winId === 'win-myspace') window.dispatchEvent(new Event('aq:myspace-open'));
+            if (winId === 'win-publisher') window.dispatchEvent(new Event('aq:publisher-open'));
             if (winId === 'win-acc') {
                 const frame = document.querySelector('#win-acc iframe');
                 frame?.contentWindow?.postMessage({ type: 'aq-acc-open' }, window.location.origin);

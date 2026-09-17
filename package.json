@@ -9,7 +9,9 @@
     "@netlify/identity": "latest"
   },
   "scripts": {
-    "test:phase6c": "node tests/phase6c.cjs"
+    "test:phase6c": "node tests/phase6c.cjs",
+    "test:publisher": "node --test tests/publisher-api.test.mjs",
+    "test:publisher:ui": "node tests/publisher-ui.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

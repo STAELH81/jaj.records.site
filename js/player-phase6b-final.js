@@ -19,19 +19,20 @@ function emitThemeIfChanged() {
   window.dispatchEvent(new CustomEvent('aq:player-theme-changed', { detail: { theme } }));
 }
 
+function setTextIfNeeded(element, value) {
+  if (element && element.textContent !== value) element.textContent = value;
+}
+
 function polishPlayer() {
   const win = document.getElementById('win-player');
   if (!win) return;
 
-  const title = win.querySelector(':scope > .title-bar > span');
-  if (title) title.textContent = 'AQ-Player';
+  setTextIfNeeded(win.querySelector(':scope > .title-bar > span'), 'AQ-Player');
 
   const visual = document.getElementById('aqmp-visual-view');
   if (visual?.classList.contains('active')) {
-    const toolbarTitle = document.getElementById('aqmp-toolbar-title');
-    const toolbarContext = document.getElementById('aqmp-toolbar-context');
-    if (toolbarTitle) toolbarTitle.textContent = tr('Visualisations', 'Visualizations');
-    if (toolbarContext) toolbarContext.textContent = tr('Moteur procédural audio-réactif', 'Audio-reactive procedural engine');
+    setTextIfNeeded(document.getElementById('aqmp-toolbar-title'), tr('Visualisations', 'Visualizations'));
+    setTextIfNeeded(document.getElementById('aqmp-toolbar-context'), tr('Moteur procédural audio-réactif', 'Audio-reactive procedural engine'));
   }
 
   emitThemeIfChanged();

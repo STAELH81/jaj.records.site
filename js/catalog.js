@@ -1,3 +1,5 @@
+import './visualizer.js';
+
 // JAJ Records / Aquerty AQ-NEO — Phase 6 dynamic catalogue
 // Single source of truth for artists, releases and tracks.
 

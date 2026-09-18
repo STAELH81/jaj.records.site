@@ -68,7 +68,7 @@ The frontend exposes:
 - `window.AQPermissions.isAdmin()`
 - `window.AQPermissions.canPublish()`
 
-Artist Publisher is available to ARTIST and ADMIN sessions (Phases 7A–7B below).
+Artist Publisher is available to ARTIST and ADMIN sessions (Phases 7A–7C below).
 
 
 ## Phase 6C regression check
@@ -87,7 +87,7 @@ It checks catalogue navigation, FR/EN, release/track/theme/preset restoration, e
 mobile navigation and window bounds, and JavaScript errors. No fixture is published in the catalogue.
 Account services and cloud uploads require a Netlify environment and are not covered by the static-server test.
 
-## Phases 7A–7B — Artist Publisher
+## Phases 7A–7C — Artist Publisher
 
 Open **Artist Publisher** from the desktop, start menu or mobile navigation after signing
 in as an ARTIST or ADMIN. The temporary icon is `medias/img/exeimg.png`.
@@ -112,8 +112,19 @@ length/signature, and makes completed uploads immutable. GET/HEAD support byte r
 for seeking. Unpublished files require the owning artist or an admin; anonymous access
 is available only while a file belongs to a published snapshot. All responses use
 no-store caching. Preview and production media share the same separation as drafts.
-Interrupted/replaced uploads remain in private storage; automatic orphan cleanup and
-storage quotas are not part of this phase.
+**Unpublish** removes the public snapshot while preserving the draft and its audio.
+**Delete draft** is available only after unpublishing and requires confirmation. A minimal
+server tombstone blocks recreation by stale clients; title, cover and tracks are removed.
+**Clean unused files** permanently removes eligible audio (artist: own account; admin:
+all accounts). Draft and published references are protected. Unreferenced imports receive
+a 24-hour grace period unless their draft was deleted. Each request processes up to ten
+files; the UI indicates when another cleanup pass is needed. There is no scheduled cleanup.
+
+Cleanup records retired asset IDs with a conditional write before removing binary chunks.
+Concurrent edits either win the ETag race or retry; retired IDs cannot be reattached.
+Failed chunk deletions keep the manifest for a later retry. An in-flight chunk upload
+rechecks the draft after writing and discards its part if deletion/retirement won.
+Cleanup tombstones and retired IDs are retained as small concurrency safeguards.
 
 Production uses the strongly consistent `aq-artist-drafts-v1-production` site store.
 Previews use a separate, branch-scoped site store so drafts survive preview redeploys
@@ -126,10 +137,12 @@ Validation:
 
 - `npm run test:publisher`: real handler with in-memory Identity/Blobs dependencies;
   checks permissions, ownership, validation, concurrent writes, chunked uploads, byte ranges,
-  draft/public isolation and publication snapshots.
+  draft/public isolation, publication snapshots, unpublish/delete, cleanup grace periods,
+  partial failures and concurrent edits.
 - `npm run test:publisher:ui`: static server and Playwright setup as above; routes draft
   requests through that handler with simulated identities, and exercises the full UI,
   save/reopen/edit, cover, track order, failed saves, FR/EN, mobile and session isolation;
-  WAV upload/playback/seek, publish/republish, Navigator → Player and selected-release restoration.
+  WAV upload/playback/seek, publish/republish, Navigator → Player and selected-release restoration; unpublish/republish, cancelled
+  confirmations, delete/cleanup and active-player fallback after withdrawal.
 - Real Identity login and durable Blobs storage require the deployed Netlify preview;
   the fixtures do not claim to validate those external services.

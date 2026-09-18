@@ -16,7 +16,7 @@ export async function actor(deps) {
     return { id:session.id, admin:roles.includes('admin') };
 }
 
-export const owns = (who, draft) => draft && (who.admin || who.id === draft.ownerId);
+export const owns = (who, draft) => draft && !draft.deletedAt && (who.admin || who.id === draft.ownerId);
 export const audioKey = id => `audio/${id}/manifest.json`;
 const partKey = (id, part) => `audio/${id}/${part}`;
 
@@ -38,6 +38,7 @@ export function createAudioHandler(deps) {
                 const asset = await store.get(audioKey(id), {type:'json'});
                 if (!asset?.complete) return json({error:'not_found'},404);
                 const draft = await store.get(`drafts/${asset.draftId}.json`, {type:'json'});
+                if (!draft || draft.deletedAt || draft.retiredAudio?.includes(id)) return json({error:'not_found'},404);
                 const published = draft?.publication?.tracks.some(track => track.audioAssetId === id);
                 if (!published) {
                     const who = await actor(deps);
@@ -95,7 +96,7 @@ export function createAudioHandler(deps) {
             if(!saved)return json({error:'not_found'},404);
             const asset=saved.data;
             const draft=await store.get(`drafts/${asset.draftId}.json`,{type:'json'});
-            if(!owns(who,draft))return json({error:'not_found'},404);
+            if(!owns(who,draft) || draft.retiredAudio?.includes(id))return json({error:'not_found'},404);
             if(action==='complete' && asset.complete)return json({asset:{id,name:asset.name,size:asset.size}});
             if(asset.complete)return json({error:'conflict'},409);
             if(action==='chunk') {
@@ -110,6 +111,12 @@ export function createAudioHandler(deps) {
                 if(!result.modified) {
                     const current=await store.getWithMetadata(partKey(id,part),{type:'arrayBuffer'});
                     if(current?.metadata?.hash!==hash)return json({error:'conflict'},409);
+                }
+                // A deletion/cleanup may have won while this chunk was being written.
+                const currentDraft=await store.get(`drafts/${asset.draftId}.json`,{type:'json'});
+                if(!owns(who,currentDraft) || currentDraft.retiredAudio?.includes(id)) {
+                    await store.delete(partKey(id,part));
+                    return json({error:'not_found'},404);
                 }
                 return json({ok:true});
             }

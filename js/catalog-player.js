@@ -927,6 +927,10 @@ function initCatalogPlayer() {
 
     window.addEventListener('aq:catalog-updated', () => {
         renderLibraryTree(); renderLibrary();
+        if (activeReleaseId && !AQCatalog.getRelease(activeReleaseId)) {
+            selectRelease(AQCatalog.defaultReleaseId, { resetPlayback: true, persist: true });
+            return;
+        }
         // Leave an ongoing queue intact; refreshed releases load on the next selection.
         if (typeof player !== 'undefined' && player.paused) syncReleaseFromSettings();
     });

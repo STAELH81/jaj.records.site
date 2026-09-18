@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { audioKey } from './publisher-media.mjs';
+import { cleanupAudio } from './publisher-cleanup.mjs';
 
 const MAX_BODY_BYTES = 1500000;
 const MAX_COVER_BYTES = 1024 * 1024;
@@ -60,7 +61,7 @@ export function sanitizeDraft(value) {
     return { title, artist, type: value.type, releaseDate, cover: coverImage(value.cover), tracks };
 }
 
-const view = ({ publication, ...draft }) => ({ ...draft, publishedAt: publication?.publishedAt || '', publishedRevision: publication?.revision || '' });
+const view = ({ publication, retiredAudio, ...draft }) => ({ ...draft, publishedAt: publication?.publishedAt || '', publishedRevision: publication?.revision || '' });
 const summary = record => { const { cover, tracks, ...draft } = view(record); return { ...draft, trackCount: tracks.length, hasCover: !!cover }; };
 
 // Dependency injection lets regression tests exercise the actual authorization and storage flow.
@@ -83,7 +84,7 @@ export function createDraftHandler({ getUser, liveUser, verifyOrigin, getStore }
                 if (id !== null) {
                     if (!validId(id)) return json({ error: 'not_found' }, 404);
                     const draft = await store.get(`drafts/${id}.json`, { type: 'json' });
-                    if (!draft || !canEdit(draft)) return json({ error: 'not_found' }, 404);
+                    if (!draft || draft.deletedAt || !canEdit(draft)) return json({ error: 'not_found' }, 404);
                     return json({ draft: view(draft) });
                 }
                 const { blobs } = await store.list({ prefix: 'drafts/' });
@@ -91,7 +92,7 @@ export function createDraftHandler({ getUser, liveUser, verifyOrigin, getStore }
                 // Avoid fetching all image bodies concurrently for large catalogues.
                 for (const item of blobs) {
                     const draft = await store.get(item.key, { type: 'json' });
-                    if (draft && canEdit(draft)) drafts.push(summary(draft));
+                    if (draft && !draft.deletedAt && canEdit(draft)) drafts.push(summary(draft));
                 }
                 drafts.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
                 return json({ drafts, isAdmin });
@@ -103,21 +104,34 @@ export function createDraftHandler({ getUser, liveUser, verifyOrigin, getStore }
             if (Buffer.byteLength(raw) > MAX_BODY_BYTES) return json({ error: 'too_large' }, 413);
             let payload;
             try { payload = JSON.parse(raw); } catch { return json({ error: 'invalid_json' }, 400); }
+            if (payload?.action === 'cleanup') return json(await cleanupAudio(store, canEdit));
             if (!payload || !validId(payload.id)) return json({ error: 'invalid_draft', field: 'id' }, 400);
             const key = `drafts/${payload.id}.json`;
             const saved = await store.getWithMetadata(key, { type: 'json' });
-            if (saved && !canEdit(saved.data)) return json({ error: 'not_found' }, 404);
+            if (saved && (saved.data.deletedAt || !canEdit(saved.data))) return json({ error: 'not_found' }, 404);
             if (saved && !saved.etag) return json({ error: 'service_unavailable' }, 503);
             if ((saved?.data.revision || '') !== (payload.revision || '')) return json({ error: 'conflict' }, 409);
             const metadata = user?.user_metadata || user?.userMetadata || {};
             const now = new Date().toISOString();
+            if (['unpublish', 'delete'].includes(payload.action)) {
+                if (!saved) return json({ error: 'not_found' }, 404);
+                if (payload.action === 'delete' && saved.data.publication) return json({ error: 'unpublish_first' }, 409);
+                const draft = payload.action === 'delete'
+                    ? { id: payload.id, ownerId: saved.data.ownerId, deletedAt: now, tracks: [], retiredAudio: saved.data.retiredAudio || [] }
+                    : { ...saved.data };
+                delete draft.publication;
+                Object.assign(draft, { revision: randomUUID(), updatedAt: now, updatedBy: session.id });
+                const result = await store.setJSON(key, draft, { onlyIfMatch: saved.etag });
+                if (!result.modified) return json({ error: 'conflict' }, 409);
+                return json(payload.action === 'delete' ? { deleted: true } : { draft: view(draft) });
+            }
             if (payload.action && payload.action !== 'publish') return json({ error: 'invalid_action' }, 400);
             if (payload.action === 'publish' && !saved) return json({ error: 'not_found' }, 404);
             const content = sanitizeDraft(payload.action === 'publish' ? saved.data : payload.draft);
             for (const track of content.tracks) {
                 if (!track.audioAssetId) continue;
                 const asset = await store.get(audioKey(track.audioAssetId), { type: 'json' });
-                if (!asset?.complete || asset.draftId !== payload.id) return json({ error: 'invalid_audio' }, 400);
+                if (!asset?.complete || asset.draftId !== payload.id || saved?.data.retiredAudio?.includes(track.audioAssetId)) return json({ error: 'invalid_audio' }, 400);
                 track.audioName = asset.name;
                 track.audioUrl = '';
             }
@@ -132,6 +146,7 @@ export function createDraftHandler({ getUser, liveUser, verifyOrigin, getStore }
                 createdAt: saved?.data.createdAt || now,
                 updatedAt: now,
                 updatedBy: session.id,
+                retiredAudio: saved?.data.retiredAudio || [],
                 ...(saved?.data.publication ? { publication: saved.data.publication } : {}),
             };
             if (payload.action === 'publish') {

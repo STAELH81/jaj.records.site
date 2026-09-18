@@ -4,6 +4,7 @@ export function fixture() {
     const records = new Map();
     const identity = { user: { id: 'artist-a', roles: ['artist'], user_metadata: { display_name: 'Artist A' } } };
     const store = {
+        async delete(key) { records.delete(key); },
         async get(key) { return structuredClone(records.get(key)?.data ?? null); },
         async getWithMetadata(key) { return structuredClone(records.get(key) ?? null); },
         async list({ prefix }) { return { blobs: [...records.keys()].filter(key => key.startsWith(prefix)).map(key => ({ key })) }; },

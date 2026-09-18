@@ -6,7 +6,16 @@ const allowed = () => state.session?.type === 'user' && state.session.roles?.som
 const isAdmin = () => state.session?.roles?.includes('admin');
 
 function message(code) {
+    if (code === 'cleaned') {
+        const result = state.cleanup;
+        return tr(`${result.removed} fichier(s) supprimé(s). ${result.more ? 'Il reste des fichiers : relance le nettoyage.' : 'Nettoyage terminé.'}`, `${result.removed} file(s) removed. ${result.more ? 'Files remain: run cleanup again.' : 'Cleanup complete.'}`);
+    }
     const messages = {
+        cleaning: ['Nettoyage des fichiers inutilisés…', 'Cleaning unused files…'],
+        managing: ['Mise à jour…', 'Updating…'],
+        unpublished: ['Sortie dépubliée. Le brouillon et ses pistes sont conservés.', 'Release unpublished. Its draft and tracks are preserved.'],
+        deleted: ['Brouillon supprimé. Le nettoyage peut maintenant retirer ses fichiers audio.', 'Draft deleted. Cleanup can now remove its audio files.'],
+        unpublish_first: ['Dépublie la sortie avant de supprimer son brouillon.', 'Unpublish the release before deleting its draft.'],
         uploading: ['Import audio en cours…', 'Uploading audio…'],
         audio_size: ['Le fichier audio doit faire entre 12 octets et 15 Mo.', 'Audio files must be between 12 bytes and 15 MB.'],
         audio_type: ['Choisis un fichier MP3, WAV ou Ogg valide.', 'Choose a valid MP3, WAV or Ogg file.'],
@@ -57,7 +66,7 @@ function mayLeave() {
 
 function setBusy(value) {
     state.busy = value;
-    root.querySelectorAll('fieldset, [data-action="new"], [data-action="refresh"], [data-draft-id]').forEach(el => { el.disabled = value; });
+    root.querySelectorAll('fieldset, [data-action="new"], [data-action="refresh"], [data-action="cleanup"], [data-draft-id]').forEach(el => { el.disabled = value; });
 }
 
 async function loadList() {
@@ -186,6 +195,35 @@ async function publishDraft() {
     finally { if (epoch === state.epoch) { state.busy = false; render(); } }
 }
 
+async function manageDraft(action) {
+    if (!allowed() || state.busy) return;
+    if (state.dirty) { status('needs_save', true); return; }
+    if (action !== 'cleanup' && !state.draft?.revision) return;
+    const prompts = {
+        unpublish: tr(`Dépublier « ${state.draft?.title} » ? La sortie quittera le catalogue public. Ton brouillon et ses pistes seront conservés.`, `Unpublish “${state.draft?.title}”? It will leave the public catalogue. Your draft and tracks will be preserved.`),
+        delete: tr(`Supprimer définitivement le brouillon « ${state.draft?.title} » ? Cette action est irréversible.`, `Permanently delete the draft “${state.draft?.title}”? This cannot be undone.`),
+        cleanup: tr(`Supprimer définitivement les fichiers audio inutilisés ${isAdmin() ? 'de tous les comptes' : 'de ton compte'} ? Les pistes des brouillons et des sorties publiées sont conservées. Les imports de moins de 24 heures sont protégés, sauf si leur brouillon a été supprimé.`, `Permanently remove unused audio files ${isAdmin() ? 'from all accounts' : 'from your account'}? Draft and published tracks are preserved. Uploads less than 24 hours old are protected unless their draft was deleted.`),
+    };
+    if (!window.confirm(prompts[action])) return;
+    const epoch = state.epoch;
+    setBusy(true); status(action === 'cleanup' ? 'cleaning' : 'managing');
+    try {
+        const result = await api('POST', action === 'cleanup' ? { action } : { action, id:state.draft.id, revision:state.draft.revision });
+        if (epoch !== state.epoch) return;
+        if (action === 'cleanup') { state.cleanup = result; status('cleaned', result.failed > 0); }
+        else if (action === 'delete') {
+            state.drafts = state.drafts.filter(item => item.id !== state.draft.id);
+            state.draft = null; status('deleted');
+        } else {
+            state.draft = result.draft;
+            state.drafts = state.drafts.map(item => item.id === result.draft.id ? { ...item, publishedAt:'' } : item);
+            status('unpublished');
+        }
+        if (action !== 'cleanup') await window.AQCatalog?.refresh();
+    } catch (error) { if (epoch === state.epoch) status(error.message, true); }
+    finally { if (epoch === state.epoch) { state.busy = false; render(); } }
+}
+
 function renderPreview() {
     const target = root.querySelector('#publisher-preview');
     const draft = state.draft;
@@ -208,10 +246,10 @@ function render() {
     const draft = state.draft;
     root.innerHTML = `
         <header class="publisher-header"><img src="medias/img/exeimg.png" alt=""><div><strong>Artist Publisher</strong><p>${tr('Prépare ta prochaine sortie.', 'Prepare your next release.')}</p></div><span class="publisher-badge">${isAdmin() ? 'ADMIN' : 'ARTIST'}</span></header>
-        <div class="publisher-toolbar"><button type="button" class="retro-btn" data-action="new">${tr('+ Nouveau brouillon', '+ New draft')}</button><button type="button" class="retro-btn" data-action="refresh">${tr('Actualiser la liste', 'Refresh list')}</button><span id="publisher-status" role="status" aria-live="polite" class="${state.error ? 'error' : ''}">${state.message ? message(state.message) : ''}</span></div>
+        <div class="publisher-toolbar"><button type="button" class="retro-btn" data-action="new">${tr('+ Nouveau brouillon', '+ New draft')}</button><button type="button" class="retro-btn" data-action="refresh">${tr('Actualiser la liste', 'Refresh list')}</button><button type="button" class="retro-btn" data-action="cleanup">${tr('Nettoyer les fichiers inutilisés', 'Clean unused files')}</button><span id="publisher-status" role="status" aria-live="polite" class="${state.error ? 'error' : ''}">${state.message ? message(state.message) : ''}</span></div>
         <div class="publisher-layout">
             <aside class="publisher-list"><h2>${isAdmin() ? tr('Tous les brouillons', 'All drafts') : tr('Mes brouillons', 'My drafts')}</h2>
-                ${state.drafts.length ? state.drafts.map(item => `<button type="button" class="publisher-draft ${draft?.id === item.id ? 'selected' : ''}" data-draft-id="${esc(item.id)}"><strong>${esc(item.title)}</strong><span>${esc(item.artist)} · ${esc(item.type.toUpperCase())}</span><small>${item.trackCount} ${tr('piste(s)', 'track(s)')}${isAdmin() ? ` · ${esc(item.ownerName)}` : ''}</small></button>`).join('') : `<p class="publisher-muted">${tr('Tes idées commencent ici. Crée ton premier brouillon.', 'Your ideas start here. Create your first draft.')}</p>`}
+                ${state.drafts.length ? state.drafts.map(item => `<button type="button" class="publisher-draft ${draft?.id === item.id ? 'selected' : ''}" data-draft-id="${esc(item.id)}"><strong>${esc(item.title)}</strong><span>${esc(item.artist)} · ${esc(item.type.toUpperCase())}</span><small>${item.publishedAt ? tr('Publié · ', 'Published · ') : ''}${item.trackCount} ${tr('piste(s)', 'track(s)')}${isAdmin() ? ` · ${esc(item.ownerName)}` : ''}</small></button>`).join('') : `<p class="publisher-muted">${tr('Tes idées commencent ici. Crée ton premier brouillon.', 'Your ideas start here. Create your first draft.')}</p>`}
             </aside>
             ${draft ? `<form id="publisher-form" class="publisher-editor"><fieldset ${state.busy ? 'disabled' : ''}>
                 <legend>${draft.revision ? tr('Modifier le brouillon', 'Edit draft') : tr('Nouvelle sortie', 'New release')}</legend>
@@ -228,6 +266,7 @@ function render() {
                 <div class="publisher-tracks">${draft.tracks.map((track,index) => `<div class="publisher-track" data-track="${index}"><span class="publisher-track-number">${index+1}</span><div><label>${tr('Titre de la piste', 'Track title')}<input data-track-field="title" maxlength="160" required value="${esc(track.title)}"></label><label class="publisher-audio-input">${tr('Importer un fichier audio', 'Upload audio file')}<input type="file" data-audio-upload accept=".mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg" ${!draft.revision ? 'disabled' : ''}></label>${track.audioAssetId ? `<p class="publisher-audio-name">${esc(track.audioName || tr('Audio importé', 'Uploaded audio'))}</p><audio controls preload="none" src="/api/artist-audio?id=${esc(track.audioAssetId)}"></audio><button type="button" class="retro-btn" data-action="remove-audio">${tr('Retirer le fichier audio', 'Remove audio file')}</button>` : ''}<label>${tr('Lien audio (facultatif)', 'Audio link (optional)')}<input data-track-field="audioUrl" ${track.audioAssetId ? 'disabled' : ''} maxlength="2048" placeholder="https://…" value="${esc(track.audioUrl)}"></label></div><div class="publisher-track-actions"><button type="button" class="retro-btn" data-action="up" ${index === 0 ? 'disabled' : ''} aria-label="${tr('Monter la piste', 'Move track up')}">↑</button><button type="button" class="retro-btn" data-action="down" ${index === draft.tracks.length-1 ? 'disabled' : ''} aria-label="${tr('Descendre la piste', 'Move track down')}">↓</button><button type="button" class="retro-btn" data-action="remove-track" aria-label="${tr('Retirer la piste', 'Remove track')}">×</button></div></div>`).join('')}</div>
                 <button type="button" class="retro-btn" data-action="add-track" ${draft.tracks.length >= 50 ? 'disabled' : ''}>${tr('+ Ajouter une piste', '+ Add track')}</button>
                 <div class="publisher-save"><button type="submit" class="retro-btn publisher-primary">${tr('Enregistrer le brouillon', 'Save draft')}</button>${draft.revision ? `<button type="button" class="retro-btn" data-action="reload">${tr('Recharger', 'Reload')}</button>` : ''}<button type="button" class="retro-btn publisher-primary" data-action="publish">${draft.publishedAt ? tr('Republier', 'Publish changes') : tr('Publier', 'Publish')}</button>${draft.publishedAt ? `<button type="button" class="retro-btn" data-action="open-release">${tr('Ouvrir dans AQ-Player', 'Open in AQ-Player')}</button>` : ''}</div>
+                ${draft.revision ? `<div class="publisher-management">${draft.publishedAt ? `<button type="button" class="retro-btn" data-action="unpublish">${tr('Dépublier', 'Unpublish')}</button>` : ''}<button type="button" class="retro-btn publisher-danger" data-action="delete" ${draft.publishedAt ? 'disabled' : ''}>${tr('Supprimer le brouillon', 'Delete draft')}</button><p class="publisher-muted">${draft.publishedAt ? tr('Dépublie la sortie avant de supprimer son brouillon.', 'Unpublish the release before deleting its draft.') : tr('La suppression du brouillon est définitive.', 'Deleting the draft is permanent.')}</p></div>` : ''}
             </fieldset></form><aside class="publisher-preview-wrap"><h2>${tr('Aperçu', 'Preview')}</h2><div id="publisher-preview"></div></aside>` : `<div class="publisher-empty"><span aria-hidden="true">♫</span><h2>${tr('De l’idée à la sortie.', 'From idea to release.')}</h2><p>${tr('Rassemble la pochette, les titres et les premières pistes dans un brouillon privé.', 'Bring your cover, titles and first tracks together in a private draft.')}</p><button type="button" class="retro-btn" data-action="new">${tr('Créer un brouillon', 'Create a draft')}</button></div>`}
         </div>`;
     renderPreview();
@@ -281,6 +320,7 @@ root.addEventListener('click', event => {
     const action = button.dataset.action;
     if (action === 'new') return newDraft();
     if (action === 'refresh') { void loadList(); return; }
+    if (['cleanup','unpublish','delete'].includes(action)) { void manageDraft(action); return; }
     if (!state.draft) return;
     if (action === 'publish') { void publishDraft(); return; }
     if (action === 'open-release') {

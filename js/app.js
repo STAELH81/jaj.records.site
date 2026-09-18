@@ -3476,4 +3476,7 @@ window.addEventListener('aq:language-changed', () => {
 // Initialize responsive navigation after playback controls exist.
 setupMobileLite();
 
-window.addEventListener('aq:catalog-updated', () => setIEPage(currentIEPage, true));
+window.addEventListener('aq:catalog-updated', () => {
+    const withdrawn = currentIEPage.startsWith('release:') && !window.AQCatalog.getRelease(currentIEPage.slice(8));
+    setIEPage(withdrawn ? 'info' : currentIEPage, true);
+});

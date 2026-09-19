@@ -1,0 +1,88 @@
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { randomUUID } = require('node:crypto');
+(async()=>{
+ const {fixture}=await import('./publisher-fixture.mjs');
+ const {createArtistProfilesHandler}=await import('../netlify/functions/_shared/artist-profiles.mjs');
+ const {createCatalogHandler}=await import('../netlify/functions/_shared/public-catalog.mjs');
+ const f=fixture();
+ let d=(await (await f.call('POST',{id:randomUUID(),revision:'',draft:{title:'Public EP',artist:'Artist A',type:'ep',tracks:[{title:'Track A',audioUrl:'medias/musique/sorti/01.mp3'}]}})).json()).draft;
+ d=(await (await f.call('POST',{action:'publish',id:d.id,revision:d.revision})).json()).draft;
+ await f.call('POST',{id:randomUUID(),revision:'',draft:{title:'SECRET DRAFT',artist:'Artist A',type:'ep',tracks:[]}});
+ const browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});
+ try {
+  const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];
+  page.setDefaultTimeout(15000);
+  let fail=false,accept=true;
+  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>accept?d.accept():d.dismiss());
+  await page.route('**/api/aq-auth',r=>r.fulfill({json:{authenticated:false,user:null}}));
+  for(const [pattern,handler] of [['**/api/artist-profiles',createArtistProfilesHandler(f.deps)],['**/api/catalog**',createCatalogHandler(()=>f.store)],['**/api/artist-avatar**',createCatalogHandler(()=>f.store)],['**/api/artist-drafts**',f.handler]]) {
+   await page.route(pattern,async route=>{
+    const r=route.request(),url=new URL(r.url());
+    if(fail&&url.pathname==='/api/artist-profiles'&&r.method()==='POST')return route.fulfill({status:503,json:{error:'service_unavailable'}});
+    const response=await handler(new Request(`https://site.test${url.pathname}${url.search}`,{method:r.method(),headers:{...r.headers(),origin:'https://site.test'},...(r.postDataBuffer()?{body:r.postDataBuffer()}:{})}),{});
+    await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:Buffer.from(await response.arrayBuffer())});
+   });
+  }
+  await page.addInitScript(()=>{if(!localStorage.getItem('aquerty_settings_v1'))localStorage.setItem('aquerty_settings_v1',JSON.stringify({bootEnabled:false,systemPopups:false,crtEnabled:false}));});
+  await page.goto(process.env.BASE_URL||'http://127.0.0.1:8765');await page.locator('#aq-guest-btn').click();
+  async function enter(user){f.identity.user=user;await page.evaluate(user=>{window.JAJSession=user?{...user,type:'user',displayName:'Artist A'}:{type:'guest',roles:[]};window.dispatchEvent(new CustomEvent('jaj:session-changed'));},user);}
+  await enter({id:'artist-a',roles:['artist']});
+  await page.evaluate(()=>openWindow('win-publisher','task-publisher'));
+  await page.getByRole('button',{name:'Pages artistes',exact:true}).click();
+  await page.locator('#artist-profile-form textarea').waitFor();
+  const bio='A biography <script>window.bad=true</script>\nSecond line';
+  await page.locator('[name="bio"]').fill(bio);
+  await page.locator('#artist-profile-dialog [name="avatar"]').setInputFiles(path.resolve('medias/img/exeimg.png'));
+  await page.waitForFunction(()=>!!document.querySelector('.artist-editor-preview img'));
+  accept=false;await page.locator('[data-profile-action="close"]').click();assert.equal(await page.locator('#artist-profile-dialog').isVisible(),true);accept=true;
+  fail=true;await page.getByRole('button',{name:'Publier le profil',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#artist-profile-dialog [role=status]')?.classList.contains('error'));
+  assert.equal(await page.locator('[name="bio"]').inputValue(),bio);
+  fail=false;await page.getByRole('button',{name:'Publier le profil',exact:true}).click();
+  await page.getByText('Profil publié.',{exact:true}).waitFor();
+  const id=await page.locator('[name="artistId"]').inputValue();
+  await page.getByRole('button',{name:'Voir la page artiste',exact:true}).click();
+  assert.equal(await page.locator('.navigator-artist-page .artist-bio').innerText(),bio);
+  assert.equal(await page.locator('.navigator-artist-release').count(),1);
+  assert.equal(await page.locator('#ie-content-box').getByText('SECRET DRAFT').count(),0);
+  assert.equal(await page.locator('#ie-content-box script').count(),0);
+  await page.locator('.navigator-artist-release [data-player-release]').click();
+  assert.equal(await page.evaluate(()=>AQPlayerCatalog.getCurrentRelease().title),'Public EP');
+  await page.evaluate(()=>openWindow('win-ie','task-ie'));
+  await page.locator('.navigator-artist-release [data-catalog-page]').click();
+  await page.locator(`[data-catalog-page="artist:${id}"]`).click();
+  await page.evaluate(()=>updateSetting('desktopLanguage','en'));
+  assert.equal(await page.locator('.navigator-artist-page').getByRole('heading',{name:'About',exact:true}).count(),1);
+  if(process.env.QA_DIR)await page.screenshot({path:path.join(process.env.QA_DIR,'artist-page-desktop.png')});
+  await page.setViewportSize({width:390,height:844});
+  await page.waitForFunction(()=>document.body.classList.contains('mobile-mode'));
+  assert.ok(await page.locator('#ie-content-box').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+  if(process.env.QA_DIR)await page.screenshot({path:path.join(process.env.QA_DIR,'artist-page-mobile.png')});
+  await page.reload();await page.locator('#aq-guest-btn').click();
+  await page.evaluate(()=>{openWindow('win-ie','task-ie');setIEPage('info');});
+  await page.locator(`[data-catalog-page="artist:${id}"]`).click();
+  assert.equal(await page.locator('.artist-bio').innerText(),bio);
+  await enter({id:'artist-a',roles:['artist']});await page.evaluate(()=>openWindow('win-publisher','task-publisher'));
+  await page.getByRole('button',{name:'Artist pages',exact:true}).click();
+  await page.locator('#artist-profile-form textarea').waitFor();
+  assert.equal(await page.locator('[name="bio"]').inputValue(),bio);
+  assert.ok(await page.locator('#artist-profile-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+  if(process.env.QA_DIR)await page.screenshot({path:path.join(process.env.QA_DIR,'artist-editor-mobile.png')});
+  await enter({id:'other',roles:['artist']});assert.equal(await page.locator('#artist-profile-dialog').isVisible(),false);
+  await page.getByRole('button',{name:'Artist pages',exact:true}).click();
+  await page.getByText('Save your first draft in Artist Publisher to create your artist page.',{exact:true}).waitFor();
+  await enter({id:'admin',roles:['admin']});await page.getByRole('button',{name:'Artist pages',exact:true}).click();
+  await page.locator('[name="artistId"]').selectOption('cha');
+  await page.locator('[name="bio"]').fill('Archive artist biography');
+  await page.getByRole('button',{name:'Publish profile',exact:true}).click();await page.getByText('Profile published.',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>AQCatalog.data.artists.filter(a=>a.id==='cha').length),1);
+  assert.equal(await page.evaluate(()=>AQCatalog.getRelease('cha-dual-2026').title),'Dual');
+  await page.getByRole('button',{name:'View artist page',exact:true}).click();
+  assert.equal(await page.locator('.navigator-artist-release').count(),1);
+  assert.match(await page.locator('.navigator-artist-release').innerText(),/Dual/);
+  assert.deepEqual(errors,[]);
+  console.log('PASS: profile publish/reopen/avatar, failure recovery, cancelled discard, public biography escaping, release navigation/Player, FR/EN, mobile, guest access after reload, account isolation, admin archive merge');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

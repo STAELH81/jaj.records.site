@@ -66,7 +66,7 @@ function mayLeave() {
 
 function setBusy(value) {
     state.busy = value;
-    root.querySelectorAll('fieldset, [data-action="new"], [data-action="refresh"], [data-action="cleanup"], [data-draft-id]').forEach(el => { el.disabled = value; });
+    root.querySelectorAll('fieldset, [data-action="new"], [data-action="refresh"], [data-action="cleanup"], [data-action="artist-profiles"], [data-draft-id]').forEach(el => { el.disabled = value; });
 }
 
 async function loadList() {
@@ -246,7 +246,7 @@ function render() {
     const draft = state.draft;
     root.innerHTML = `
         <header class="publisher-header"><img src="medias/img/exeimg.png" alt=""><div><strong>Artist Publisher</strong><p>${tr('Prépare ta prochaine sortie.', 'Prepare your next release.')}</p></div><span class="publisher-badge">${isAdmin() ? 'ADMIN' : 'ARTIST'}</span></header>
-        <div class="publisher-toolbar"><button type="button" class="retro-btn" data-action="new">${tr('+ Nouveau brouillon', '+ New draft')}</button><button type="button" class="retro-btn" data-action="refresh">${tr('Actualiser la liste', 'Refresh list')}</button><button type="button" class="retro-btn" data-action="cleanup">${tr('Nettoyer les fichiers inutilisés', 'Clean unused files')}</button><span id="publisher-status" role="status" aria-live="polite" class="${state.error ? 'error' : ''}">${state.message ? message(state.message) : ''}</span></div>
+        <div class="publisher-toolbar"><button type="button" class="retro-btn" data-action="new">${tr('+ Nouveau brouillon', '+ New draft')}</button><button type="button" class="retro-btn" data-action="refresh">${tr('Actualiser la liste', 'Refresh list')}</button><button type="button" class="retro-btn" data-action="cleanup">${tr('Nettoyer les fichiers inutilisés', 'Clean unused files')}</button><button type="button" class="retro-btn" data-action="artist-profiles">${tr('Pages artistes', 'Artist pages')}</button><span id="publisher-status" role="status" aria-live="polite" class="${state.error ? 'error' : ''}">${state.message ? message(state.message) : ''}</span></div>
         <div class="publisher-layout">
             <aside class="publisher-list"><h2>${isAdmin() ? tr('Tous les brouillons', 'All drafts') : tr('Mes brouillons', 'My drafts')}</h2>
                 ${state.drafts.length ? state.drafts.map(item => `<button type="button" class="publisher-draft ${draft?.id === item.id ? 'selected' : ''}" data-draft-id="${esc(item.id)}"><strong>${esc(item.title)}</strong><span>${esc(item.artist)} · ${esc(item.type.toUpperCase())}</span><small>${item.publishedAt ? tr('Publié · ', 'Published · ') : ''}${item.trackCount} ${tr('piste(s)', 'track(s)')}${isAdmin() ? ` · ${esc(item.ownerName)}` : ''}</small></button>`).join('') : `<p class="publisher-muted">${tr('Tes idées commencent ici. Crée ton premier brouillon.', 'Your ideas start here. Create your first draft.')}</p>`}

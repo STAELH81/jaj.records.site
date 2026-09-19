@@ -10,8 +10,9 @@
   },
   "scripts": {
     "test:phase6c": "node tests/phase6c.cjs",
-    "test:publisher": "node --test tests/publisher-api.test.mjs tests/publisher-media.test.mjs tests/publisher-lifecycle.test.mjs",
-    "test:publisher:ui": "node tests/publisher-ui.cjs"
+    "test:publisher": "node --test tests/publisher-api.test.mjs tests/publisher-media.test.mjs tests/publisher-lifecycle.test.mjs tests/artist-profiles.test.mjs",
+    "test:publisher:ui": "node tests/publisher-ui.cjs",
+    "test:artists:ui": "node tests/artist-profiles-ui.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

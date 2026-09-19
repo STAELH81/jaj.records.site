@@ -29,7 +29,7 @@ function audioSource(value) {
     invalid('audioUrl');
 }
 
-function coverImage(value) {
+export function coverImage(value) {
     if (!value) return '';
     if (typeof value !== 'string') invalid('cover');
     const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);

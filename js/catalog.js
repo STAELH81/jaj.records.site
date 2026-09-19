@@ -170,7 +170,7 @@ async function refresh() {
             const data = await response.json();
             if (!Array.isArray(data.artists) || !Array.isArray(data.releases)) return false;
             const oldArtists = catalog.artists, oldReleases = catalog.releases;
-            catalog.artists = [...bundledArtists, ...data.artists];
+            catalog.artists = [...new Map([...bundledArtists, ...data.artists].map(artist => [artist.id, artist])).values()];
             catalog.releases = [...bundledReleases, ...data.releases];
             let valid = false;
             try { valid = validateCatalog().valid; } catch (_) { /* Reject malformed responses. */ }

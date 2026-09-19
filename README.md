@@ -146,3 +146,36 @@ Validation:
   confirmations, delete/cleanup and active-player fallback after withdrawal.
 - Real Identity login and durable Blobs storage require the deployed Netlify preview;
   the fixtures do not claim to validate those external services.
+
+
+## Phase 8 — public artist pages
+
+AQ-Navigator links artist names in the catalogue and release pages to an artist page:
+bio, avatar, and public/archived releases with direct AQ-Player actions. A profile can
+remain visible with no releases; private drafts never appear on the public page.
+
+Open **Artist pages** in Artist Publisher to edit the bio (2,000 characters) and upload
+a PNG/JPEG/WebP avatar (1 MiB). **Publish profile** immediately updates the public page.
+Unsaved changes are guarded when switching/closing, errors retain edits, and session
+changes clear private editor state. Labels are FR/EN and the dialog/page adapt to mobile.
+
+`/api/artist-profiles` derives editable identities from saved release drafts, publication
+snapshots and existing profiles. Artists must save their first draft to establish their
+artist name. IDs retain the existing owner + normalized-name hash, so equal display
+names never let accounts claim each other's profiles. Administrators may edit all
+profiles, including the bundled Cha archive identity. The bundled archive is separate
+from user-owned identities, even with matching names; automatic merging is intentionally
+avoided. Profiles outlive draft deletion and their name is tied to their release identity.
+
+Profiles use the same isolated preview/production store and conditional revisions as
+Publisher. `/api/catalog` emits only public name/bio/avatar metadata; `/api/artist-avatar`
+serves validated raster bytes. Avatar changes use versioned URLs and no-store responses.
+The catalogue merges profile metadata into the bundled Cha artist without duplicating
+or removing Dual. The public bio is rendered as text, preserving line breaks.
+
+`npm run test:publisher` includes profile authorization, namespace isolation, input
+validation, public data boundaries and conflicts. `npm run test:artists:ui` exercises
+profile save/reopen/avatar, failure recovery, discard cancellation, FR/EN/mobile,
+public navigation, Player launch, guest access, account isolation and archive merging.
+The Phase 7C lifecycle was also verified with the real preview account: a disposable
+release and WAV were published, withdrawn, republished, deleted and cleaned successfully.

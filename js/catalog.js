@@ -158,7 +158,36 @@ function validateCatalog() {
     };
 }
 
+const bundledArtists = [...catalog.artists];
+const bundledReleases = [...catalog.releases];
+let refreshing;
+async function refresh() {
+    if (refreshing) return refreshing;
+    refreshing = (async () => {
+        try {
+            const response = await fetch('/api/catalog', { cache:'no-store', signal:AbortSignal.timeout(5000) });
+            if (!response.ok) return false;
+            const data = await response.json();
+            if (!Array.isArray(data.artists) || !Array.isArray(data.releases)) return false;
+            const oldArtists = catalog.artists, oldReleases = catalog.releases;
+            catalog.artists = [...new Map([...bundledArtists, ...data.artists].map(artist => [artist.id, artist])).values()];
+            catalog.releases = [...bundledReleases, ...data.releases];
+            let valid = false;
+            try { valid = validateCatalog().valid; } catch (_) { /* Reject malformed responses. */ }
+            if (!valid) {
+                catalog.artists = oldArtists; catalog.releases = oldReleases;
+                return false;
+            }
+            window.dispatchEvent(new CustomEvent('aq:catalog-updated'));
+            return true;
+        } catch (_) { return false; }
+        finally { refreshing = null; }
+    })();
+    return refreshing;
+}
+
 const api = {
+    refresh,
     version: CATALOG_VERSION,
     data: catalog,
     defaultReleaseId: catalog.defaultReleaseId,

@@ -778,7 +778,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         acc: { left: '110px', top: '110px' },
         mines: { left: '110px', top: '205px' },
         mail: { left: '110px', top: '300px' },
-        myspace: { left: '205px', top: '15px' }
+        myspace: { left: '205px', top: '15px' },
+        publisher: { left: '205px', top: '110px' }
     };
     const ICON_GRID_X = 95;
     const ICON_GRID_Y = 95;
@@ -1732,6 +1733,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
              `http://www.jaj-records.com/releases/${encodeURIComponent(release.slug || release.id)}.html`]
                 .some(address => typeof address === 'string' && address.toLowerCase() === lower));
         if (release) return `release:${release.id}`;
+        const artist = window.AQCatalog.data.artists.find(artist =>
+            [`artist:${artist.id}`, `aq://artist/${artist.id}`, `http://www.jaj-records.com/artists/${artist.id}.html`]
+                .some(address => address.toLowerCase() === lower));
+        if (artist) return `artist:${artist.id}`;
         if (['tempus', 'aq://archive/tempus', 'http://127.0.0.1/tempus_perit/index_files/'].includes(lower)) return 'tempus';
         if (lower === 'favorites' || lower === 'favoris') return '__favorites';
         if (lower === 'history' || lower === 'historique') return '__history';
@@ -1892,7 +1897,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         setIEPage(ieHistory[ieHistoryIndex], true);
     }
 
-    function refreshIENavigator() {
+    async function refreshIENavigator() {
+        await window.AQCatalog?.refresh();
         setIEPage(currentIEPage, true);
     }
 
@@ -2134,6 +2140,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             if (winId === 'win-ie') triggerContextualPopup('openInternet');
             if (winId === 'win-tempus') triggerContextualPopup('openTempus');
             if (winId === 'win-myspace') window.dispatchEvent(new Event('aq:myspace-open'));
+            if (winId === 'win-publisher') window.dispatchEvent(new Event('aq:publisher-open'));
             if (winId === 'win-acc') {
                 const frame = document.querySelector('#win-acc iframe');
                 frame?.contentWindow?.postMessage({ type: 'aq-acc-open' }, window.location.origin);
@@ -2548,7 +2555,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                 : (track.status === 'snippet'
                     ? ` ${snippetTag}`
                     : (track.status === 'unavailable' ? ` ${unavailableTag}` : ''));
-            row.textContent = `${trackNum}. ${escapeNavigatorHTML(track.title)}${tag}`;
+            row.textContent = `${trackNum}. ${track.title}${tag}`;
             row.addEventListener('click', () => {
                 if (track.status === 'locked' || track.status === 'unavailable') return;
                 playTrackAtIndex(index, true);
@@ -3425,24 +3432,44 @@ function navigatorReleaseLink(release) {
     return `<a href="aq://release/${encodeURIComponent(release.id)}" data-catalog-page="release:${escapeNavigatorHTML(release.id)}">${escapeNavigatorHTML(release.title)} — ${escapeNavigatorHTML(artist?.name || release.artistId)} (${escapeNavigatorHTML(release.year || '')})</a>`;
 }
 
+function navigatorArtistLink(artist) {
+    return `<a href="aq://artist/${encodeURIComponent(artist.id)}" data-catalog-page="artist:${escapeNavigatorHTML(artist.id)}">${escapeNavigatorHTML(artist.name)}</a>`;
+}
+
+function artistAvatar(artist) {
+    return artist.avatar ? `<img class="artist-avatar" src="${escapeNavigatorHTML(artist.avatar)}" alt="${escapeNavigatorHTML(artist.name)}">`
+        : `<div class="artist-avatar artist-initial" aria-hidden="true">${escapeNavigatorHTML(artist.name.slice(0,1).toUpperCase())}</div>`;
+}
+
 function renderNavigatorCatalog(isEn) {
-    const releases = window.AQCatalog.getReleases();
-    if (!releases.length) return isEn ? 'No releases yet.' : 'Aucune sortie pour le moment.';
-    return window.AQCatalog.data.artists.map(artist => {
-        const items = releases.filter(release => release.artistId === artist.id);
-        return items.length ? `<section><h3>${escapeNavigatorHTML(artist.name)}</h3><ul>${items.map(release => `<li>${navigatorReleaseLink(release)}</li>`).join('')}</ul></section>` : '';
-    }).join('');
+    return `<div class="navigator-artists">${window.AQCatalog.data.artists.map(artist => {
+        const items = window.AQCatalog.getReleases({artistId:artist.id});
+        return `<section class="navigator-artist-card">${artistAvatar(artist)}<div><h3>${navigatorArtistLink(artist)}</h3><p>${items.length} ${isEn?'release(s)':'sortie(s)'}</p><ul>${items.map(release => `<li>${navigatorReleaseLink(release)}</li>`).join('')}</ul></div></section>`;
+    }).join('')}</div>`;
+}
+
+function getArtistNavigatorPages(isEn) {
+    return Object.fromEntries(window.AQCatalog.data.artists.map(artist => {
+        const releases = window.AQCatalog.getReleases({artistId:artist.id});
+        return [`artist:${artist.id}`, {
+            address:`http://www.jaj-records.com/artists/${artist.id}.html`, title:artist.name,
+            content:`<article class="navigator-artist-page"><a href="aq://home" data-catalog-page="info">← ${isEn?'Catalogue':'Catalogue'}</a>
+                <header class="navigator-artist-hero">${artistAvatar(artist)}<div><p class="artist-kicker">JAJ RECORDS · ${isEn?'ARTIST':'ARTISTE'}</p><h2>${escapeNavigatorHTML(artist.name)}</h2><p>${releases.length} ${isEn?'release(s)':'sortie(s)'}</p></div></header>
+                <section class="navigator-artist-bio"><h3>${isEn?'About':'À propos'}</h3><p class="artist-bio">${escapeNavigatorHTML(artist.bio || (isEn?'No biography yet.':'La bio arrive bientôt.'))}</p></section>
+                <section><h3>${isEn?'Releases':'Sorties'}</h3><div class="navigator-artist-releases">${releases.length?releases.map(release=>`<section class="navigator-artist-release">${release.cover?`<img src="${escapeNavigatorHTML(release.cover)}" alt="${escapeNavigatorHTML(release.title)}">`:'<div class="artist-release-placeholder" aria-hidden="true">♫</div>'}<div><h4>${navigatorReleaseLink(release)}</h4><p>${escapeNavigatorHTML(release.type.toUpperCase())} · ${escapeNavigatorHTML(release.year || '')}</p><button type="button" class="retro-btn" data-player-release="${escapeNavigatorHTML(release.id)}">${isEn?'Open in AQ-Player':'Ouvrir dans AQ-Player'}</button></div></section>`).join(''):`<p>${isEn?'No public releases yet.':'Aucune sortie publique pour le moment.'}</p>`}</div></section></article>`,
+        }];
+    }));
 }
 
 function getCatalogNavigatorPages(isEn) {
-    return Object.fromEntries(window.AQCatalog.getReleases().map(release => {
+    return { ...getArtistNavigatorPages(isEn), ...Object.fromEntries(window.AQCatalog.getReleases().map(release => {
         const artist = window.AQCatalog.getArtist(release.artistId);
         const title = `${release.title} — ${artist?.name || release.artistId}`;
         const statuses = isEn ? {full:'Available',snippet:'Preview',unavailable:'Unavailable',locked:'Locked'} : {full:'Disponible',snippet:'Extrait',unavailable:'Indisponible',locked:'Verrouillé'};
         return [`release:${release.id}`, {
             address: `http://www.jaj-records.com/releases/${encodeURIComponent(release.slug || release.id)}.html`,
             title,
-            content: `<article class="navigator-release"><h2>${escapeNavigatorHTML(title)}</h2>
+            content: `<article class="navigator-release"><h2>${escapeNavigatorHTML(title)}</h2><p>${navigatorArtistLink(artist)}</p>
                 ${release.cover ? `<img class="navigator-release-cover" src="${escapeNavigatorHTML(release.cover)}" alt="${escapeNavigatorHTML(title)}">` : ''}
                 <p>${escapeNavigatorHTML(({album:'Album',single:'Single',ep:'EP'})[release.type] || release.type)} · ${escapeNavigatorHTML(release.year || '')} · ${escapeNavigatorHTML(release.label || '')}</p>
                 <button type="button" class="retro-btn" data-player-release="${escapeNavigatorHTML(release.id)}">${isEn ? 'Open in AQ-Player' : 'Ouvrir dans AQ-Player'}</button>
@@ -3450,7 +3477,7 @@ function getCatalogNavigatorPages(isEn) {
                 <h3>${isEn ? 'Tracks' : 'Pistes'}</h3><ol>${(release.tracks || []).map(track => `<li>${escapeNavigatorHTML(track.title)} <small>— ${statuses[track.availability] || statuses.unavailable}</small></li>`).join('')}</ol>
                 <p>${escapeNavigatorHTML(release.copyright || '')}</p></article>`
         }];
-    }));
+    })) };
 }
 
 document.getElementById('ie-content-box').addEventListener('click', event => {
@@ -3472,3 +3499,9 @@ window.addEventListener('aq:language-changed', () => {
 
 // Initialize responsive navigation after playback controls exist.
 setupMobileLite();
+
+window.addEventListener('aq:catalog-updated', () => {
+    const withdrawn = (currentIEPage.startsWith('release:') && !window.AQCatalog.getRelease(currentIEPage.slice(8)))
+        || (currentIEPage.startsWith('artist:') && !window.AQCatalog.getArtist(currentIEPage.slice(7)));
+    setIEPage(withdrawn ? 'info' : currentIEPage, true);
+});

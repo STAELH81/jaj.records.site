@@ -151,7 +151,7 @@
             <span>AQ-Mail</span>
         </div>
         <div class="desktop-icon publisher-entry" data-desktop-icon="publisher" data-open-win="win-publisher" data-open-task="task-publisher" hidden>
-            <img src="medias/img/exeimg.png" class="window-icon-img" alt="Artist Publisher">
+            <img src="medias/img/publisherimg.png" class="window-icon-img" alt="Artist Publisher" onerror="this.src='medias/img/exeimg.png'">
             <span>Artist Publisher</span>
         </div>
         <div class="desktop-icon" data-desktop-icon="myspace" data-open-win="win-myspace" data-open-task="task-myspace">
@@ -529,7 +529,7 @@
         <div class="mail-compose-overlay" id="mail-compose-overlay">
             <div class="mail-compose">
                 <div class="row"><strong>Nouveau message</strong><div style="flex-grow:1;"></div><button class="retro-btn" id="mail-compose-close">X</button></div>
-                <div class="row"><span style="width:48px;">À</span><input id="mail-to" value="support@aquerty.local"></div>
+                <div class="row"><span style="width:48px;">À</span><input id="mail-to" placeholder="nom@aquerty.fr" autocomplete="off" spellcheck="false"></div>
                 <div class="row"><span style="width:48px;">Sujet</span><input id="mail-subject"></div>
                 <div class="row" style="align-items:flex-start;"><span style="width:48px; padding-top:6px;">Msg</span><textarea id="mail-body"></textarea></div>
                 <div class="row" style="justify-content:flex-end;">
@@ -561,6 +561,7 @@
                     <button class="myspace-nav-btn active" type="button" data-tab="feed">Accueil</button>
                     <button class="myspace-nav-btn" type="button" data-tab="profile">Mon profil</button>
                     <button class="myspace-nav-btn" type="button" data-tab="forums">Forums</button>
+                    <button class="myspace-nav-btn" type="button" data-tab="forum-request">Proposer un forum</button>
                 </nav>
             </div>
             <div class="myspace-main">

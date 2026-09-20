@@ -139,6 +139,22 @@ function updateSessionChrome() {
     }
 }
 
+async function refreshSelfAvatar() {
+    if (!isLoggedIn() || !ms.session?.id) {
+        ms.selfAvatarData = '';
+        updateSessionChrome();
+        return;
+    }
+    try {
+        const data = await requestGET('profile', { userId: ms.session.id });
+        ms.selfAvatarData = data.profile?.avatar || '';
+        updateSessionChrome();
+    } catch (_) {
+        ms.selfAvatarData = '';
+        updateSessionChrome();
+    }
+}
+
 async function requestGET(view, params = {}) {
     const url = new URL(MYSPACE_API, window.location.origin);
     url.searchParams.set('view', view);
@@ -1008,7 +1024,9 @@ document.querySelectorAll('.myspace-nav-btn').forEach((button) => {
 
 window.addEventListener('jaj:session-changed', (event) => {
     ms.session = event.detail || null;
+    ms.selfAvatarData = '';
     updateSessionChrome();
+    refreshSelfAvatar();
     if (document.getElementById('win-myspace')?.style.display === 'block') {
         refreshCurrentView();
     }
@@ -1017,6 +1035,7 @@ window.addEventListener('jaj:session-changed', (event) => {
 window.addEventListener('aq:myspace-open', () => {
     ms.session = window.JAJSession || ms.session;
     updateSessionChrome();
+    refreshSelfAvatar();
     refreshCurrentView();
 });
 
@@ -1027,3 +1046,4 @@ window.addEventListener('aq:language-changed', () => {
 
 applyMySpaceLanguage();
 updateSessionChrome();
+refreshSelfAvatar();

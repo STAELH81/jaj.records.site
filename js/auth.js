@@ -445,6 +445,7 @@ function updateDesktopSessionUI(session) {
 }
 
 async function enterSession(session) {
+    window.JAJSessionReady = false;
     currentSession = session;
     window.JAJSession = session;
     if (session?.type === 'user') rememberAccount(session);
@@ -455,6 +456,7 @@ async function enterSession(session) {
         await window.AQCloudSync.activate(session);
     }
 
+    window.JAJSessionReady = true;
     window.dispatchEvent(new CustomEvent('jaj:session-changed', { detail: session }));
     hideWelcome();
 }

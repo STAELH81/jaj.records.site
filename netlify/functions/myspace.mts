@@ -1,20 +1,9 @@
-import { getDeployStore, getStore } from "@netlify/blobs";
+import { communityStore } from './_shared/community-store.mts';
 import { admin, getUser, verifyRequestOrigin } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
 
-declare const Netlify: any;
-
-const STORE_NAME = "aq-myspace-v1";
 const POST_LIMIT = 30;
-const TOPIC_LIMIT = 40;
 const ALLOWED_REACTIONS = new Set(["like", "heart", "fire"]);
-
-function getMyspaceStore() {
-  if (Netlify?.context?.deploy?.context === "production") {
-    return getStore(STORE_NAME, { consistency: "strong" });
-  }
-  return getDeployStore(STORE_NAME);
-}
 
 function json(data: unknown, init: ResponseInit = {}) {
   return Response.json(data, {
@@ -124,44 +113,8 @@ async function commentCount(store: any, postId: string) {
   return listed.blobs.length;
 }
 
-async function topicReplyCount(store: any, topicId: string) {
-  const listed = await store.list({ prefix: `topic-replies/${topicId}/` });
-  return listed.blobs.length;
-}
-
-function isAdminProfile(profile: any) {
-  return Array.isArray(profile?.roles) && profile.roles.includes("admin");
-}
-
-async function createTopicRecord(store: any, author: any, titleValue: unknown, textValue: unknown, requestedBy?: any) {
-  const title = cleanSingleLine(titleValue, 90);
-  const text = cleanText(textValue, 2000);
-  if (!title || !text) throw new Error("invalid_topic");
-
-  const id = crypto.randomUUID();
-  const createdAt = new Date().toISOString();
-  const source = requestedBy || author;
-
-  const topic = {
-    id,
-    title,
-    text,
-    authorId: source.userId || source.authorId,
-    authorName: source.displayName || source.authorName || "Utilisateur",
-    authorMail: source.aquertyMail || source.authorMail || "",
-    authorRoles: Array.isArray(source.roles) ? source.roles : (source.authorRoles || []),
-    createdAt,
-    lastActivityAt: createdAt,
-    replyCount: 0,
-    approvedBy: requestedBy ? author.userId : null,
-  };
-
-  await store.setJSON(`topics/${id}.json`, topic);
-  return topic;
-}
-
 export default async (request: Request, _context: Context) => {
-  const store = getMyspaceStore();
+  const store = communityStore(_context);
   const url = new URL(request.url);
   const sessionUser = await getUser();
 
@@ -199,32 +152,6 @@ export default async (request: Request, _context: Context) => {
       const comments = await listJSON(store, `comments/${postId}/`);
       comments.sort((a: any, b: any) => String(a?.createdAt || "").localeCompare(String(b?.createdAt || "")));
       return json({ comments });
-    }
-
-    if (view === "topics") {
-      const topics = await listJSON(store, "topics/");
-      topics.sort((a: any, b: any) => String(b?.lastActivityAt || b?.createdAt || "").localeCompare(String(a?.lastActivityAt || a?.createdAt || "")));
-      return json({ topics: topics.slice(0, TOPIC_LIMIT) });
-    }
-
-    if (view === "forum_requests") {
-      if (!sessionUser) return json({ error: "login_required" }, { status: 401 });
-      const viewer = await profileForUser(store, sessionUser);
-      if (!isAdminProfile(viewer)) return json({ error: "admin_required" }, { status: 403 });
-
-      const requests = await listJSON(store, "forum-requests/");
-      requests.sort((a: any, b: any) => String(a?.createdAt || "").localeCompare(String(b?.createdAt || "")));
-      return json({ requests });
-    }
-
-    if (view === "topic") {
-      const topicId = safeId(url.searchParams.get("topicId"));
-      if (!topicId) return json({ error: "invalid_topic_id" }, { status: 400 });
-      const topic = await store.get(`topics/${topicId}.json`, { type: "json" });
-      if (!topic) return json({ error: "topic_not_found" }, { status: 404 });
-      const replies = await listJSON(store, `topic-replies/${topicId}/`);
-      replies.sort((a: any, b: any) => String(a?.createdAt || "").localeCompare(String(b?.createdAt || "")));
-      return json({ topic: { ...topic, replyCount: replies.length }, replies });
     }
 
     return json({ error: "unknown_view" }, { status: 400 });
@@ -351,107 +278,6 @@ export default async (request: Request, _context: Context) => {
 
     const summary = await reactionSummary(store, postId, sessionUser.id);
     return json({ ok: true, reactions: summary.counts, myReaction: summary.mine });
-  }
-
-  if (action === "request_topic") {
-    const title = cleanSingleLine(body.title, 90);
-    const text = cleanText(body.text, 2000);
-    if (!title || !text) return json({ error: "invalid_topic_request" }, { status: 400 });
-
-    const id = crypto.randomUUID();
-    const requestRecord = {
-      id,
-      title,
-      text,
-      requesterId: author.userId,
-      requesterName: author.displayName,
-      requesterMail: author.aquertyMail,
-      requesterRoles: author.roles,
-      createdAt: new Date().toISOString(),
-    };
-
-    await store.setJSON(`forum-requests/${id}.json`, requestRecord);
-    return json({ ok: true, request: requestRecord });
-  }
-
-  if (action === "create_topic") {
-    if (!isAdminProfile(author)) return json({ error: "admin_required" }, { status: 403 });
-
-    try {
-      const topic = await createTopicRecord(store, author, body.title, body.text);
-      return json({ ok: true, topic });
-    } catch {
-      return json({ error: "invalid_topic" }, { status: 400 });
-    }
-  }
-
-  if (action === "moderate_topic_request") {
-    if (!isAdminProfile(author)) return json({ error: "admin_required" }, { status: 403 });
-
-    const requestId = safeId(body.requestId);
-    const decision = String(body.decision || "");
-    if (!requestId || !["approve", "reject"].includes(decision)) {
-      return json({ error: "invalid_moderation_request" }, { status: 400 });
-    }
-
-    const requestRecord = await store.get(`forum-requests/${requestId}.json`, { type: "json" });
-    if (!requestRecord) return json({ error: "request_not_found" }, { status: 404 });
-
-    if (decision === "reject") {
-      await store.delete(`forum-requests/${requestId}.json`);
-      return json({ ok: true, decision: "reject" });
-    }
-
-    try {
-      const topic = await createTopicRecord(
-        store,
-        author,
-        requestRecord.title,
-        requestRecord.text,
-        {
-          userId: requestRecord.requesterId,
-          displayName: requestRecord.requesterName,
-          aquertyMail: requestRecord.requesterMail,
-          roles: requestRecord.requesterRoles,
-        }
-      );
-      await store.delete(`forum-requests/${requestId}.json`);
-      return json({ ok: true, decision: "approve", topic });
-    } catch {
-      return json({ error: "invalid_topic" }, { status: 400 });
-    }
-  }
-
-  if (action === "reply_topic") {
-    const topicId = safeId(body.topicId);
-    const text = cleanText(body.text, 1200);
-    if (!topicId || !text) return json({ error: "invalid_reply" }, { status: 400 });
-
-    const topic = await store.get(`topics/${topicId}.json`, { type: "json" });
-    if (!topic) return json({ error: "topic_not_found" }, { status: 404 });
-
-    const id = crypto.randomUUID();
-    const createdAt = new Date().toISOString();
-    const reply = {
-      id,
-      topicId,
-      authorId: sessionUser.id,
-      authorName: author.displayName,
-      authorMail: author.aquertyMail,
-      authorRoles: author.roles,
-      text,
-      createdAt,
-    };
-
-    await store.setJSON(`topic-replies/${topicId}/${id}.json`, reply);
-    const replyCount = await topicReplyCount(store, topicId);
-    await store.setJSON(`topics/${topicId}.json`, {
-      ...topic,
-      replyCount,
-      lastActivityAt: createdAt,
-    });
-
-    return json({ ok: true, reply, replyCount });
   }
 
   return json({ error: "unknown_action" }, { status: 400 });

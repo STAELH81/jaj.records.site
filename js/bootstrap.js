@@ -12,3 +12,7 @@ await import('./catalog-player.js');
 await import('./player-skin.js');
 await import('./visualizer.js');
 await Promise.all([import('./auth.js'), import('./myspace.js'), import('./artist-publisher.js'), import('./artist-profiles.js')]);
+
+await import('./share-links.js');
+
+await import('./mail.js');

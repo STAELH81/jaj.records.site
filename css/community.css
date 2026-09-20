@@ -1,0 +1,574 @@
+/* AQ-Mail and classic community forums. Text remains selectable. */
+#mail-root {
+  display: flex;
+  height: calc(100% - 26px);
+  color: #203149;
+  background: #ece9d8;
+  font:
+    12px Tahoma,
+    sans-serif;
+  user-select: text;
+  min-height: 0;
+}
+#mail-root * {
+  box-sizing: border-box;
+}
+#mail-root .mail-sidebar {
+  flex: 0 0 145px;
+  padding: 12px 8px;
+  background: #dbe5ee;
+  overflow: auto;
+}
+#mail-root .mail-sidebar h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+#mail-root .mail-sidebar small {
+  display: block;
+  margin-bottom: 20px;
+}
+#mail-root .mail-folder {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  padding: 10px 6px;
+  color: inherit;
+  cursor: pointer;
+}
+#mail-root .mail-folder.active {
+  background: white;
+  border-color: #799aba;
+  font-weight: bold;
+}
+#mail-root .mail-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+#mail-root .mail-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+#mail-search {
+  flex: 1;
+  min-width: 80px;
+  width: 100px;
+  border: 2px inset #eee;
+  padding: 5px;
+}
+.community-status {
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.community-status:empty {
+  display: none;
+}
+#mail-root .mail-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid #9caeba;
+}
+#mail-root .mail-list {
+  flex: 0 0 38%;
+  width: auto;
+  min-width: 0;
+  overflow: auto;
+  background: #f5f8fa;
+  border-right: 1px solid #9caeba;
+}
+#mail-root .mail-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #cdd6df;
+  padding: 12px 10px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+#mail-root .mail-item strong,
+#mail-root .mail-item span,
+#mail-root .mail-item small {
+  display: block;
+  margin: 0 0 5px;
+}
+#mail-root .mail-item strong {
+  font-weight: normal;
+}
+#mail-root .mail-item.unread strong {
+  font-weight: bold;
+}
+#mail-root .mail-item.active {
+  background: #d4e4fb;
+  box-shadow: inset 3px 0 #285b9b;
+}
+#mail-root .mail-view {
+  min-width: 0;
+  flex: 1;
+  padding: 16px;
+  overflow: auto;
+  background: white;
+  overflow-wrap: anywhere;
+}
+#mail-root .mail-view h2 {
+  font-size: 17px;
+  margin: 0 0 12px;
+}
+#mail-root pre {
+  white-space: pre-wrap;
+  font:
+    13px/1.6 Tahoma,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+.mail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 24px;
+}
+#mail-root .mail-back {
+  display: none;
+}
+.community-empty {
+  padding: 20px;
+  line-height: 1.6;
+}
+#mail-editor {
+  width: min(580px, calc(100vw - 24px));
+  max-height: calc(100dvh - 28px);
+  overflow: auto;
+  background: #ece9d8;
+  color: #203149;
+  border: 3px outset #ddd;
+  padding: 16px;
+}
+#mail-editor::backdrop {
+  background: #1236;
+}
+#mail-editor header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+#mail-editor h2 {
+  font-size: 18px;
+  margin: 0;
+}
+#mail-editor label,
+.forum-compose label {
+  display: block;
+  margin: 12px 0;
+  font-weight: bold;
+}
+#mail-editor input,
+#mail-editor select,
+#mail-editor textarea,
+.forum-compose input,
+.forum-compose textarea,
+.forum-compose select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 5px;
+  padding: 8px;
+  background: white;
+  color: #203149;
+  border: 1px solid #879db5;
+  font:
+    13px Tahoma,
+    sans-serif;
+}
+#mail-editor textarea,
+.forum-compose textarea {
+  resize: vertical;
+}
+.mail-draft-hint {
+  color: #52667b;
+  font-size: 11px;
+}
+#mail-editor-status,
+.forum-form-status {
+  color: #923123;
+}
+.forum-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 16px;
+  background: #e8eff9;
+  border: 1px solid #99b4d5;
+}
+.forum-header h2 {
+  font-size: 23px;
+  margin: 6px 0;
+  color: #003399;
+}
+.forum-header p {
+  margin: 0;
+  line-height: 1.5;
+}
+.forum-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 14px 0;
+}
+.forum-categories button {
+  border: 1px solid #9aacc4;
+  background: #eef3fa;
+  color: #003399;
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+.forum-categories button.active {
+  background: #003399;
+  color: white;
+}
+.forum-tools {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.forum-tools input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #99b4d5;
+}
+.forum-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #99b4d5;
+  table-layout: fixed;
+}
+.forum-table th {
+  text-align: left;
+  color: white;
+  background: #174a93;
+  padding: 10px;
+}
+.forum-table th:first-child {
+  width: 60%;
+}
+.forum-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #cad6e5;
+  overflow-wrap: anywhere;
+}
+.forum-table tr:nth-child(even) {
+  background: #f0f4fa;
+}
+.forum-table button {
+  display: block;
+  text-align: left;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #003399;
+  font:
+    bold 13px Verdana,
+    sans-serif;
+  cursor: pointer;
+}
+.forum-table small {
+  display: block;
+  margin-top: 6px;
+  color: #52667b;
+}
+.forum-pagination {
+  padding: 12px 0;
+  text-align: right;
+}
+.forum-compose {
+  margin-top: 20px;
+  border: 1px solid #99b4d5;
+  padding: 14px;
+  background: #f3f6fa;
+}
+.forum-compose summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: #003399;
+}
+.forum-thread-heading {
+  padding: 20px 0;
+}
+.forum-thread-heading h2 {
+  overflow-wrap: anywhere;
+}
+.forum-post {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  border: 1px solid #99b4d5;
+  margin-bottom: 12px;
+}
+.forum-post aside {
+  padding: 16px 12px;
+  background: #e8eff9;
+  overflow-wrap: anywhere;
+}
+.forum-post aside strong,
+.forum-post aside small {
+  display: block;
+  margin-top: 8px;
+}
+.forum-avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: #003399;
+  background: white;
+  border: 1px solid #99b4d5;
+  font-size: 24px;
+}
+.forum-post-copy {
+  padding: 14px;
+  min-width: 0;
+}
+.forum-post-copy header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #52667b;
+}
+.forum-post-copy p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.7;
+}
+@media (min-width: 761px) {
+  #win-myspace.forum-wide {
+    width: 96vw !important;
+    height: calc(100dvh - 65px) !important;
+    left: 2vw !important;
+    top: 8px !important;
+  }
+}
+#win-myspace.forum-wide .myspace-sidebar {
+  display: none;
+}
+#win-myspace.forum-wide .myspace-main {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 640px) {
+  #mail-root {
+    flex-direction: column;
+  }
+  #mail-root .mail-sidebar {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 3px;
+    padding: 6px;
+    overflow: auto;
+  }
+  #mail-root .mail-sidebar h2,
+  #mail-root .mail-sidebar small,
+  #mail-root .mail-sidebar p {
+    display: none;
+  }
+  #mail-root .mail-folder {
+    width: auto;
+    white-space: nowrap;
+    padding: 8px;
+  }
+  #mail-root .mail-list {
+    flex: 1;
+    border: 0;
+  }
+  #mail-root .mail-view {
+    display: none;
+  }
+  #mail-root .mail-reading .mail-list {
+    display: none;
+  }
+  #mail-root .mail-reading .mail-view {
+    display: block;
+  }
+  #mail-root .mail-back {
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+  .forum-header {
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+  .forum-table th:first-child {
+    width: 65%;
+  }
+  .forum-table th:last-child,
+  .forum-table td:last-child {
+    display: none;
+  }
+  .forum-post {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .forum-post aside {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 8px;
+  }
+  .forum-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 17px;
+  }
+}
+
+/* Restore the original AQ-Mail presentation; retain the delivery features. */
+#mail-root {
+  color: #111;
+  background: var(--xp-beige);
+  height: calc(100% - 25px);
+}
+#mail-root .mail-sidebar {
+  flex-basis: 180px;
+  background: #fff;
+  padding: 8px;
+  border-right: 1px solid var(--xp-gray);
+}
+#mail-root .mail-folder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-weight: normal;
+}
+#mail-root .mail-folder.active {
+  background: #eef6ff;
+  border-color: #a7bfdc;
+}
+#mail-root .mail-toolbar {
+  background: #c0c0c0;
+  padding: 6px;
+  min-height: 42px;
+  gap: 6px;
+  border-bottom: 1px solid var(--xp-gray);
+  flex-wrap: nowrap;
+}
+#mail-search {
+  margin-left: auto;
+  padding: 4px;
+  font-size: 12px;
+  width: 220px;
+}
+#mail-root .mail-account-strip {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+  min-height: 18px;
+}
+#mail-root .mail-list {
+  flex: 0 0 280px;
+  background: #fff;
+  border-right: 1px solid var(--xp-gray);
+}
+#mail-root .mail-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+#mail-root .mail-item.active {
+  background: #316ac5;
+  color: #fff;
+  box-shadow: none;
+}
+#mail-root .mail-item strong,
+#mail-root .mail-item span,
+#mail-root .mail-item small {
+  margin: 0 0 2px;
+}
+#mail-root .mail-view {
+  padding: 10px;
+}
+#mail-root .mail-view h2 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+#mail-root .mail-meta {
+  color: #333;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+#mail-root pre {
+  margin: 0;
+  font:
+    12px Tahoma,
+    sans-serif;
+}
+#mail-editor {
+  width: min(520px, calc(100vw - 24px));
+  background: #fff;
+  color: #111;
+  border: 2px solid #808080;
+  box-shadow: 6px 6px 0 #0004;
+  padding: 10px;
+  font:
+    12px Tahoma,
+    sans-serif;
+}
+#mail-editor h2 {
+  font-size: 12px;
+}
+#mail-editor label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-weight: normal;
+  margin: 8px 0;
+}
+#mail-editor label > span {
+  flex: 0 0 48px;
+  padding-top: 6px;
+}
+#mail-editor input,
+#mail-editor select,
+#mail-editor textarea {
+  margin: 0;
+  padding: 4px;
+  border: 2px inset #fff;
+  font:
+    12px Tahoma,
+    sans-serif;
+}
+#mail-editor textarea {
+  height: 140px;
+}
+@media (max-width: 800px) {
+  #mail-root .mail-list {
+    flex-basis: 42%;
+  }
+}
+@media (max-width: 640px) {
+  #mail-root .mail-sidebar {
+    flex: 0 0 auto;
+  }
+  #mail-root .mail-sidebar .setting-title {
+    display: none;
+  }
+  #mail-root .mail-toolbar {
+    flex-wrap: wrap;
+  }
+  #mail-root .mail-list {
+    flex: 1;
+  }
+}

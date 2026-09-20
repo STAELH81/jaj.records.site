@@ -179,3 +179,72 @@ profile save/reopen/avatar, failure recovery, discard cancellation, FR/EN/mobile
 public navigation, Player launch, guest access, account isolation and archive merging.
 The Phase 7C lifecycle was also verified with the real preview account: a disposable
 release and WAV were published, withdrawn, republished, deleted and cleaned successfully.
+
+
+## Phase 9 — shareable links
+
+Navigator artist/release pages and the Player toolbar expose Share. The dialog provides
+an actual URL on the current deployment (`?artist=cha`, `?release=cha-dual-2026`), a copy
+button and a selectable fallback if clipboard access is unavailable. No email is sent.
+Incoming links open Navigator after account/guest session activation, including mobile;
+the release page's Player action starts the listening flow without automatic playback.
+Unknown, withdrawn and ambiguous links show an unavailable message. Refresh retries a
+transient catalogue failure. Preview links stay on the preview; production links stay
+on production. This phase does not add social-network preview metadata.
+
+Run `npm run test:share` against the static test server for incoming URLs, sharing,
+FR/EN, mobile and unavailable-link handling. AQ-Mail remains unchanged pending a separate
+messaging design: currently its messages exist only in memory and sending is simulated.
+
+
+## Phase 10 — AQ-Mail and community forums
+
+AQ-Mail now delivers private messages between JAJ accounts through `/api/aq-mail`.
+It replaces the former in-memory demo while retaining the original white folder pane,
+gray toolbar (New/Reply/Delete), account strip and message layout. The member picker includes existing MySpace
+profiles and accounts that sign in on this version; it never exposes login email
+addresses. Reply, unread state, search, trash/restore, per-mailbox deletion and
+blocking/unblocking are supported. Share dialogs can prepare a message containing
+the public artist/release URL. URLs in message text are clickable; all user text is
+escaped. No external email, SMTP or attachments are involved.
+
+There is one continuously saved **local draft per account and browser**, not a
+cross-device draft. The UI explicitly labels this. Private mailbox/editor state is
+cleared on account changes; late network responses cannot repopulate another
+account's view. Refresh or reopen AQ-Mail to fetch new messages (no push delivery).
+An empty directory in a new preview is normal until other members sign in there.
+
+MySpace Forums offers General, Music, Sport, Gaming, Culture and Tech categories,
+search, 20-topic pages, topic requests, replies and quotes. Guests can only read;
+all writing requires authentication, enforced by the API. Members use Request a topic;
+admins approve/reject requests or create topics directly. My requests shows a member
+their own pending/approved/rejected requests without exposing them to other members.
+Classic author/message layouts support a persistent Wide view on desktop and a
+stacked mobile layout. Administrators can lock/unlock topics or hide topics/replies;
+permissions are checked using fresh server Identity roles. Existing topics without
+a category appear in General. Legacy pending requests are included in the admin
+queue; approval preserves the requesting author and is safe to retry.
+
+Both APIs use the existing `aq-myspace-v1` store in production. Preview stores are
+isolated by branch (`aq-community-<branch>`) and survive rebuilds of that branch.
+Older deploy-scoped preview MySpace data is not migrated. Production data is not
+copied into previews. Mail uses immutable message records and recipient/sender
+indexes; retries repair a partial delivery without duplicating the message. Mail
+state belongs to the requesting user, and even admins cannot read someone else's
+private mailbox. Deleting a message removes it from that user's mailbox, not from
+the other participant's copy. Drafts and blocks are account-specific.
+
+Rate limits claim immutable hourly slots: 30 messages, 10 topic requests (or admin-created topics) and 60 replies per
+account per UTC hour. Text limits are 120/5000 characters for mail subject/body,
+90/2000 for topic title/body, and 1200 for a reply. Writes check request origin,
+input size and ownership. Conditional storage writes follow the
+[Netlify Blobs API](https://docs.netlify.com/build/data-and-storage/netlify-blobs/).
+Topic indexes currently hydrate existing topics/replies; this suits a small
+community and should move to indexed/paginated queries before large-scale usage.
+
+Validation: `npm run test:community` exercises delivery, access boundaries, origin,
+blocking, retries/partial failure, concurrent rate limits and forum moderation.
+`npm run test:community:ui` uses the real handler with isolated test accounts/storage
+and a local static server on port 8765. It covers draft reloads, account changes,
+network failure recovery, safe text, mobile, FR/EN and wide layout. These tests send
+no messages to real members and publish no real forum content.

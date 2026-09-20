@@ -434,3 +434,141 @@
     font-size: 17px;
   }
 }
+
+/* Restore the original AQ-Mail presentation; retain the delivery features. */
+#mail-root {
+  color: #111;
+  background: var(--xp-beige);
+  height: calc(100% - 25px);
+}
+#mail-root .mail-sidebar {
+  flex-basis: 180px;
+  background: #fff;
+  padding: 8px;
+  border-right: 1px solid var(--xp-gray);
+}
+#mail-root .mail-folder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-weight: normal;
+}
+#mail-root .mail-folder.active {
+  background: #eef6ff;
+  border-color: #a7bfdc;
+}
+#mail-root .mail-toolbar {
+  background: #c0c0c0;
+  padding: 6px;
+  min-height: 42px;
+  gap: 6px;
+  border-bottom: 1px solid var(--xp-gray);
+  flex-wrap: nowrap;
+}
+#mail-search {
+  margin-left: auto;
+  padding: 4px;
+  font-size: 12px;
+  width: 220px;
+}
+#mail-root .mail-account-strip {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+  min-height: 18px;
+}
+#mail-root .mail-list {
+  flex: 0 0 280px;
+  background: #fff;
+  border-right: 1px solid var(--xp-gray);
+}
+#mail-root .mail-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+#mail-root .mail-item.active {
+  background: #316ac5;
+  color: #fff;
+  box-shadow: none;
+}
+#mail-root .mail-item strong,
+#mail-root .mail-item span,
+#mail-root .mail-item small {
+  margin: 0 0 2px;
+}
+#mail-root .mail-view {
+  padding: 10px;
+}
+#mail-root .mail-view h2 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+#mail-root .mail-meta {
+  color: #333;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+#mail-root pre {
+  margin: 0;
+  font:
+    12px Tahoma,
+    sans-serif;
+}
+#mail-editor {
+  width: min(520px, calc(100vw - 24px));
+  background: #fff;
+  color: #111;
+  border: 2px solid #808080;
+  box-shadow: 6px 6px 0 #0004;
+  padding: 10px;
+  font:
+    12px Tahoma,
+    sans-serif;
+}
+#mail-editor h2 {
+  font-size: 12px;
+}
+#mail-editor label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-weight: normal;
+  margin: 8px 0;
+}
+#mail-editor label > span {
+  flex: 0 0 48px;
+  padding-top: 6px;
+}
+#mail-editor input,
+#mail-editor select,
+#mail-editor textarea {
+  margin: 0;
+  padding: 4px;
+  border: 2px inset #fff;
+  font:
+    12px Tahoma,
+    sans-serif;
+}
+#mail-editor textarea {
+  height: 140px;
+}
+@media (max-width: 800px) {
+  #mail-root .mail-list {
+    flex-basis: 42%;
+  }
+}
+@media (max-width: 640px) {
+  #mail-root .mail-sidebar {
+    flex: 0 0 auto;
+  }
+  #mail-root .mail-sidebar .setting-title {
+    display: none;
+  }
+  #mail-root .mail-toolbar {
+    flex-wrap: wrap;
+  }
+  #mail-root .mail-list {
+    flex: 1;
+  }
+}

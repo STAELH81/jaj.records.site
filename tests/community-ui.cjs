@@ -171,6 +171,16 @@ const path = require("node:path");
       .locator("#forum-create [name=text]")
       .fill("Votre équipe préférée ?");
     await page.locator("#forum-create button").click();
+    await page.getByText("En attente de validation", { exact: true }).waitFor();
+    assert.equal(await page.locator("[data-topic]").count(), 0);
+    await enter(null);
+    await page.locator(".forum-categories").waitFor();
+    assert.equal(await page.locator("#forum-create").count(), 0);
+    await enter("admin");
+    await page.locator("[data-decision=approve]").click();
+    await page.locator("#forum-reply").waitFor();
+    await enter("alice");
+    await page.locator("[data-topic]").click();
     await page.locator("#forum-reply").waitFor();
     await page.locator("#forum-reply textarea").fill("Première réponse");
     fail = true;
@@ -265,6 +275,20 @@ const path = require("node:path");
     await page.locator("[data-folder=inbox]").click();
     await page.locator("[data-message]").first().click();
     await page.screenshot({ path: path.join(shots, "mail-desktop.png") });
+    assert.equal(
+      await page
+        .locator("#mail-root .mail-sidebar")
+        .evaluate((el) => Math.round(el.getBoundingClientRect().width)),
+      180,
+    );
+    assert.equal(
+      await page.locator(".mail-toolbar [data-action=reply]").count(),
+      1,
+    );
+    assert.equal(
+      await page.locator("#mail-root .mail-account-strip").count(),
+      1,
+    );
     await enter(null);
     assert.equal(await page.locator("[data-message]").count(), 0);
     assert.equal(await page.locator("#mail-editor").isVisible(), false);

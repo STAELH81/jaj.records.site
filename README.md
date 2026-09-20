@@ -200,7 +200,8 @@ messaging design: currently its messages exist only in memory and sending is sim
 ## Phase 10 — AQ-Mail and community forums
 
 AQ-Mail now delivers private messages between JAJ accounts through `/api/aq-mail`.
-It replaces the former in-memory demo. The member picker includes existing MySpace
+It replaces the former in-memory demo while retaining the original white folder pane,
+gray toolbar (New/Reply/Delete), account strip and message layout. The member picker includes existing MySpace
 profiles and accounts that sign in on this version; it never exposes login email
 addresses. Reply, unread state, search, trash/restore, per-mailbox deletion and
 blocking/unblocking are supported. Share dialogs can prepare a message containing
@@ -214,12 +215,15 @@ account's view. Refresh or reopen AQ-Mail to fetch new messages (no push deliver
 An empty directory in a new preview is normal until other members sign in there.
 
 MySpace Forums offers General, Music, Sport, Gaming, Culture and Tech categories,
-search, 20-topic pages, member-created topics, replies and quotes. Guests can read.
+search, 20-topic pages, topic requests, replies and quotes. Guests can only read;
+all writing requires authentication, enforced by the API. Members use Request a topic;
+admins approve/reject requests or create topics directly. My requests shows a member
+their own pending/approved/rejected requests without exposing them to other members.
 Classic author/message layouts support a persistent Wide view on desktop and a
 stacked mobile layout. Administrators can lock/unlock topics or hide topics/replies;
 permissions are checked using fresh server Identity roles. Existing topics without
-a category appear in General. Legacy topic requests remain stored but are not
-automatically published; the old approval-only forum API has been removed.
+a category appear in General. Legacy pending requests are included in the admin
+queue; approval preserves the requesting author and is safe to retry.
 
 Both APIs use the existing `aq-myspace-v1` store in production. Preview stores are
 isolated by branch (`aq-community-<branch>`) and survive rebuilds of that branch.
@@ -230,7 +234,7 @@ state belongs to the requesting user, and even admins cannot read someone else's
 private mailbox. Deleting a message removes it from that user's mailbox, not from
 the other participant's copy. Drafts and blocks are account-specific.
 
-Rate limits claim immutable hourly slots: 30 messages, 10 topics and 60 replies per
+Rate limits claim immutable hourly slots: 30 messages, 10 topic requests (or admin-created topics) and 60 replies per
 account per UTC hour. Text limits are 120/5000 characters for mail subject/body,
 90/2000 for topic title/body, and 1200 for a reply. Writes check request origin,
 input size and ownership. Conditional storage writes follow the

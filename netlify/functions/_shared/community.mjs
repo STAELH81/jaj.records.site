@@ -149,6 +149,45 @@ export function createCommunityHandler({
           items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
           return json({ messages: items });
         }
+        if (view === "requests") {
+          if (!uid) fail("login_required", 401);
+          const live = await liveUser(uid);
+          const roles =
+            live?.roles ||
+            live?.app_metadata?.roles ||
+            live?.appMetadata?.roles ||
+            [];
+          const isAdmin =
+            Array.isArray(roles) &&
+            roles.some((r) => String(r).toLowerCase() === "admin");
+          const requests = [];
+          for (const r of await list(store, "forum-requests/")) {
+            if (!isAdmin && r.requesterId !== uid) continue;
+            const decision = await get(store, `forum-decisions/${r.id}.json`);
+            const published =
+              decision?.decision === "approve" &&
+              (await get(store, `topics/${r.id}.json`));
+            const state =
+              decision?.decision === "reject"
+                ? "rejected"
+                : published
+                  ? "approved"
+                  : "pending";
+            if (isAdmin && state !== "pending") continue;
+            requests.push({
+              id: r.id,
+              title: r.title,
+              text: r.text,
+              requesterName: r.requesterName,
+              createdAt: r.createdAt,
+              category: categories.includes(r.category)
+                ? r.category
+                : "general",
+              state,
+            });
+          }
+          return json({ requests });
+        }
         if (view === "topics") {
           const topics = (await list(store, "topics/")).filter(
             (t) => !t.hidden,
@@ -320,7 +359,81 @@ export function createCommunityHandler({
         }
         fail("unknown_action");
       }
+      if (action === "request_topic") {
+        const requestId = id(body.id),
+          payload = {
+            title: text(body.title, 90),
+            text: text(body.text, 2000),
+            category: body.category,
+          };
+        if (!categories.includes(payload.category)) fail("invalid_category");
+        const key = `forum-requests/${requestId}.json`,
+          existing = await get(store, key);
+        if (existing) {
+          if (
+            existing.requesterId !== uid ||
+            existing.fingerprint !== digest(payload)
+          )
+            fail("conflict", 409);
+          return json({ ok: true, id: requestId });
+        }
+        await quota(store, uid, "request_topic", 10);
+        await put(
+          store,
+          key,
+          {
+            id: requestId,
+            ...payload,
+            requesterId: uid,
+            requesterName: name,
+            createdAt: new Date().toISOString(),
+            fingerprint: digest(payload),
+          },
+          null,
+        );
+        return json({ ok: true, id: requestId });
+      }
+      if (action === "moderate_request") {
+        if (!admin) fail("admin_required", 403);
+        const requestId = id(body.id),
+          decision = body.decision;
+        if (!["approve", "reject"].includes(decision)) fail("invalid_action");
+        const r = await get(store, `forum-requests/${requestId}.json`);
+        if (!r) fail("not_found", 404);
+        const key = `forum-decisions/${requestId}.json`,
+          saved = await get(store, key);
+        if (saved && saved.decision !== decision) fail("conflict", 409);
+        if (!saved) await put(store, key, { decision, moderatedBy: uid }, null);
+        if (decision === "approve") {
+          // Stable ID makes approval retries safe, including older pending requests.
+          const topicKey = `topics/${requestId}.json`,
+            existing = await get(store, topicKey);
+          if (existing && existing.approvedRequestId !== requestId)
+            fail("conflict", 409);
+          if (!existing)
+            await put(
+              store,
+              topicKey,
+              {
+                id: requestId,
+                title: r.title,
+                text: r.text,
+                category: categories.includes(r.category)
+                  ? r.category
+                  : "general",
+                authorId: r.requesterId,
+                authorName: r.requesterName,
+                approvedRequestId: requestId,
+                approvedBy: uid,
+                createdAt: new Date().toISOString(),
+              },
+              null,
+            );
+        }
+        return json({ ok: true, id: requestId, decision });
+      }
       if (action === "create_topic" || action === "reply_topic") {
+        if (action === "create_topic" && !admin) fail("admin_required", 403);
         const itemId = id(body.id),
           content = text(body.text, action === "create_topic" ? 2000 : 1200);
         const topicId = action === "create_topic" ? itemId : id(body.topicId);

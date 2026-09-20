@@ -49,46 +49,46 @@ function currentMessage() {
 }
 function render() {
   const m = currentMessage();
-  root.innerHTML = `<aside class="mail-sidebar"><h2>AQ-Mail</h2><small>${tr("Messagerie JAJ", "JAJ messaging")}</small>
+  root.innerHTML = `<aside class="mail-sidebar"><div class="setting-title" style="margin-top:0">${tr("Dossiers", "Folders")}</div>
         ${[
-          ["inbox", tr("Réception", "Inbox")],
+          ["inbox", tr("Boîte de réception", "Inbox")],
           ["sent", tr("Envoyés", "Sent")],
-          ["draft", tr("Brouillon", "Draft")],
           ["trash", tr("Corbeille", "Trash")],
+          ["draft", tr("Brouillon", "Draft")],
           ["members", tr("Membres", "Members")],
         ]
           .map(
             ([id, label]) =>
-              `<button class="mail-folder ${folder === id ? "active" : ""}" data-folder="${id}">${label}${id === "inbox" ? ` <b>(${messages.filter((m) => m.unread && m.folder === "inbox").length})</b>` : ""}</button>`,
+              `<button class="mail-folder ${folder === id ? "active" : ""}" data-folder="${id}"><img src="medias/img/folderimg.png" class="tray-icon-img" alt=""><span>${label}</span>${id === "inbox" ? ` <b>(${messages.filter((m) => m.unread && m.folder === "inbox").length})</b>` : ""}</button>`,
           )
           .join("")}
-        <p>${esc(user?.displayName || tr("Invité", "Guest"))}</p></aside>
-        <main class="mail-main"><div class="mail-toolbar"><button class="retro-btn" data-action="compose" ${!user || busy ? "disabled" : ""}>${tr("Nouveau", "New")}</button><button class="retro-btn" data-action="refresh" ${busy ? "disabled" : ""}>${tr("Actualiser", "Refresh")}</button><input id="mail-search" aria-label="${tr("Rechercher", "Search")}" placeholder="${tr("Rechercher…", "Search…")}" value="${esc(search)}"></div>
-        <div class="community-status" role="status" aria-live="polite">${esc(notice)}</div>
+        </aside>
+        <main class="mail-main"><div class="mail-toolbar"><button class="retro-btn" data-action="compose" ${!user || busy ? "disabled" : ""}>${tr("Nouveau", "New")}</button><button class="retro-btn" data-action="reply" ${!m || busy ? "disabled" : ""}>${tr("Répondre", "Reply")}</button><button class="retro-btn" data-action="${m?.folder === "trash" ? "delete" : "trash"}" ${!m || busy ? "disabled" : ""}>${tr("Supprimer", "Delete")}</button><button class="retro-btn" data-action="refresh" ${busy ? "disabled" : ""}>${tr("Actualiser", "Refresh")}</button><input id="mail-search" aria-label="${tr("Rechercher", "Search")}" placeholder="${tr("Rechercher…", "Search…")}" value="${esc(search)}"></div>
+        <div class="mail-account-strip"><span>${tr("Adresse AQ-Mail :", "AQ-Mail address:")}</span> <strong>${esc(user?.aquertyMail || user?.displayName || "guest@aquerty.fr")}</strong></div><div class="community-status" role="status" aria-live="polite">${esc(notice)}</div>
         ${
           !user
             ? `<p class="community-empty">${tr("Connecte-toi pour envoyer et recevoir des messages privés entre comptes JAJ.", "Sign in to send and receive private messages between JAJ accounts.")}</p>`
             : `<div class="mail-split ${m ? "mail-reading" : ""}"><div class="mail-list" id="mail-list"></div><section class="mail-view" id="mail-view">${m ? renderMessage(m) : `<p class="community-empty">${tr("Choisis un message ou écris à un membre.", "Choose a message or write to a member.")}</p>`}</section></div>`
         }</main>
         <dialog id="mail-editor"><form id="mail-form"><header><h2>${tr("Nouveau message", "New message")}</h2><button class="retro-btn" type="button" data-action="close-editor">×</button></header><p>${tr("Entre comptes JAJ · aucun email externe", "Between JAJ accounts · no external email")}</p>
-        <label>${tr("Destinataire", "Recipient")}<select id="mail-to" required><option value="">${tr("Choisir un membre…", "Choose a member…")}</option>${members
+        <label><span>${tr("À", "To")}</span><select id="mail-to" required><option value="">${tr("Choisir un membre…", "Choose a member…")}</option>${members
           .filter((member) => !blocks.includes(member.id))
           .map(
             (member) =>
               `<option value="${esc(member.id)}">${esc(member.name)} · ${esc(member.id.slice(-6))}</option>`,
           )
           .join("")}</select></label>
-        <label>${tr("Sujet", "Subject")}<input id="mail-subject" maxlength="120" required></label><label>${tr("Message", "Message")}<textarea id="mail-body" maxlength="5000" required rows="9"></textarea></label>
+        <label><span>${tr("Sujet", "Subject")}</span><input id="mail-subject" maxlength="120" required></label><label><span>Msg</span><textarea id="mail-body" maxlength="5000" required rows="6"></textarea></label>
         <p class="mail-draft-hint">${tr("Brouillon enregistré sur cet appareil pour ton compte.", "Draft saved on this device for your account.")}</p><p id="mail-editor-status" role="alert"></p><button class="retro-btn" type="button" data-action="discard">${tr("Effacer le brouillon", "Discard draft")}</button> <button class="retro-btn" id="mail-send" ${busy ? "disabled" : ""}>${tr("Envoyer", "Send")}</button></form></dialog>`;
   renderList();
 }
 function renderMessage(m) {
   const other = m.fromId === user.id ? m.toId : m.fromId;
-  return `<button class="retro-btn mail-back" data-action="back">← ${tr("Liste", "List")}</button><h2>${esc(m.subject)}</h2><p>${esc(m.fromName)} → ${esc(m.toName)}<br><small>${esc(date(m.createdAt))}</small></p><pre>${messageText(m.text)}</pre><div class="mail-actions">
-        <button class="retro-btn" data-action="reply">${tr("Répondre", "Reply")}</button>
+  return `<button class="retro-btn mail-back" data-action="back">← ${tr("Liste", "List")}</button><h2>${esc(m.subject)}</h2><div class="mail-meta"><div><strong>${tr("De :", "From:")}</strong> ${esc(m.fromName)}</div><div><strong>${tr("À :", "To:")}</strong> ${esc(m.toName)}</div><div><strong>${tr("Date :", "Date:")}</strong> ${esc(date(m.createdAt))}</div></div><pre>${messageText(m.text)}</pre><div class="mail-actions">
+
         ${m.toId === user.id ? `<button class="retro-btn" data-action="unread">${tr("Marquer non lu", "Mark unread")}</button>` : ""}
-        <button class="retro-btn" data-action="${m.folder === "trash" ? "restore" : "trash"}">${m.folder === "trash" ? tr("Restaurer", "Restore") : tr("Corbeille", "Trash")}</button>
-        ${m.folder === "trash" ? `<button class="retro-btn" data-action="delete">${tr("Supprimer définitivement", "Delete permanently")}</button>` : ""}
+        ${m.folder === "trash" ? `<button class="retro-btn" data-action="restore">${tr("Restaurer", "Restore")}</button>` : ""}
+
         <button class="retro-btn" data-action="block" data-target="${esc(other)}">${blocks.includes(other) ? tr("Débloquer ce membre", "Unblock member") : tr("Bloquer ce membre", "Block member")}</button></div>`;
 }
 function renderList() {

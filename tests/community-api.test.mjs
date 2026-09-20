@@ -143,7 +143,7 @@ test("mail rate limit and validation cannot be bypassed by concurrent requests",
     400,
   );
 });
-test("members create categorized public topics, reply, and retry without duplicate replies", async () => {
+test("members request categorized topics, admins approve, members reply without duplicates", async () => {
   const f = await registered(),
     topicId = randomUUID();
   const payload = {
@@ -154,8 +154,73 @@ test("members create categorized public topics, reply, and retry without duplica
     text: "Match ce soir",
     authorName: "Forged",
   };
+  assert.equal((await f.call("/api/forums", payload)).status, 403);
+  payload.action = "request_topic";
   assert.equal((await f.call("/api/forums", payload)).status, 200);
   assert.equal((await f.call("/api/forums", payload)).status, 200);
+  assert.equal((await (await f.call("/api/forums")).json()).topics.length, 0);
+  f.identity.user = f.users.bob;
+  assert.equal(
+    (await (await f.call("/api/forums?view=requests")).json()).requests.length,
+    0,
+  );
+  assert.equal(
+    (
+      await f.call("/api/forums", {
+        action: "moderate_request",
+        id: topicId,
+        decision: "approve",
+      })
+    ).status,
+    403,
+  );
+  f.identity.user = null;
+  for (const action of [
+    "request_topic",
+    "create_topic",
+    "reply_topic",
+    "moderate_request",
+  ])
+    assert.equal(
+      (await f.call("/api/forums", { ...payload, action, topicId })).status,
+      401,
+    );
+  assert.equal((await f.call("/api/forums?view=requests")).status, 401);
+  f.identity.user = f.users.admin;
+  assert.equal(
+    (await (await f.call("/api/forums?view=requests")).json()).requests.length,
+    1,
+  );
+  assert.equal(
+    (
+      await f.call("/api/forums", {
+        action: "moderate_request",
+        id: topicId,
+        decision: "approve",
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await f.call("/api/forums", {
+        action: "moderate_request",
+        id: topicId,
+        decision: "approve",
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await f.call("/api/forums", {
+        action: "moderate_request",
+        id: topicId,
+        decision: "reject",
+      })
+    ).status,
+    409,
+  );
   f.identity.user = f.users.bob;
   const reply = {
     action: "reply_topic",
@@ -180,6 +245,7 @@ test("moderation uses fresh server roles, locking and hiding; legacy topics stil
   const f = await registered(),
     topicId = randomUUID(),
     replyId = randomUUID();
+  f.identity.user = f.users.admin;
   await f.call("/api/forums", {
     action: "create_topic",
     id: topicId,
@@ -263,4 +329,33 @@ test("moderation uses fresh server roles, locking and hiding; legacy topics stil
     (await (await f.call("/api/forums")).json()).topics[0].category,
     "general",
   );
+});
+
+test("legacy requests can be refused and are visible only to their owner and admins", async () => {
+  const f = await registered();
+  await f.store.setJSON("forum-requests/legacy.json", {
+    id: "legacy",
+    title: "Legacy request",
+    text: "Opening",
+    requesterId: "alice",
+    requesterName: "Alice",
+  });
+  f.identity.user = f.users.admin;
+  assert.equal(
+    (
+      await f.call("/api/forums", {
+        action: "moderate_request",
+        id: "legacy",
+        decision: "reject",
+      })
+    ).status,
+    200,
+  );
+  f.identity.user = f.users.alice;
+  assert.equal(
+    (await (await f.call("/api/forums?view=requests")).json()).requests[0]
+      .state,
+    "rejected",
+  );
+  assert.equal((await (await f.call("/api/forums")).json()).topics.length, 0);
 });

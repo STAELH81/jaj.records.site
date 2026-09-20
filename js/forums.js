@@ -13,6 +13,7 @@ let host = null,
   query = "",
   page = 0,
   topics = [],
+  requests = [],
   current = null,
   replies = [],
   wide = false;
@@ -52,9 +53,15 @@ function renderIndex() {
     )
     .join("")}</nav>
         <div class="forum-tools"><input id="forum-search" aria-label="${tr("Rechercher un sujet", "Search topics")}" placeholder="${tr("Rechercher un sujet…", "Search topics…")}" value="${esc(query)}"><button class="myspace-btn" data-forum="refresh">${tr("Actualiser", "Refresh")}</button></div><div id="forum-topics"></div>
-        ${member() ? `<details class="forum-compose"><summary>${tr("Nouveau sujet", "New topic")}</summary><form id="forum-create"><h3>${tr("Ouvrir une discussion", "Start a discussion")}</h3><p>${tr("Ce message sera public. Reste respectueux et choisis la bonne catégorie.", "This message will be public. Be respectful and choose the right category.")}</p><label>${tr("Catégorie", "Category")}<select name="category">${catOptions()}</select></label><label>${tr("Titre", "Title")}<input name="title" required maxlength="90"></label><label>${tr("Message", "Message")}<textarea name="text" required maxlength="2000" rows="5"></textarea></label><button class="myspace-btn primary">${tr("Publier le sujet", "Post topic")}</button><p class="forum-form-status" role="alert"></p></form></details>` : `<p class="community-empty">${tr("Connecte-toi pour créer un sujet ou répondre.", "Sign in to create a topic or reply.")}</p>`}`;
+        ${member() ? `<details class="forum-compose"><summary>${admin() ? tr("Créer un sujet", "Create topic") : tr("Demander un sujet", "Request a topic")}</summary><form id="forum-create"><h3>${admin() ? tr("Ouvrir une discussion", "Start a discussion") : tr("Proposer une discussion", "Suggest a discussion")}</h3><p>${admin() ? tr("Ce message sera public.", "This message will be public.") : tr("Un administrateur doit approuver ta demande avant sa publication.", "An administrator must approve your request before publication.")}</p><label>${tr("Catégorie", "Category")}<select name="category">${catOptions()}</select></label><label>${tr("Titre", "Title")}<input name="title" required maxlength="90"></label><label>${tr("Message", "Message")}<textarea name="text" required maxlength="2000" rows="5"></textarea></label><button class="myspace-btn primary">${admin() ? tr("Publier le sujet", "Post topic") : tr("Envoyer la demande", "Send request")}</button><p class="forum-form-status" role="alert"></p></form></details>` : `<p class="community-empty">${tr("Connecte-toi pour demander un sujet ou répondre.", "Sign in to request a topic or reply.")}</p>`}`;
   const select = body.querySelector("select");
   if (select && category !== "all") select.value = category;
+  if (member()) {
+    const panel = document.createElement("section");
+    panel.className = "forum-requests";
+    panel.innerHTML = `<h3>${admin() ? tr("Demandes en attente", "Pending requests") : tr("Mes demandes", "My requests")}</h3>${requests.length ? requests.map((r) => `<article class="myspace-box myspace-box-body"><strong>${esc(r.title)}</strong><p>${esc(r.requesterName)} · ${label(r.category)}</p><p style="white-space:pre-wrap">${esc(r.text)}</p>${admin() ? `<button class="myspace-btn" data-request="${esc(r.id)}" data-decision="approve">${tr("Approuver", "Approve")}</button> <button class="myspace-btn" data-request="${esc(r.id)}" data-decision="reject">${tr("Refuser", "Reject")}</button>` : `<small>${r.state === "approved" ? tr("Approuvée", "Approved") : r.state === "rejected" ? tr("Refusée", "Rejected") : tr("En attente de validation", "Awaiting approval")}</small>`}</article>`).join("") : `<p>${tr("Aucune demande en attente.", "No pending requests.")}</p>`}`;
+    body.append(panel);
+  }
   renderRows();
 }
 function renderRows() {
@@ -84,7 +91,12 @@ async function loadIndex() {
   try {
     const data = await api("/api/forums");
     if (token !== generation || !host) return;
+    const pending = member()
+      ? await api("/api/forums", null, { view: "requests" })
+      : { requests: [] };
+    if (token !== generation || !host) return;
     topics = data.topics;
+    requests = pending.requests;
     renderIndex();
   } catch (error) {
     if (token === generation && host) status(errorText(error));
@@ -117,6 +129,26 @@ async function openTopic(id) {
 async function onClick(event) {
   const button = event.target.closest("button");
   if (!button || !host) return;
+  if (button.dataset.request) {
+    const token = generation;
+    button.disabled = true;
+    try {
+      const data = await api("/api/forums", {
+        action: "moderate_request",
+        id: button.dataset.request,
+        decision: button.dataset.decision,
+      });
+      if (token !== generation || !host) return;
+      if (data.decision === "approve") await openTopic(data.id);
+      else await loadIndex();
+    } catch (error) {
+      if (token === generation && host) {
+        status(errorText(error));
+        button.disabled = false;
+      }
+    }
+    return;
+  }
   if (button.dataset.category) {
     category = button.dataset.category;
     page = 0;
@@ -207,13 +239,25 @@ async function onSubmit(event) {
   try {
     const create = form.id === "forum-create";
     const data = await api("/api/forums", {
-      action: create ? "create_topic" : "reply_topic",
+      action: create
+        ? admin()
+          ? "create_topic"
+          : "request_topic"
+        : "reply_topic",
       id: form.dataset.id,
       ...values,
       ...(!create ? { topicId: current.id } : {}),
     });
     if (token !== generation || !host) return;
-    await openTopic(create ? data.id : current.id);
+    if (create && !admin()) {
+      await loadIndex();
+      status(
+        tr(
+          "Demande envoyée aux administrateurs.",
+          "Request sent to the administrators.",
+        ),
+      );
+    } else await openTopic(create ? data.id : current.id);
   } catch (error) {
     if (token === generation && host) {
       form.querySelector("[role=alert]").textContent = errorText(error);

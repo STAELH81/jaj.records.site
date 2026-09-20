@@ -179,3 +179,19 @@ profile save/reopen/avatar, failure recovery, discard cancellation, FR/EN/mobile
 public navigation, Player launch, guest access, account isolation and archive merging.
 The Phase 7C lifecycle was also verified with the real preview account: a disposable
 release and WAV were published, withdrawn, republished, deleted and cleaned successfully.
+
+
+## Phase 9 — shareable links
+
+Navigator artist/release pages and the Player toolbar expose Share. The dialog provides
+an actual URL on the current deployment (`?artist=cha`, `?release=cha-dual-2026`), a copy
+button and a selectable fallback if clipboard access is unavailable. No email is sent.
+Incoming links open Navigator after account/guest session activation, including mobile;
+the release page's Player action starts the listening flow without automatic playback.
+Unknown, withdrawn and ambiguous links show an unavailable message. Refresh retries a
+transient catalogue failure. Preview links stay on the preview; production links stay
+on production. This phase does not add social-network preview metadata.
+
+Run `npm run test:share` against the static test server for incoming URLs, sharing,
+FR/EN, mobile and unavailable-link handling. AQ-Mail remains unchanged pending a separate
+messaging design: currently its messages exist only in memory and sending is simulated.

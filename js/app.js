@@ -3454,7 +3454,7 @@ function getArtistNavigatorPages(isEn) {
         return [`artist:${artist.id}`, {
             address:`http://www.jaj-records.com/artists/${artist.id}.html`, title:artist.name,
             content:`<article class="navigator-artist-page"><a href="aq://home" data-catalog-page="info">← ${isEn?'Catalogue':'Catalogue'}</a>
-                <header class="navigator-artist-hero">${artistAvatar(artist)}<div><p class="artist-kicker">JAJ RECORDS · ${isEn?'ARTIST':'ARTISTE'}</p><h2>${escapeNavigatorHTML(artist.name)}</h2><p>${releases.length} ${isEn?'release(s)':'sortie(s)'}</p></div></header>
+                <button type="button" class="retro-btn" data-share-kind="artist" data-share-id="${escapeNavigatorHTML(artist.id)}">${isEn?'Share':'Partager'}</button><header class="navigator-artist-hero">${artistAvatar(artist)}<div><p class="artist-kicker">JAJ RECORDS · ${isEn?'ARTIST':'ARTISTE'}</p><h2>${escapeNavigatorHTML(artist.name)}</h2><p>${releases.length} ${isEn?'release(s)':'sortie(s)'}</p></div></header>
                 <section class="navigator-artist-bio"><h3>${isEn?'About':'À propos'}</h3><p class="artist-bio">${escapeNavigatorHTML(artist.bio || (isEn?'No biography yet.':'La bio arrive bientôt.'))}</p></section>
                 <section><h3>${isEn?'Releases':'Sorties'}</h3><div class="navigator-artist-releases">${releases.length?releases.map(release=>`<section class="navigator-artist-release">${release.cover?`<img src="${escapeNavigatorHTML(release.cover)}" alt="${escapeNavigatorHTML(release.title)}">`:'<div class="artist-release-placeholder" aria-hidden="true">♫</div>'}<div><h4>${navigatorReleaseLink(release)}</h4><p>${escapeNavigatorHTML(release.type.toUpperCase())} · ${escapeNavigatorHTML(release.year || '')}</p><button type="button" class="retro-btn" data-player-release="${escapeNavigatorHTML(release.id)}">${isEn?'Open in AQ-Player':'Ouvrir dans AQ-Player'}</button></div></section>`).join(''):`<p>${isEn?'No public releases yet.':'Aucune sortie publique pour le moment.'}</p>`}</div></section></article>`,
         }];
@@ -3469,7 +3469,7 @@ function getCatalogNavigatorPages(isEn) {
         return [`release:${release.id}`, {
             address: `http://www.jaj-records.com/releases/${encodeURIComponent(release.slug || release.id)}.html`,
             title,
-            content: `<article class="navigator-release"><h2>${escapeNavigatorHTML(title)}</h2><p>${navigatorArtistLink(artist)}</p>
+            content: `<article class="navigator-release"><h2>${escapeNavigatorHTML(title)}</h2><p>${navigatorArtistLink(artist)}</p><button type="button" class="retro-btn" data-share-kind="release" data-share-id="${escapeNavigatorHTML(release.id)}">${isEn?'Share':'Partager'}</button>
                 ${release.cover ? `<img class="navigator-release-cover" src="${escapeNavigatorHTML(release.cover)}" alt="${escapeNavigatorHTML(title)}">` : ''}
                 <p>${escapeNavigatorHTML(({album:'Album',single:'Single',ep:'EP'})[release.type] || release.type)} · ${escapeNavigatorHTML(release.year || '')} · ${escapeNavigatorHTML(release.label || '')}</p>
                 <button type="button" class="retro-btn" data-player-release="${escapeNavigatorHTML(release.id)}">${isEn ? 'Open in AQ-Player' : 'Ouvrir dans AQ-Player'}</button>

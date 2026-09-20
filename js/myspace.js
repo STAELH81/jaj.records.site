@@ -1,3 +1,5 @@
+import { mountForums, unmountForums } from './forums.js';
+let viewGeneration=0;
 const MYSPACE_API = '/api/myspace';
 
 const ms = {
@@ -185,6 +187,7 @@ function makeMiniAvatar(name) {
 }
 
 async function loadFeed() {
+    const token=++viewGeneration;
     ms.tab = 'feed';
     ms.profileUserId = null;
     ms.topicId = null;
@@ -240,6 +243,7 @@ async function loadFeed() {
 
     try {
         const data = await requestGET('feed');
+        if(token!==viewGeneration)return;
         setStatus('');
         const posts = Array.isArray(data.posts) ? data.posts : [];
 
@@ -407,6 +411,7 @@ function renderComments(container, post, comments) {
 }
 
 async function showProfile(userId) {
+    const token=++viewGeneration;
     ms.tab = 'profile';
     ms.profileUserId = userId || ms.session?.id || null;
     ms.topicId = null;
@@ -425,6 +430,7 @@ async function showProfile(userId) {
 
     try {
         const data = await requestGET('profile', { userId: ms.profileUserId });
+        if(token!==viewGeneration)return;
         setStatus('');
         renderProfile(data.profile, ms.profileUserId === ms.session?.id && isLoggedIn());
     } catch (error) {
@@ -484,7 +490,10 @@ function renderProfile(profile, editable) {
     });
     content.appendChild(details);
 
-    if (!editable) return;
+    if (!editable) {
+        if(isLoggedIn() && profile.userId!==ms.session.id){const mail=document.createElement('button');mail.className='myspace-btn';mail.textContent=tr('Écrire sur AQ-Mail','Write on AQ-Mail');mail.addEventListener('click',()=>window.AQMail?.compose({toId:profile.userId}));content.append(mail);}
+        return;
+    }
 
     const editor = document.createElement('div');
     editor.className = 'myspace-box';
@@ -551,309 +560,15 @@ function renderProfileRefresh(profile) {
     renderProfile(profile, true);
 }
 
-async function loadForums() {
-    ms.tab = 'forums';
-    ms.profileUserId = null;
-    ms.topicId = null;
-    setActiveNav('forums');
-    clearContent();
-    setStatus(tr('Chargement des forums…', 'Loading forums…'));
-
-    const create = document.createElement('div');
-    create.className = 'myspace-box';
-    create.innerHTML = `<div class="myspace-box-title orange">${isAdmin() ? tr('Créer un sujet', 'Create topic') : tr('Demander un sujet', 'Request a topic')}</div>`;
-    const createBody = document.createElement('div');
-    createBody.className = 'myspace-box-body';
-
-    if (isLoggedIn()) {
-        const form = document.createElement('div');
-        form.className = 'myspace-form';
-
-        const explain = document.createElement('div');
-        explain.className = 'myspace-status';
-        explain.style.marginBottom = '8px';
-        explain.textContent = isAdmin()
-            ? tr('Compte ADMIN : tu peux créer directement un sujet public.', 'ADMIN account: you can create a public topic directly.')
-            : tr('Pour éviter le bazar, les membres proposent un sujet. Un ADMIN doit l’approuver avant sa publication.', 'To keep things organized, members request a topic. An ADMIN must approve it before publication.');
-
-        const title = document.createElement('input');
-        title.maxLength = 90;
-        title.placeholder = tr('Titre du sujet', 'Topic title');
-
-        const body = document.createElement('textarea');
-        body.maxLength = 2000;
-        body.placeholder = isAdmin() ? tr('Message d’ouverture…', 'Opening message…') : tr('Décris le sujet que tu voudrais ouvrir…', 'Describe the topic you would like to open…');
-
-        const actions = document.createElement('div');
-        actions.className = 'myspace-actions';
-
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'myspace-btn primary';
-        button.textContent = isAdmin() ? tr('Créer le sujet', 'Create topic') : tr('Envoyer la demande', 'Send request');
-
-        button.addEventListener('click', async () => {
-            if (!title.value.trim() || !body.value.trim()) return;
-            button.disabled = true;
-            try {
-                if (isAdmin()) {
-                    const data = await requestPOST('create_topic', {
-                        title: title.value,
-                        text: body.value
-                    });
-                    await openTopic(data.topic.id);
-                    return;
-                }
-
-                await requestPOST('request_topic', {
-                    title: title.value,
-                    text: body.value
-                });
-                title.value = '';
-                body.value = '';
-                setStatus(tr('Demande envoyée aux administrateurs.', 'Request sent to the administrators.'), 'ok');
-            } catch (error) {
-                setStatus(tr('Action impossible : ', 'Action failed: ') + error.message, 'error');
-            } finally {
-                button.disabled = false;
-            }
-        });
-
-        actions.appendChild(button);
-        form.append(explain, title, body, actions);
-        createBody.appendChild(form);
-    } else {
-        createBody.textContent = tr('Connecte-toi pour demander un sujet ou répondre aux discussions.', 'Sign in to request a topic or reply to discussions.');
-    }
-
-    create.appendChild(createBody);
-    content.appendChild(create);
-
-    if (isAdmin()) {
-        try {
-            const pending = await requestGET('forum_requests');
-            const requests = Array.isArray(pending.requests) ? pending.requests : [];
-
-            const moderation = document.createElement('div');
-            moderation.className = 'myspace-box';
-            moderation.innerHTML = `<div class="myspace-box-title">${tr('Demandes en attente', 'Pending requests')}</div>`;
-
-            if (!requests.length) {
-                const empty = document.createElement('div');
-                empty.className = 'myspace-box-body';
-                empty.textContent = tr('Aucune demande de sujet.', 'No topic requests.');
-                moderation.appendChild(empty);
-            } else {
-                requests.forEach((request) => {
-                    const row = document.createElement('div');
-                    row.className = 'myspace-forum-request';
-
-                    const copy = document.createElement('div');
-                    copy.className = 'myspace-forum-request-copy';
-
-                    const title = document.createElement('div');
-                    title.className = 'myspace-topic-title';
-                    title.textContent = request.title || tr('Sans titre', 'Untitled');
-
-                    const meta = document.createElement('div');
-                    meta.className = 'myspace-topic-meta';
-                    meta.textContent = `${tr('Demandé par', 'Requested by')} ${request.requesterName || tr('Utilisateur', 'User')} · ${formatDate(request.createdAt)}`;
-
-                    const text = document.createElement('div');
-                    text.className = 'myspace-forum-request-text';
-                    text.textContent = request.text || '';
-
-                    copy.append(title, meta, text);
-
-                    const actions = document.createElement('div');
-                    actions.className = 'myspace-forum-request-actions';
-
-                    const approve = document.createElement('button');
-                    approve.type = 'button';
-                    approve.className = 'myspace-btn primary';
-                    approve.textContent = tr('Approuver', 'Approve');
-
-                    const reject = document.createElement('button');
-                    reject.type = 'button';
-                    reject.className = 'myspace-btn';
-                    reject.textContent = tr('Refuser', 'Reject');
-
-                    const decide = async (decision) => {
-                        approve.disabled = true;
-                        reject.disabled = true;
-                        try {
-                            const result = await requestPOST('moderate_topic_request', {
-                                requestId: request.id,
-                                decision
-                            });
-                            if (decision === 'approve' && result.topic?.id) {
-                                await openTopic(result.topic.id);
-                            } else {
-                                await loadForums();
-                            }
-                        } catch (error) {
-                            setStatus(tr('Modération impossible : ', 'Moderation failed: ') + error.message, 'error');
-                            approve.disabled = false;
-                            reject.disabled = false;
-                        }
-                    };
-
-                    approve.addEventListener('click', () => decide('approve'));
-                    reject.addEventListener('click', () => decide('reject'));
-                    actions.append(approve, reject);
-                    row.append(copy, actions);
-                    moderation.appendChild(row);
-                });
-            }
-
-            content.appendChild(moderation);
-        } catch (error) {
-            setStatus(tr('Impossible de charger les demandes : ', 'Unable to load requests: ') + error.message, 'error');
-        }
-    }
-
-    try {
-        const data = await requestGET('topics');
-        setStatus('');
-        const topics = Array.isArray(data.topics) ? data.topics : [];
-        const box = document.createElement('div');
-        box.className = 'myspace-box';
-        box.innerHTML = '<div class="myspace-box-title">Forums AQ-NET</div>';
-
-        if (!topics.length) {
-            const empty = document.createElement('div');
-            empty.className = 'myspace-empty';
-            empty.textContent = tr('Aucun sujet pour le moment.', 'No topics yet.');
-            box.appendChild(empty);
-        } else {
-            topics.forEach((topic) => {
-                const row = document.createElement('div');
-                row.className = 'myspace-topic';
-
-                const left = document.createElement('div');
-                const title = document.createElement('div');
-                title.className = 'myspace-topic-title';
-                title.textContent = topic.title || tr('Sans titre', 'Untitled');
-                const meta = document.createElement('div');
-                meta.className = 'myspace-topic-meta';
-                meta.textContent = `${tr('par', 'by')} ${topic.authorName || tr('Utilisateur', 'User')} · ${formatDate(topic.lastActivityAt || topic.createdAt)}`;
-                left.append(title, meta);
-
-                const count = document.createElement('div');
-                count.textContent = `${topic.replyCount || 0} ${tr('rép.', 'repl.')}`;
-                count.style.color = '#666';
-
-                row.append(left, count);
-                row.addEventListener('click', () => openTopic(topic.id));
-                box.appendChild(row);
-            });
-        }
-
-        content.appendChild(box);
-    } catch (error) {
-        setStatus(tr('Forums indisponibles : ', 'Forums unavailable: ') + error.message, 'error');
-    }
-}
-
-async function openTopic(topicId) {
-    ms.tab = 'forums';
-    ms.topicId = topicId;
-    setActiveNav('forums');
-    clearContent();
-    setStatus(tr('Ouverture du sujet…', 'Opening topic…'));
-
-    try {
-        const data = await requestGET('topic', { topicId });
-        setStatus('');
-
-        const back = document.createElement('button');
-        back.type = 'button';
-        back.className = 'myspace-btn myspace-thread-back';
-        back.textContent = tr('← Retour aux forums', '← Back to forums');
-        back.addEventListener('click', loadForums);
-        content.appendChild(back);
-
-        const topicBox = document.createElement('div');
-        topicBox.className = 'myspace-box';
-        const title = document.createElement('div');
-        title.className = 'myspace-thread-title';
-        title.textContent = data.topic.title || tr('Sujet', 'Topic');
-
-        const head = document.createElement('div');
-        head.className = 'myspace-post-head';
-        head.append(makeMiniAvatar(data.topic.authorName), makeAuthor(data.topic.authorId, data.topic.authorName, data.topic.authorRoles));
-        const meta = document.createElement('div');
-        meta.className = 'myspace-post-meta';
-        meta.textContent = formatDate(data.topic.createdAt);
-        head.appendChild(meta);
-
-        const body = document.createElement('div');
-        body.className = 'myspace-topic-body';
-        body.textContent = data.topic.text || '';
-
-        topicBox.append(title, head, body);
-        content.appendChild(topicBox);
-
-        (data.replies || []).forEach((reply) => {
-            const replyBox = document.createElement('div');
-            replyBox.className = 'myspace-post';
-            const replyHead = document.createElement('div');
-            replyHead.className = 'myspace-post-head';
-            replyHead.append(makeMiniAvatar(reply.authorName), makeAuthor(reply.authorId, reply.authorName, reply.authorRoles));
-            const replyMeta = document.createElement('div');
-            replyMeta.className = 'myspace-post-meta';
-            replyMeta.textContent = formatDate(reply.createdAt);
-            replyHead.appendChild(replyMeta);
-            const replyBody = document.createElement('div');
-            replyBody.className = 'myspace-post-body';
-            replyBody.textContent = reply.text || '';
-            replyBox.append(replyHead, replyBody);
-            content.appendChild(replyBox);
-        });
-
-        if (isLoggedIn()) {
-            const replyForm = document.createElement('div');
-            replyForm.className = 'myspace-box myspace-form';
-            replyForm.innerHTML = `<div class="myspace-box-title orange">${tr('Répondre', 'Reply')}</div>`;
-            const replyBody = document.createElement('div');
-            replyBody.className = 'myspace-box-body';
-            const textarea = document.createElement('textarea');
-            textarea.maxLength = 1200;
-            textarea.placeholder = tr('Ta réponse…', 'Your reply…');
-            const actions = document.createElement('div');
-            actions.className = 'myspace-actions';
-            const send = document.createElement('button');
-            send.type = 'button';
-            send.className = 'myspace-btn primary';
-            send.textContent = tr('Envoyer', 'Send');
-
-            send.addEventListener('click', async () => {
-                if (!textarea.value.trim()) return;
-                send.disabled = true;
-                try {
-                    await requestPOST('reply_topic', {
-                        topicId,
-                        text: textarea.value
-                    });
-                    await openTopic(topicId);
-                } catch (error) {
-                    setStatus(tr('Réponse impossible : ', 'Unable to reply: ') + error.message, 'error');
-                } finally {
-                    send.disabled = false;
-                }
-            });
-
-            actions.appendChild(send);
-            replyBody.append(textarea, actions);
-            replyForm.appendChild(replyBody);
-            content.appendChild(replyForm);
-        }
-    } catch (error) {
-        setStatus(tr('Sujet indisponible : ', 'Topic unavailable: ') + error.message, 'error');
-    }
+function loadForums() {
+    viewGeneration++;
+    ms.tab = 'forums'; ms.topicId = null;
+    setActiveNav('forums'); setStatus('');
+    mountForums(content);
 }
 
 function setActiveNav(tab) {
+    if (tab !== 'forums') unmountForums();
     document.querySelectorAll('.myspace-nav-btn').forEach((button) => {
         button.classList.toggle('active', button.dataset.tab === tab);
     });
@@ -864,8 +579,7 @@ function refreshCurrentView() {
     if (ms.tab === 'profile') {
         showProfile(ms.profileUserId || ms.session?.id);
     } else if (ms.tab === 'forums') {
-        if (ms.topicId) openTopic(ms.topicId);
-        else loadForums();
+        loadForums();
     } else {
         loadFeed();
     }

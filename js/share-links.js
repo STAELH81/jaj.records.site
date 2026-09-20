@@ -54,4 +54,8 @@ window.addEventListener('aq:language-changed',labels);
 window.addEventListener('aq:catalog-updated',labels);
 // Navigator renders pages dynamically, so label its buttons when their content changes.
 new MutationObserver(labels).observe(document.getElementById('ie-content-box'),{childList:true});
+const mailButton=document.createElement('button');mailButton.type='button';mailButton.className='retro-btn';mailButton.textContent=tr('Partager par AQ-Mail','Share via AQ-Mail');dialog.append(mailButton);
+mailButton.addEventListener('click',()=>{const title=dialog.querySelector('p').textContent;dialog.close();window.AQMail?.compose({subject:title.slice(0,120),text:input.value});});
+window.addEventListener('aq:language-changed',()=>{mailButton.textContent=tr('Partager par AQ-Mail','Share via AQ-Mail');});
+new MutationObserver(()=>{mailButton.hidden=input.hidden;}).observe(input,{attributes:true,attributeFilter:['hidden']});
 labels();void openIncoming();

@@ -13,7 +13,9 @@
     "test:publisher": "node --test tests/publisher-api.test.mjs tests/publisher-media.test.mjs tests/publisher-lifecycle.test.mjs tests/artist-profiles.test.mjs",
     "test:publisher:ui": "node tests/publisher-ui.cjs",
     "test:artists:ui": "node tests/artist-profiles-ui.cjs",
-    "test:share": "node tests/share-links.cjs"
+    "test:share": "node tests/share-links.cjs",
+    "test:community": "node --test tests/community-api.test.mjs",
+    "test:community:ui": "node tests/community-ui.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

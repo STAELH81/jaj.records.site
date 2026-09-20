@@ -38,7 +38,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     let systemLogs = [];
     let isPoweredOff = false;
     let isRestoringSession = false;
-    let isMailI18nReady = false;
     let isApplyingPersistenceSnapshot = false;
 
     function notifyPersistenceChange(kind) {
@@ -1502,34 +1501,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const netStatus = document.getElementById('tray-net-status');
         if (netStatus) netStatus.textContent = t.trayConnected;
 
-        const mailAddressLabel = document.querySelector('#win-mail .mail-account-strip span');
-        if (mailAddressLabel) mailAddressLabel.textContent = isEn ? 'AQ-Mail address:' : 'Adresse AQ-Mail :';
-        const mailFoldersTitle = document.querySelector('#win-mail .mail-sidebar .setting-title');
-        if (mailFoldersTitle) mailFoldersTitle.textContent = t.mailFoldersTitle;
-        const mailFolders = document.querySelectorAll('#win-mail .mail-folder span');
-        if (mailFolders[0]) mailFolders[0].textContent = t.inbox;
-        if (mailFolders[1]) mailFolders[1].textContent = t.sent;
-        if (mailFolders[2]) mailFolders[2].textContent = t.trash;
-        setText('mail-compose-btn', t.mailNew);
-        setText('mail-reply-btn', t.mailReply);
-        setText('mail-delete-btn', t.mailDelete);
-        const mailSearch = document.getElementById('mail-search');
-        if (mailSearch) mailSearch.placeholder = t.mailSearch;
-        const mailComposeRow = document.querySelector('#win-mail .mail-compose .row strong');
-        if (mailComposeRow) mailComposeRow.textContent = t.mailComposeTitle;
-        const composeLabels = document.querySelectorAll('#win-mail .mail-compose .row span');
-        if (composeLabels[0]) composeLabels[0].textContent = t.mailTo;
-        if (composeLabels[1]) composeLabels[1].textContent = t.mailSubject;
-        if (composeLabels[2]) composeLabels[2].textContent = t.mailMsg;
-        setText('mail-send', t.mailSend);
-
         setIEPage(currentIEPage, true);
-        if (isMailI18nReady) {
-            updateMailTranslations();
-            mailRenderFolders();
-            mailRenderList();
-            mailRenderView();
-        }
         const accFrame = document.querySelector('#win-acc iframe');
         if (accFrame) accFrame.src = accFrame.src;
         const shuffleUi = document.getElementById('shuffle-btn');
@@ -2139,6 +2111,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             if (winId === 'win-player') triggerContextualPopup('openPlayer');
             if (winId === 'win-ie') triggerContextualPopup('openInternet');
             if (winId === 'win-tempus') triggerContextualPopup('openTempus');
+            if (winId === 'win-mail') window.dispatchEvent(new Event('aq:mail-open'));
             if (winId === 'win-myspace') window.dispatchEvent(new Event('aq:myspace-open'));
             if (winId === 'win-publisher') window.dispatchEvent(new Event('aq:publisher-open'));
             if (winId === 'win-acc') {
@@ -3207,223 +3180,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
     msDetectIcons();
 
-    // --- MAIL APP ---
-    const mailListEl = document.getElementById('mail-list');
-    const mailViewEl = document.getElementById('mail-view');
-    const mailSearchEl = document.getElementById('mail-search');
-    const mailComposeBtn = document.getElementById('mail-compose-btn');
-    const mailReplyBtn = document.getElementById('mail-reply-btn');
-    const mailDeleteBtn = document.getElementById('mail-delete-btn');
-    const mailOverlayEl = document.getElementById('mail-compose-overlay');
-    const mailComposeClose = document.getElementById('mail-compose-close');
-    const mailToEl = document.getElementById('mail-to');
-    const mailSubjectEl = document.getElementById('mail-subject');
-    const mailBodyEl = document.getElementById('mail-body');
-    const mailSendEl = document.getElementById('mail-send');
-
-    let mailFolder = 'inbox';
-    let mailSelectedId = null;
-
-    function getAquertySessionMail() {
-        return window.JAJSession?.aquertyMail || 'guest@aquerty.fr';
-    }
-
-    function updateMailAccountStrip() {
-        const addressEl = document.getElementById('mail-current-address');
-        if (addressEl) addressEl.textContent = getAquertySessionMail();
-    }
-
-    let mailData = [
-        { id: 'm1', folder: 'inbox', from: 'updates@aquerty.local', to: getAquertySessionMail(), subject: '', date: '2026-04-24 11:02', unread: true, body: '' },
-        { id: 'm2', folder: 'inbox', from: 'support@aquerty.local', to: getAquertySessionMail(), subject: '', date: '2026-04-24 11:18', unread: true, body: '' },
-        { id: 'm3', folder: 'sent', from: getAquertySessionMail(), to: 'support@aquerty.local', subject: '', date: '2026-04-24 11:21', unread: false, body: '' }
-    ];
-
-    function updateMailTranslations() {
-        const isEn = getCurrentLanguage() === 'en';
-        const defaults = {
-            m1: {
-                subject: isEn ? 'Welcome to Aquerty AQ-NEO' : 'Bienvenue sur Aquerty AQ-NEO',
-                body: isEn
-                    ? 'Your AQ-NEO environment is ready.\n\n- Player: OK\n- ACC: OK\n- Minesweeper: OK\n\nHave fun.'
-                    : 'Ton environnement AQ-NEO est pret.\n\n- Player: OK\n- ACC: OK\n- Demineur: OK\n\nBon test.'
-            },
-            m2: {
-                subject: isEn ? 'Ticket #1042 - Audio settings' : 'Ticket #1042 - Paramètres audio',
-                body: isEn
-                    ? 'We received your request.\n\nTip: adjust the master volume with the Sound icon (bottom right).'
-                    : 'On a bien recu ta demande.\n\nConseil: regle le volume master via l icone Son (en bas a droite).'
-            },
-            m3: {
-                subject: 'Re: Ticket #1042',
-                body: isEn ? 'Thanks, that works.' : 'Merci, c est bon.'
-            }
-        };
-        mailData.forEach((m) => {
-            if (!defaults[m.id]) return;
-            m.subject = defaults[m.id].subject;
-            m.body = defaults[m.id].body;
-        });
-    }
-
-    function mailRenderFolders() {
-        document.querySelectorAll('#win-mail .mail-folder').forEach((el) => {
-            el.classList.toggle('active', el.dataset.folder === mailFolder);
-        });
-    }
-
-    function mailGetVisibleList() {
-        const q = (mailSearchEl.value || '').trim().toLowerCase();
-        return mailData
-            .filter(m => m.folder === mailFolder)
-            .filter(m => !q || m.subject.toLowerCase().includes(q) || m.from.toLowerCase().includes(q) || m.body.toLowerCase().includes(q))
-            .sort((a, b) => (a.date < b.date ? 1 : -1));
-    }
-
-    function mailRenderList() {
-        const list = mailGetVisibleList();
-        mailListEl.innerHTML = '';
-        if (list.length === 0) {
-            mailListEl.innerHTML = `<div class="mail-empty">${tUI().mailNoMessages}</div>`;
-            return;
-        }
-        list.forEach((m) => {
-            const row = document.createElement('div');
-            row.className = `mail-item${m.unread ? ' unread' : ''}${m.id === mailSelectedId ? ' active' : ''}`;
-            row.innerHTML = `<div style="display:flex; justify-content:space-between; gap:8px;">
-                <span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${m.subject}</span>
-                <span style="opacity:0.75; font-size:11px;">${m.date.slice(11,16)}</span>
-            </div>
-            <div style="opacity:0.85; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${m.from}</div>`;
-            row.addEventListener('click', () => mailOpen(m.id));
-            mailListEl.appendChild(row);
-        });
-    }
-
-    function mailRenderView() {
-        const m = mailData.find(x => x.id === mailSelectedId);
-        if (!m) {
-            mailViewEl.innerHTML = `<div class="mail-empty">${tUI().mailSelect}</div>`;
-            return;
-        }
-        const t = tUI();
-        mailViewEl.innerHTML = `
-            <div class="mail-subject">${m.subject}</div>
-            <div class="mail-meta">
-                <div><strong>${t.mailFrom}</strong> ${m.from}</div>
-                <div><strong>${t.mailToLabel}</strong> ${m.to}</div>
-                <div><strong>${t.mailDate}</strong> ${m.date}</div>
-            </div>
-            <pre style="white-space:pre-wrap; margin:0; font-family:Tahoma,sans-serif; font-size:12px;">${m.body}</pre>
-        `;
-    }
-
-    function mailOpen(id) {
-        mailSelectedId = id;
-        const m = mailData.find(x => x.id === id);
-        if (m) m.unread = false;
-        mailRenderList();
-        mailRenderView();
-        addSystemLog(`Mail: ouvert ${id}`);
-    }
-
-    function mailDeleteSelected() {
-        if (!mailSelectedId) return;
-        const idx = mailData.findIndex(x => x.id === mailSelectedId);
-        if (idx === -1) return;
-        const m = mailData[idx];
-        if (m.folder !== 'trash') {
-            m.folder = 'trash';
-        } else {
-            mailData.splice(idx, 1);
-        }
-        mailSelectedId = null;
-        mailRenderList();
-        mailRenderView();
-        addSystemLog('Mail: suppression');
-    }
-
-    function mailOpenCompose(prefill = {}) {
-        mailOverlayEl.classList.add('open');
-        mailToEl.value = prefill.to || 'support@aquerty.local';
-        mailSubjectEl.value = prefill.subject || '';
-        mailBodyEl.value = prefill.body || '';
-    }
-
-    function mailCloseCompose() {
-        mailOverlayEl.classList.remove('open');
-    }
-
-    function mailSend() {
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const mi = String(now.getMinutes()).padStart(2, '0');
-        mailData.unshift({
-            id: `s_${Date.now()}`,
-            folder: 'sent',
-            from: getAquertySessionMail(),
-            to: mailToEl.value || 'support@aquerty.local',
-            subject: mailSubjectEl.value || tUI().mailNoSubject,
-            date: `${yyyy}-${mm}-${dd} ${hh}:${mi}`,
-            unread: false,
-            body: mailBodyEl.value || ''
-        });
-        mailCloseCompose();
-        mailFolder = 'sent';
-        mailSelectedId = null;
-        mailRenderFolders();
-        mailRenderList();
-        mailRenderView();
-        addSystemLog('Mail: envoyé');
-        triggerContextualPopup('openInternet');
-    }
-
-    document.querySelectorAll('#win-mail .mail-folder').forEach((el) => {
-        el.addEventListener('click', () => {
-            mailFolder = el.dataset.folder;
-            mailSelectedId = null;
-            mailRenderFolders();
-            mailRenderList();
-            mailRenderView();
-        });
-    });
-    mailSearchEl.addEventListener('input', mailRenderList);
-    mailComposeBtn.addEventListener('click', () => mailOpenCompose());
-    mailComposeClose.addEventListener('click', mailCloseCompose);
-    mailOverlayEl.addEventListener('click', (e) => { if (e.target === mailOverlayEl) mailCloseCompose(); });
-    mailDeleteBtn.addEventListener('click', mailDeleteSelected);
-    mailReplyBtn.addEventListener('click', () => {
-        const m = mailData.find(x => x.id === mailSelectedId);
-        if (!m) return;
-        mailOpenCompose({
-            to: m.from,
-            subject: `Re: ${m.subject}`,
-            body: `\n\n----\n${m.from} (${m.date})\n${m.body}`
-        });
-    });
-    mailSendEl.addEventListener('click', mailSend);
-    window.addEventListener('jaj:session-changed', (event) => {
-        const sessionMail = event.detail?.aquertyMail || getAquertySessionMail();
-        updateMailAccountStrip();
-        mailData.forEach((message) => {
-            if (message.id === 'm1' || message.id === 'm2') message.to = sessionMail;
-            if (message.id === 'm3') message.from = sessionMail;
-        });
-        if (isMailI18nReady) {
-            mailRenderList();
-            mailRenderView();
-        }
-    });
-
-    isMailI18nReady = true;
-    updateMailTranslations();
-    updateMailAccountStrip();
-    mailRenderFolders();
-    mailRenderList();
-    mailRenderView();
+    // AQ-Mail is loaded as a separate authenticated module.
     applyLanguage(getCurrentLanguage());
 
 // Catalogue-backed Navigator pages. Data attributes keep titles and IDs out of inline code.

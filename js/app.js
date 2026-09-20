@@ -1502,8 +1502,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const netStatus = document.getElementById('tray-net-status');
         if (netStatus) netStatus.textContent = t.trayConnected;
 
-        const mailAddressLabel = document.querySelector('#win-mail .mail-account-strip span');
-        if (mailAddressLabel) mailAddressLabel.textContent = isEn ? 'AQ-Mail address:' : 'Adresse AQ-Mail :';
+        const mailAddressLabel = document.querySelector('#win-mail .mail-account-strip .mail-account-label');
+        if (mailAddressLabel) mailAddressLabel.textContent = isEn ? 'YOUR AQ-MAIL ADDRESS' : 'TON ADRESSE AQ-MAIL';
+        if (mailCopyAddressBtn) mailCopyAddressBtn.textContent = isEn ? 'Copy' : 'Copier';
+        const mailCurrentAddress = document.getElementById('mail-current-address');
+        if (mailCurrentAddress) mailCurrentAddress.title = isEn ? 'Click to select' : 'Clique pour sélectionner';
         const mailFoldersTitle = document.querySelector('#win-mail .mail-sidebar .setting-title');
         if (mailFoldersTitle) mailFoldersTitle.textContent = t.mailFoldersTitle;
         const mailFolders = document.querySelectorAll('#win-mail .mail-folder span');
@@ -3220,6 +3223,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     const mailSubjectEl = document.getElementById('mail-subject');
     const mailBodyEl = document.getElementById('mail-body');
     const mailSendEl = document.getElementById('mail-send');
+    const mailCopyAddressBtn = document.getElementById('mail-copy-address');
 
     let mailFolder = 'inbox';
     let mailSelectedId = null;
@@ -3550,6 +3554,26 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         });
     });
     mailSendEl.addEventListener('click', mailSend);
+    document.getElementById('mail-current-address')?.addEventListener('click', (event) => {
+        const range = document.createRange();
+        range.selectNodeContents(event.currentTarget);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+    });
+    mailCopyAddressBtn?.addEventListener('click', async () => {
+        const address = getAquertySessionMail();
+        try {
+            await navigator.clipboard.writeText(address);
+            const previous = mailCopyAddressBtn.textContent;
+            mailCopyAddressBtn.textContent = getCurrentLanguage() === 'en' ? 'Copied!' : 'Copié !';
+            setTimeout(() => {
+                mailCopyAddressBtn.textContent = getCurrentLanguage() === 'en' ? 'Copy' : 'Copier';
+            }, 1200);
+        } catch (_) {
+            window.prompt(getCurrentLanguage() === 'en' ? 'Copy your AQ-Mail address:' : 'Copie ton adresse AQ-Mail :', address);
+        }
+    });
     window.addEventListener('jaj:session-changed', () => {
         mailLoadedAddress = '';
         mailSelectedId = null;

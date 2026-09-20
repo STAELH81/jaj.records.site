@@ -11,7 +11,9 @@ function getMailStore() {
   if (Netlify?.context?.deploy?.context === "production") {
     return getStore(STORE_NAME, { consistency: "strong" });
   }
-  return getDeployStore(STORE_NAME);
+  // Preview writes must be immediately visible after Send/Delete, otherwise
+  // deploy-scoped eventual consistency can make AQ-Mail look broken for ~60 s.
+  return getDeployStore({ name: STORE_NAME, consistency: "strong" } as any);
 }
 
 function json(data: unknown, init: ResponseInit = {}) {
@@ -41,14 +43,30 @@ async function liveIdentity(sessionUser: any) {
   }
 }
 
+function slugifyAquerty(value: unknown) {
+  return String(value || "user")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.+|\.+$/g, "")
+    .slice(0, 18) || "user";
+}
+
+function displayNameFor(user: any) {
+  const meta = identityMetadata(user);
+  return meta.display_name || meta.full_name || user?.email?.split("@")[0] || "Utilisateur";
+}
+
 function aquertyMailFor(user: any) {
   const meta = identityMetadata(user);
   const explicit = cleanSingleLine(meta.aquerty_mail, 120).toLowerCase();
   if (/^[a-z0-9._-]{1,64}@aquerty\.fr$/.test(explicit)) return explicit;
-  const base = cleanSingleLine(user?.email?.split("@")[0] || "user", 48)
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, ".");
-  return `${base || "user"}@aquerty.fr`;
+
+  // Keep the server fallback byte-for-byte compatible with js/auth.js.
+  // Older accounts may not have aquerty_mail in Identity metadata.
+  const idPart = String(user?.id || "").replace(/[^a-z0-9]/gi, "").slice(0, 5).toLowerCase();
+  return `${slugifyAquerty(displayNameFor(user))}.${idPart || "neo"}@aquerty.fr`;
 }
 
 function normalizeAddress(value: unknown) {

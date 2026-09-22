@@ -450,6 +450,77 @@
     color: #555;
 }
 
+.myspace-profile-grid dd a {
+    color: #003399;
+    text-decoration: underline;
+    overflow-wrap: anywhere;
+}
+
+.myspace-profile-friends {
+    margin-top: 10px;
+}
+
+.myspace-profile-friends-empty {
+    color: #777;
+    font-style: italic;
+}
+
+.myspace-friends-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.myspace-friend-card {
+    min-width: 0;
+    padding: 6px 4px;
+    border: 1px solid #c5d4ef;
+    background: #f8fbff;
+    color: #003399;
+    font: 10px Verdana, Arial, sans-serif;
+    text-align: center;
+    cursor: pointer;
+}
+
+.myspace-friend-card:hover {
+    border-color: #6699cc;
+    background: #eef4ff;
+}
+
+.myspace-friend-card .myspace-mini-avatar {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 5px;
+    flex-basis: 44px;
+    font-size: 20px;
+}
+
+.myspace-friend-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+.myspace-profile-friends-more {
+    margin-top: 7px;
+    color: #666;
+    font-size: 9px;
+    text-align: right;
+}
+
+.myspace-topic-identity {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.myspace-topic-identity > div:last-child {
+    min-width: 0;
+}
+
 .myspace-topic {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -581,6 +652,16 @@ body.global-dark #win-myspace .myspace-form select,
 body.global-dark #win-myspace .myspace-compose textarea {
     background: #fff;
     color: #111;
+}
+
+@media (max-width: 760px) {
+    .myspace-friends-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .myspace-topic-identity .myspace-mini-avatar {
+        display: none;
+    }
 }
 
 @media (max-width: 760px) {

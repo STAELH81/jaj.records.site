@@ -1,3 +1,5 @@
+import AQCatalog from './catalog.js';
+
 const MYSPACE_API = '/api/myspace';
 
 const ms = {
@@ -11,6 +13,13 @@ const ms = {
     chatChannel: null,
     chatTokenRefreshTimer: null,
     selfAvatarData: '',
+    unreadCount: 0,
+    unreadBySender: {},
+    presenceTimer: null,
+    socialPollTimer: null,
+    friendRequestsInitialized: false,
+    knownFriendRequestIds: new Set(),
+    notificationTimer: null,
     loadedOnce: false
 };
 
@@ -41,11 +50,17 @@ function applyMySpaceLanguage() {
         'JAJ Records social network // powered by AQ-NET'
     );
 
-    const nav = document.querySelectorAll('#win-myspace .myspace-nav-btn');
-    if (nav[0]) nav[0].textContent = tr('Accueil', 'Home');
-    if (nav[1]) nav[1].textContent = tr('Mon profil', 'My profile');
-    if (nav[2]) nav[2].textContent = tr('Messages', 'Messages');
-    if (nav[3]) nav[3].textContent = 'Forums';
+    const navFeed = document.querySelector('#win-myspace .myspace-nav-btn[data-tab="feed"]');
+    const navProfile = document.querySelector('#win-myspace .myspace-nav-btn[data-tab="profile"]');
+    const navMessages = document.querySelector('#win-myspace .myspace-nav-btn[data-tab="messages"] .myspace-nav-label');
+    const navFriends = document.querySelector('#win-myspace .myspace-nav-btn[data-tab="friends"]');
+    const navForums = document.querySelector('#win-myspace .myspace-nav-btn[data-tab="forums"]');
+    if (navFeed) navFeed.textContent = tr('Accueil', 'Home');
+    if (navProfile) navProfile.textContent = tr('Mon profil', 'My profile');
+    if (navMessages) navMessages.textContent = tr('Messages', 'Messages');
+    if (navFriends) navFriends.textContent = tr('Amis', 'Friends');
+    if (navForums) navForums.textContent = 'Forums';
+    updateUnreadBadge(ms.unreadCount);
 
     const boxTitles = document.querySelectorAll('#win-myspace .myspace-sidebar .myspace-box-title');
     if (boxTitles[0]) boxTitles[0].textContent = tr('Mon AQ-ID', 'My AQ-ID');
@@ -117,6 +132,250 @@ function formatDateOnly(value) {
     } catch (_) {
         return String(value);
     }
+}
+
+function formatLastSeen(value) {
+    if (!value) return tr('hors ligne', 'offline');
+    const time = new Date(value).getTime();
+    if (!Number.isFinite(time)) return tr('hors ligne', 'offline');
+
+    const minutes = Math.max(0, Math.floor((Date.now() - time) / 60000));
+    if (minutes < 1) return tr('à l’instant', 'just now');
+    if (minutes < 60) return tr(`il y a ${minutes} min`, `${minutes} min ago`);
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return tr(`il y a ${hours} h`, `${hours}h ago`);
+
+    return formatDateOnly(value);
+}
+
+function presenceText(person) {
+    if (person?.online) return tr('● En ligne', '● Online');
+    return person?.lastSeenAt
+        ? `${tr('Hors ligne · vu', 'Offline · seen')} ${formatLastSeen(person.lastSeenAt)}`
+        : tr('○ Hors ligne', '○ Offline');
+}
+
+function updateUnreadBadge(count = 0) {
+    const safe = Math.max(0, Number(count) || 0);
+    ms.unreadCount = safe;
+
+    const badge = document.getElementById('myspace-unread-badge');
+    if (!badge) return;
+
+    badge.textContent = safe > 99 ? '99+' : String(safe);
+    badge.hidden = safe === 0;
+}
+
+function profileTrack(trackId) {
+    const wanted = String(trackId || '');
+    if (!wanted) return null;
+
+    for (const release of AQCatalog.getReleases()) {
+        const track = (release.tracks || []).find((item) => item.id === wanted);
+        if (!track || !track.audio || !['full', 'snippet'].includes(track.availability)) continue;
+
+        const artist = AQCatalog.getArtist(release.artistId);
+        return {
+            ...track,
+            releaseId: release.id,
+            releaseTitle: release.title,
+            artistName: artist?.name || release.artistId || 'JAJ Records',
+            cover: release.cover || 'medias/img/albumimg.png'
+        };
+    }
+
+    return null;
+}
+
+function profileTrackOptions() {
+    const rows = [];
+    for (const release of AQCatalog.getReleases()) {
+        const artist = AQCatalog.getArtist(release.artistId);
+        (release.tracks || []).forEach((track) => {
+            if (!track.audio || !['full', 'snippet'].includes(track.availability)) return;
+            rows.push({
+                id: track.id,
+                label: `${artist?.name || release.artistId} — ${track.title} (${release.title})`
+            });
+        });
+    }
+    return rows;
+}
+
+function closeMySpaceNotification() {
+    if (ms.notificationTimer) {
+        clearTimeout(ms.notificationTimer);
+        ms.notificationTimer = null;
+    }
+
+    const popup = document.querySelector('#system-popup-container .myspace-system-notification');
+    popup?.remove();
+}
+
+function showMySpaceNotification(title, text, action = null) {
+    const container = document.getElementById('system-popup-container');
+    if (!container) return;
+
+    closeMySpaceNotification();
+
+    const popup = document.createElement('div');
+    popup.className = 'system-popup myspace-system-notification';
+
+    const head = document.createElement('div');
+    head.className = 'system-popup-title';
+
+    const heading = document.createElement('span');
+    heading.textContent = title;
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'retro-btn';
+    close.style.padding = '0 5px';
+    close.textContent = 'X';
+    close.addEventListener('click', (event) => {
+        event.stopPropagation();
+        closeMySpaceNotification();
+    });
+
+    head.append(heading, close);
+
+    const body = document.createElement('div');
+    body.className = 'system-popup-body';
+
+    const icon = document.createElement('div');
+    icon.className = 'popup-icon';
+    icon.textContent = 'M';
+
+    const copy = document.createElement('div');
+    copy.textContent = text;
+
+    body.append(icon, copy);
+
+    const actions = document.createElement('div');
+    actions.className = 'system-popup-actions';
+
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'retro-btn';
+    open.textContent = tr('Ouvrir', 'Open');
+    open.addEventListener('click', () => {
+        closeMySpaceNotification();
+        action?.();
+    });
+
+    actions.appendChild(open);
+    popup.append(head, body, actions);
+    container.appendChild(popup);
+
+    try { window.playSystemSound?.('click'); } catch (_) {}
+
+    ms.notificationTimer = setTimeout(closeMySpaceNotification, 9000);
+}
+
+async function refreshUnreadSummary({ notify = false } = {}) {
+    if (!isLoggedIn()) {
+        ms.unreadBySender = {};
+        updateUnreadBadge(0);
+        return;
+    }
+
+    try {
+        const previous = ms.unreadCount;
+        const summary = await requestGET('chat_summary');
+        ms.unreadBySender = summary.bySender || {};
+        updateUnreadBadge(summary.unreadCount || 0);
+
+        if (notify && ms.unreadCount > previous) {
+            const delta = ms.unreadCount - previous;
+            showMySpaceNotification(
+                'AQ-MySpace',
+                delta === 1
+                    ? tr('Tu as reçu un nouveau message.', 'You received a new message.')
+                    : tr(`Tu as reçu ${delta} nouveaux messages.`, `You received ${delta} new messages.`),
+                () => {
+                    window.openWindow?.('win-myspace', 'task-myspace');
+                    loadMessages();
+                }
+            );
+        }
+    } catch (error) {
+        console.warn('[AQ MySpace] unread summary unavailable', error);
+    }
+}
+
+async function pollFriendRequests({ notify = true } = {}) {
+    if (!isLoggedIn()) {
+        ms.friendRequestsInitialized = false;
+        ms.knownFriendRequestIds = new Set();
+        return;
+    }
+
+    try {
+        const data = await requestGET('friend_requests');
+        const requests = Array.isArray(data.requests) ? data.requests : [];
+        const nextIds = new Set(requests.map((request) => request.id).filter(Boolean));
+
+        if (ms.friendRequestsInitialized && notify) {
+            requests
+                .filter((request) => request.id && !ms.knownFriendRequestIds.has(request.id))
+                .forEach((request) => {
+                    showMySpaceNotification(
+                        tr('Nouvelle demande d’ami', 'New friend request'),
+                        tr(
+                            `${request.senderName || 'Quelqu’un'} veut t’ajouter sur AQ-MySpace.`,
+                            `${request.senderName || 'Someone'} wants to add you on AQ-MySpace.`
+                        ),
+                        () => {
+                            window.openWindow?.('win-mail', 'task-mail');
+                            window.AQMail?.refresh?.();
+                        }
+                    );
+                });
+        }
+
+        ms.knownFriendRequestIds = nextIds;
+        ms.friendRequestsInitialized = true;
+    } catch (error) {
+        console.warn('[AQ MySpace] friend request polling failed', error);
+    }
+}
+
+async function sendPresenceHeartbeat() {
+    if (!isLoggedIn()) return;
+    try {
+        await requestPOST('heartbeat');
+    } catch (error) {
+        console.warn('[AQ MySpace] presence heartbeat failed', error);
+    }
+}
+
+function stopSocialPolling() {
+    if (ms.presenceTimer) clearInterval(ms.presenceTimer);
+    if (ms.socialPollTimer) clearInterval(ms.socialPollTimer);
+    ms.presenceTimer = null;
+    ms.socialPollTimer = null;
+}
+
+async function startSocialPolling() {
+    stopSocialPolling();
+
+    if (!isLoggedIn()) {
+        updateUnreadBadge(0);
+        return;
+    }
+
+    await sendPresenceHeartbeat();
+    await Promise.all([
+        refreshUnreadSummary({ notify: false }),
+        pollFriendRequests({ notify: false })
+    ]);
+
+    ms.presenceTimer = setInterval(sendPresenceHeartbeat, 45 * 1000);
+    ms.socialPollTimer = setInterval(() => {
+        refreshUnreadSummary({ notify: true });
+        pollFriendRequests({ notify: true });
+    }, 15 * 1000);
 }
 
 function roleBadges(roles = []) {
@@ -266,18 +525,39 @@ async function ensureChatRealtime() {
                 const myId = ms.session?.id;
                 const peerId = ms.chatPeerId;
 
-                if (!myId || !peerId) return;
+                if (!myId) return;
 
-                const belongsToOpenChat =
+                const belongsToOpenChat = peerId && (
                     (message.sender_id === myId && message.recipient_id === peerId) ||
-                    (message.sender_id === peerId && message.recipient_id === myId);
+                    (message.sender_id === peerId && message.recipient_id === myId)
+                );
 
-                if (!belongsToOpenChat) return;
+                if (belongsToOpenChat) {
+                    appendChatMessage(message);
 
-                appendChatMessage(message);
+                    if (message.recipient_id === myId) {
+                        requestGET('messages', { with: peerId })
+                            .then(() => refreshUnreadSummary({ notify: false }))
+                            .catch(() => {});
+                    }
+                    return;
+                }
 
                 if (message.recipient_id === myId) {
-                    requestGET('messages', { with: peerId }).catch(() => {});
+                    const sender = ms.chatContacts.find((contact) => contact.userId === message.sender_id);
+                    showMySpaceNotification(
+                        tr('Nouveau message MySpace', 'New MySpace message'),
+                        tr(
+                            `${sender?.displayName || 'Un ami'} t’a envoyé un message.`,
+                            `${sender?.displayName || 'A friend'} sent you a message.`
+                        ),
+                        () => {
+                            window.openWindow?.('win-myspace', 'task-myspace');
+                            ms.chatPeerId = message.sender_id;
+                            loadMessages();
+                        }
+                    );
+                    refreshUnreadSummary({ notify: false });
                 }
             }
         )
@@ -364,10 +644,12 @@ async function openChat(peerId) {
 
     const header = document.createElement('div');
     header.className = 'myspace-chat-header';
-    header.append(makeMiniAvatar(contact.displayName, contact.avatar));
+
+    const headerAvatar = makeMiniAvatar(contact.displayName, contact.avatar);
+    headerAvatar.classList.add('myspace-profile-link');
 
     const identity = document.createElement('div');
-    identity.className = 'myspace-chat-header-copy';
+    identity.className = 'myspace-chat-header-copy myspace-profile-link';
 
     const name = document.createElement('div');
     name.className = 'myspace-chat-header-name';
@@ -377,8 +659,16 @@ async function openChat(peerId) {
     mail.className = 'myspace-chat-header-mail';
     mail.textContent = contact.aquertyMail || '';
 
-    identity.append(name, mail);
-    header.appendChild(identity);
+    const presence = document.createElement('div');
+    presence.className = 'myspace-chat-header-presence' + (contact.online ? ' online' : '');
+    presence.textContent = presenceText(contact);
+
+    const openProfile = () => showProfile(contact.userId);
+    headerAvatar.addEventListener('click', openProfile);
+    identity.addEventListener('click', openProfile);
+
+    identity.append(name, mail, presence);
+    header.append(headerAvatar, identity);
 
     const messages = document.createElement('div');
     messages.id = 'myspace-chat-messages';
@@ -442,6 +732,7 @@ async function openChat(peerId) {
         setStatus('');
         const rows = Array.isArray(data.messages) ? data.messages : [];
         rows.forEach(appendChatMessage);
+        await refreshUnreadSummary({ notify: false });
         await ensureChatRealtime();
     } catch (error) {
         setStatus(
@@ -472,8 +763,13 @@ async function loadMessages() {
     setStatus(tr('Chargement des contacts…', 'Loading contacts…'));
 
     try {
-        const data = await requestGET('chat_contacts');
+        const [data, summary] = await Promise.all([
+            requestGET('chat_contacts'),
+            requestGET('chat_summary').catch(() => ({ unreadCount: ms.unreadCount, bySender: ms.unreadBySender }))
+        ]);
         ms.chatContacts = Array.isArray(data.contacts) ? data.contacts : [];
+        ms.unreadBySender = summary.bySender || {};
+        updateUnreadBadge(summary.unreadCount || 0);
 
         const friendBox = document.createElement('div');
         friendBox.className = 'myspace-box myspace-friend-add';
@@ -584,8 +880,20 @@ async function loadMessages() {
                 const mail = document.createElement('span');
                 mail.textContent = contact.aquertyMail || '';
 
-                copy.append(name, mail);
+                const presence = document.createElement('span');
+                presence.className = 'myspace-chat-contact-presence' + (contact.online ? ' online' : '');
+                presence.textContent = presenceText(contact);
+
+                copy.append(name, mail, presence);
                 button.append(avatar, copy);
+
+                const unread = Number(ms.unreadBySender?.[contact.userId] || 0);
+                if (unread > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'myspace-contact-unread';
+                    badge.textContent = unread > 99 ? '99+' : String(unread);
+                    button.appendChild(badge);
+                }
                 button.addEventListener('click', () => openChat(contact.userId));
                 contacts.appendChild(button);
             });
@@ -617,6 +925,190 @@ async function loadMessages() {
             tr('Messagerie indisponible : ', 'Messaging unavailable: ') + error.message,
             'error'
         );
+    }
+}
+
+
+async function loadFriends() {
+    ms.tab = 'friends';
+    ms.profileUserId = null;
+    ms.topicId = null;
+    setActiveNav('friends');
+    clearContent();
+
+    if (!isLoggedIn()) {
+        const empty = document.createElement('div');
+        empty.className = 'myspace-empty';
+        empty.textContent = tr(
+            'Connecte-toi pour gérer tes amis MySpace.',
+            'Sign in to manage your MySpace friends.'
+        );
+        content.appendChild(empty);
+        return;
+    }
+
+    setStatus(tr('Chargement des amis…', 'Loading friends…'));
+
+    try {
+        const data = await requestGET('friends');
+        const friends = Array.isArray(data.friends) ? data.friends : [];
+        let topFriendIds = Array.isArray(data.topFriendIds) ? [...data.topFriendIds] : [];
+
+        const box = document.createElement('div');
+        box.className = 'myspace-box myspace-friends-page';
+        box.innerHTML = `<div class="myspace-box-title orange">${tr('Mes amis', 'My friends')} (${friends.length})</div>`;
+
+        const body = document.createElement('div');
+        body.className = 'myspace-box-body';
+
+        if (!friends.length) {
+            const empty = document.createElement('div');
+            empty.className = 'myspace-empty';
+            empty.textContent = tr(
+                'Aucun ami pour le moment. Envoie une demande depuis Messages.',
+                'No friends yet. Send a request from Messages.'
+            );
+            body.appendChild(empty);
+        } else {
+            const topHint = document.createElement('div');
+            topHint.className = 'myspace-status';
+            topHint.textContent = tr(
+                '★ Choisis jusqu’à 8 amis pour ton Top 8. Les flèches changent leur ordre sur ton profil.',
+                '★ Pick up to 8 friends for your Top 8. The arrows change their order on your profile.'
+            );
+            body.appendChild(topHint);
+
+            const grid = document.createElement('div');
+            grid.className = 'myspace-friends-page-grid';
+
+            const saveTop = async (nextIds) => {
+                const result = await requestPOST('save_top_friends', { friendIds: nextIds });
+                topFriendIds = Array.isArray(result.topFriendIds) ? result.topFriendIds : nextIds;
+                await loadFriends();
+            };
+
+            friends.forEach((friend) => {
+                const card = document.createElement('div');
+                card.className = 'myspace-friends-page-card';
+
+                const avatar = makeMiniAvatar(friend.displayName, friend.avatar);
+                avatar.classList.add('myspace-friends-page-avatar');
+                avatar.addEventListener('click', () => showProfile(friend.userId));
+
+                const copy = document.createElement('div');
+                copy.className = 'myspace-friends-page-copy';
+
+                const name = document.createElement('button');
+                name.type = 'button';
+                name.className = 'myspace-friends-page-name';
+                name.textContent = friend.displayName || tr('Utilisateur', 'User');
+                name.addEventListener('click', () => showProfile(friend.userId));
+
+                const mail = document.createElement('div');
+                mail.className = 'myspace-friends-page-mail';
+                mail.textContent = friend.aquertyMail || '';
+
+                const presence = document.createElement('div');
+                presence.className = 'myspace-friends-page-presence' + (friend.online ? ' online' : '');
+                presence.textContent = presenceText(friend);
+
+                copy.append(name, mail, presence);
+
+                const controls = document.createElement('div');
+                controls.className = 'myspace-friends-page-actions';
+
+                const profileButton = document.createElement('button');
+                profileButton.type = 'button';
+                profileButton.className = 'myspace-btn';
+                profileButton.textContent = tr('Profil', 'Profile');
+                profileButton.addEventListener('click', () => showProfile(friend.userId));
+
+                const messageButton = document.createElement('button');
+                messageButton.type = 'button';
+                messageButton.className = 'myspace-btn';
+                messageButton.textContent = tr('Message', 'Message');
+                messageButton.addEventListener('click', () => {
+                    ms.chatPeerId = friend.userId;
+                    loadMessages();
+                });
+
+                const topIndex = topFriendIds.indexOf(friend.userId);
+                const topButton = document.createElement('button');
+                topButton.type = 'button';
+                topButton.className = 'myspace-btn' + (topIndex >= 0 ? ' primary' : '');
+                topButton.textContent = topIndex >= 0 ? '★ Top 8' : '☆ Top 8';
+                topButton.addEventListener('click', async () => {
+                    let next = [...topFriendIds];
+                    if (topIndex >= 0) {
+                        next = next.filter((id) => id !== friend.userId);
+                    } else {
+                        if (next.length >= 8) {
+                            setStatus(tr('Ton Top 8 est déjà complet.', 'Your Top 8 is already full.'), 'error');
+                            return;
+                        }
+                        next.push(friend.userId);
+                    }
+                    await saveTop(next);
+                });
+
+                controls.append(profileButton, messageButton, topButton);
+
+                if (topIndex >= 0) {
+                    const up = document.createElement('button');
+                    up.type = 'button';
+                    up.className = 'myspace-btn';
+                    up.textContent = '↑';
+                    up.disabled = topIndex === 0;
+                    up.addEventListener('click', async () => {
+                        const next = [...topFriendIds];
+                        [next[topIndex - 1], next[topIndex]] = [next[topIndex], next[topIndex - 1]];
+                        await saveTop(next);
+                    });
+
+                    const down = document.createElement('button');
+                    down.type = 'button';
+                    down.className = 'myspace-btn';
+                    down.textContent = '↓';
+                    down.disabled = topIndex === topFriendIds.length - 1;
+                    down.addEventListener('click', async () => {
+                        const next = [...topFriendIds];
+                        [next[topIndex], next[topIndex + 1]] = [next[topIndex + 1], next[topIndex]];
+                        await saveTop(next);
+                    });
+
+                    controls.append(up, down);
+                }
+
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'myspace-btn myspace-danger-btn';
+                remove.textContent = tr('Retirer', 'Remove');
+                remove.addEventListener('click', async () => {
+                    const ok = window.confirm(
+                        tr(
+                            `Retirer ${friend.displayName || 'cet ami'} de tes amis ?`,
+                            `Remove ${friend.displayName || 'this friend'} from your friends?`
+                        )
+                    );
+                    if (!ok) return;
+                    await requestPOST('remove_friend', { friendId: friend.userId });
+                    window.dispatchEvent(new CustomEvent('aq:friends-changed'));
+                    await loadFriends();
+                });
+
+                controls.appendChild(remove);
+                card.append(avatar, copy, controls);
+                grid.appendChild(card);
+            });
+
+            body.appendChild(grid);
+        }
+
+        box.appendChild(body);
+        content.appendChild(box);
+        setStatus('');
+    } catch (error) {
+        setStatus(tr('Amis indisponibles : ', 'Friends unavailable: ') + error.message, 'error');
     }
 }
 
@@ -901,18 +1393,19 @@ async function showProfile(userId) {
     try {
         const data = await requestGET('profile', { userId: ms.profileUserId });
         setStatus('');
-        renderProfile(
-            data.profile,
-            ms.profileUserId === ms.session?.id && isLoggedIn(),
-            Array.isArray(data.friends) ? data.friends : [],
-            Number(data.friendCount || 0)
-        );
+        renderProfile(data, ms.profileUserId === ms.session?.id && isLoggedIn());
     } catch (error) {
         setStatus(tr('Profil indisponible : ', 'Profile unavailable: ') + error.message, 'error');
     }
 }
 
-function renderProfile(profile, editable, friends = [], friendCount = friends.length) {
+function renderProfile(data, editable) {
+    const profile = data?.profile;
+    const friends = Array.isArray(data?.friends) ? data.friends : [];
+    const topFriends = Array.isArray(data?.topFriends) ? data.topFriends : friends.slice(0, 8);
+    const wallComments = Array.isArray(data?.wallComments) ? data.wallComments : [];
+    const friendCount = Number(data?.friendCount || friends.length || 0);
+
     if (!profile) {
         const empty = document.createElement('div');
         empty.className = 'myspace-empty';
@@ -947,10 +1440,14 @@ function renderProfile(profile, editable, friends = [], friendCount = friends.le
         ? `${tr('Humeur', 'Mood')} : ${profile.mood}`
         : tr('Humeur non renseignée', 'Mood not set');
 
+    const presence = document.createElement('div');
+    presence.className = 'myspace-profile-presence' + (profile.online ? ' online' : '');
+    presence.textContent = presenceText(profile);
+
     const badges = roleBadges(profile.roles || []);
     badges.style.justifyContent = 'flex-start';
 
-    copy.append(name, headline, mood, badges);
+    copy.append(name, headline, mood, presence, badges);
     header.append(avatar, copy);
     content.appendChild(header);
 
@@ -989,14 +1486,48 @@ function renderProfile(profile, editable, friends = [], friendCount = friends.le
 
     content.appendChild(details);
 
+    const selectedTrack = profileTrack(profile.profileTrackId);
+    if (selectedTrack) {
+        const musicBox = document.createElement('div');
+        musicBox.className = 'myspace-box myspace-profile-music';
+        musicBox.innerHTML = `<div class="myspace-box-title orange">${tr('Musique du profil', 'Profile music')}</div>`;
+
+        const musicBody = document.createElement('div');
+        musicBody.className = 'myspace-box-body myspace-profile-music-body';
+
+        const cover = document.createElement('img');
+        cover.className = 'myspace-profile-music-cover';
+        cover.src = selectedTrack.cover;
+        cover.alt = '';
+
+        const musicCopy = document.createElement('div');
+        musicCopy.className = 'myspace-profile-music-copy';
+
+        const musicTitle = document.createElement('strong');
+        musicTitle.textContent = selectedTrack.title;
+
+        const musicMeta = document.createElement('span');
+        musicMeta.textContent = `${selectedTrack.artistName} — ${selectedTrack.releaseTitle}`;
+
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.preload = 'none';
+        audio.src = selectedTrack.audio;
+
+        musicCopy.append(musicTitle, musicMeta, audio);
+        musicBody.append(cover, musicCopy);
+        musicBox.appendChild(musicBody);
+        content.appendChild(musicBox);
+    }
+
     const friendsBox = document.createElement('div');
     friendsBox.className = 'myspace-box myspace-profile-friends';
-    friendsBox.innerHTML = `<div class="myspace-box-title">${tr('Amis', 'Friends')} (${friendCount})</div>`;
+    friendsBox.innerHTML = `<div class="myspace-box-title">${tr('Top 8', 'Top 8')} · ${friendCount} ${tr('amis', 'friends')}</div>`;
 
     const friendsBody = document.createElement('div');
     friendsBody.className = 'myspace-box-body';
 
-    if (!friends.length) {
+    if (!topFriends.length) {
         const emptyFriends = document.createElement('div');
         emptyFriends.className = 'myspace-profile-friends-empty';
         emptyFriends.textContent = tr(
@@ -1008,7 +1539,7 @@ function renderProfile(profile, editable, friends = [], friendCount = friends.le
         const grid = document.createElement('div');
         grid.className = 'myspace-friends-grid';
 
-        friends.slice(0, 8).forEach((friend) => {
+        topFriends.slice(0, 8).forEach((friend) => {
             const card = document.createElement('button');
             card.type = 'button';
             card.className = 'myspace-friend-card';
@@ -1021,26 +1552,125 @@ function renderProfile(profile, editable, friends = [], friendCount = friends.le
             friendName.className = 'myspace-friend-name';
             friendName.textContent = friend.displayName || tr('Utilisateur', 'User');
 
-            card.append(friendAvatar, friendName);
+            const friendPresence = document.createElement('span');
+            friendPresence.className = 'myspace-friend-card-presence' + (friend.online ? ' online' : '');
+            friendPresence.textContent = friend.online ? '●' : '○';
+
+            card.append(friendAvatar, friendName, friendPresence);
             card.addEventListener('click', () => showProfile(friend.userId));
             grid.appendChild(card);
         });
 
         friendsBody.appendChild(grid);
+    }
 
-        if (friendCount > 8) {
-            const more = document.createElement('div');
-            more.className = 'myspace-profile-friends-more';
-            more.textContent = tr(
-                `+${friendCount - 8} autres amis`,
-                `+${friendCount - 8} more friends`
-            );
-            friendsBody.appendChild(more);
-        }
+    if (editable) {
+        const manageFriends = document.createElement('button');
+        manageFriends.type = 'button';
+        manageFriends.className = 'myspace-btn myspace-manage-friends';
+        manageFriends.textContent = tr('Gérer mes amis / Top 8', 'Manage friends / Top 8');
+        manageFriends.addEventListener('click', loadFriends);
+        friendsBody.appendChild(manageFriends);
     }
 
     friendsBox.appendChild(friendsBody);
     content.appendChild(friendsBox);
+
+    const wall = document.createElement('div');
+    wall.className = 'myspace-box myspace-profile-wall';
+    wall.innerHTML = `<div class="myspace-box-title">${tr('Mur', 'Wall')} (${wallComments.length})</div>`;
+
+    const wallBody = document.createElement('div');
+    wallBody.className = 'myspace-box-body';
+
+    if (!wallComments.length) {
+        const emptyWall = document.createElement('div');
+        emptyWall.className = 'myspace-profile-wall-empty';
+        emptyWall.textContent = tr(
+            'Aucun message sur le mur pour le moment.',
+            'No wall messages yet.'
+        );
+        wallBody.appendChild(emptyWall);
+    } else {
+        const wallList = document.createElement('div');
+        wallList.className = 'myspace-wall-list';
+
+        wallComments.forEach((comment) => {
+            const row = document.createElement('div');
+            row.className = 'myspace-wall-comment';
+
+            const commentAvatar = makeMiniAvatar(comment.authorName, comment.authorAvatar);
+            commentAvatar.addEventListener('click', () => showProfile(comment.authorId));
+
+            const wallCopy = document.createElement('div');
+            wallCopy.className = 'myspace-wall-comment-copy';
+
+            const wallMeta = document.createElement('div');
+            wallMeta.className = 'myspace-wall-comment-meta';
+
+            const author = document.createElement('button');
+            author.type = 'button';
+            author.className = 'myspace-wall-author';
+            author.textContent = comment.authorName || tr('Utilisateur', 'User');
+            author.addEventListener('click', () => showProfile(comment.authorId));
+
+            const date = document.createElement('span');
+            date.textContent = ' · ' + formatDate(comment.createdAt);
+
+            wallMeta.append(author, date);
+
+            const wallText = document.createElement('div');
+            wallText.className = 'myspace-wall-comment-text';
+            wallText.textContent = comment.text || '';
+
+            wallCopy.append(wallMeta, wallText);
+            row.append(commentAvatar, wallCopy);
+            wallList.appendChild(row);
+        });
+
+        wallBody.appendChild(wallList);
+    }
+
+    if (isLoggedIn()) {
+        const wallForm = document.createElement('div');
+        wallForm.className = 'myspace-wall-form';
+
+        const textarea = document.createElement('textarea');
+        textarea.maxLength = 500;
+        textarea.placeholder = tr(
+            'Laisser un message sur ce profil…',
+            'Leave a message on this profile…'
+        );
+
+        const send = document.createElement('button');
+        send.type = 'button';
+        send.className = 'myspace-btn primary';
+        send.textContent = tr('Publier sur le mur', 'Post to wall');
+
+        send.addEventListener('click', async () => {
+            const text = textarea.value.trim();
+            if (!text) return;
+
+            send.disabled = true;
+            try {
+                await requestPOST('wall_comment', {
+                    targetUserId: profile.userId,
+                    text
+                });
+                await showProfile(profile.userId);
+            } catch (error) {
+                setStatus(tr('Message de mur impossible : ', 'Unable to post wall message: ') + error.message, 'error');
+            } finally {
+                send.disabled = false;
+            }
+        });
+
+        wallForm.append(textarea, send);
+        wallBody.appendChild(wallForm);
+    }
+
+    wall.appendChild(wallBody);
+    content.appendChild(wall);
 
     if (!editable) return;
 
@@ -1147,6 +1777,7 @@ function renderProfile(profile, editable, friends = [], friendCount = friends.le
             input.type = 'url';
             input.placeholder = 'https://...';
         }
+
         input.maxLength = max;
         input.value = profile[key] || '';
         if (multiline) input.style.minHeight = '100px';
@@ -1155,6 +1786,28 @@ function renderProfile(profile, editable, friends = [], friendCount = friends.le
         wrap.append(title, input);
         form.appendChild(wrap);
     });
+
+    const trackWrap = document.createElement('label');
+    const trackTitle = document.createElement('span');
+    trackTitle.textContent = tr('Musique du profil (catalogue JAJ)', 'Profile music (JAJ catalog)');
+
+    const trackSelect = document.createElement('select');
+
+    const noTrack = document.createElement('option');
+    noTrack.value = '';
+    noTrack.textContent = tr('Aucune musique de profil', 'No profile music');
+    trackSelect.appendChild(noTrack);
+
+    profileTrackOptions().forEach((track) => {
+        const option = document.createElement('option');
+        option.value = track.id;
+        option.textContent = track.label;
+        option.selected = track.id === profile.profileTrackId;
+        trackSelect.appendChild(option);
+    });
+
+    trackWrap.append(trackTitle, trackSelect);
+    form.appendChild(trackWrap);
 
     const styleWrap = document.createElement('label');
     const styleTitle = document.createElement('span');
@@ -1197,21 +1850,18 @@ function renderProfile(profile, editable, friends = [], friendCount = friends.le
             payload.aquertyMail = ms.session?.aquertyMail || profile.aquertyMail;
             payload.avatar = avatarData;
             payload.profileStyle = styleSelect.value;
+            payload.profileTrackId = trackSelect.value;
 
-            const data = await requestPOST('save_profile', payload);
-            ms.selfAvatarData = data.profile?.avatar || '';
+            const saved = await requestPOST('save_profile', payload);
+            ms.selfAvatarData = saved.profile?.avatar || '';
             updateSessionChrome();
 
             const refreshed = await requestGET('profile', {
                 userId: ms.session?.id || profile.userId
             });
 
-            renderProfileRefresh(
-                refreshed.profile,
-                Array.isArray(refreshed.friends) ? refreshed.friends : [],
-                Number(refreshed.friendCount || 0)
-            );
-
+            clearContent();
+            renderProfile(refreshed, true);
             setStatus(tr('Profil sauvegardé.', 'Profile saved.'), 'ok');
         } catch (error) {
             const friendly = error.message === 'avatar_too_large'
@@ -1232,11 +1882,6 @@ function renderProfile(profile, editable, friends = [], friendCount = friends.le
     form.appendChild(actions);
     editor.appendChild(form);
     content.appendChild(editor);
-}
-
-function renderProfileRefresh(profile, friends = [], friendCount = friends.length) {
-    clearContent();
-    renderProfile(profile, true, friends, friendCount);
 }
 
 function forumTitle(topic) {
@@ -1575,6 +2220,8 @@ function refreshCurrentView() {
         showProfile(ms.profileUserId || ms.session?.id);
     } else if (ms.tab === 'messages') {
         loadMessages();
+    } else if (ms.tab === 'friends') {
+        loadFriends();
     } else if (ms.tab === 'forums') {
         if (ms.topicId) openTopic(ms.topicId);
         else loadForums();
@@ -1588,6 +2235,7 @@ document.querySelectorAll('.myspace-nav-btn').forEach((button) => {
         const tab = button.dataset.tab;
         if (tab === 'profile') showProfile(ms.session?.id);
         else if (tab === 'messages') loadMessages();
+        else if (tab === 'friends') loadFriends();
         else if (tab === 'forums') loadForums();
         else loadFeed();
     });
@@ -1599,8 +2247,11 @@ window.addEventListener('jaj:session-changed', async (event) => {
     ms.chatContacts = [];
     ms.session = event.detail || null;
     ms.selfAvatarData = '';
+    ms.friendRequestsInitialized = false;
+    ms.knownFriendRequestIds = new Set();
     updateSessionChrome();
     await refreshSelfAvatar();
+    await startSocialPolling();
     if (document.getElementById('win-myspace')?.style.display === 'block') {
         refreshCurrentView();
     }
@@ -1610,13 +2261,16 @@ window.addEventListener('aq:myspace-open', async () => {
     ms.session = window.JAJSession || ms.session;
     updateSessionChrome();
     await refreshSelfAvatar();
+    await sendPresenceHeartbeat();
+    await refreshUnreadSummary({ notify: false });
     refreshCurrentView();
 });
 
 window.addEventListener('aq:friends-changed', () => {
-    if (document.getElementById('win-myspace')?.style.display === 'block' && ms.tab === 'messages') {
-        loadMessages();
-    }
+    if (document.getElementById('win-myspace')?.style.display !== 'block') return;
+    if (ms.tab === 'messages') loadMessages();
+    if (ms.tab === 'friends') loadFriends();
+    if (ms.tab === 'profile') showProfile(ms.profileUserId || ms.session?.id);
 });
 
 window.addEventListener('aq:language-changed', () => {
@@ -1627,3 +2281,6 @@ window.addEventListener('aq:language-changed', () => {
 applyMySpaceLanguage();
 updateSessionChrome();
 refreshSelfAvatar();
+startSocialPolling();
+
+window.addEventListener('beforeunload', stopSocialPolling);

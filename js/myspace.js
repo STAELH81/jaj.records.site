@@ -428,6 +428,79 @@ async function loadMessages() {
         const data = await requestGET('chat_contacts');
         ms.chatContacts = Array.isArray(data.contacts) ? data.contacts : [];
 
+        const friendBox = document.createElement('div');
+        friendBox.className = 'myspace-box myspace-friend-add';
+        friendBox.innerHTML = `<div class="myspace-box-title orange">${tr('Ajouter un ami', 'Add a friend')}</div>`;
+
+        const friendBody = document.createElement('div');
+        friendBody.className = 'myspace-box-body';
+
+        const friendForm = document.createElement('div');
+        friendForm.className = 'myspace-friend-form';
+
+        const friendInput = document.createElement('input');
+        friendInput.type = 'email';
+        friendInput.placeholder = tr('adresse@aquerty.fr', 'address@aquerty.fr');
+        friendInput.autocomplete = 'off';
+
+        const friendSend = document.createElement('button');
+        friendSend.type = 'button';
+        friendSend.className = 'myspace-btn primary';
+        friendSend.textContent = tr('Envoyer la demande', 'Send request');
+
+        const friendStatus = document.createElement('div');
+        friendStatus.className = 'myspace-friend-status';
+        friendStatus.hidden = true;
+
+        const sendFriendRequest = async () => {
+            const aquertyMail = friendInput.value.trim();
+            if (!aquertyMail) return;
+
+            friendSend.disabled = true;
+            friendInput.disabled = true;
+            friendStatus.hidden = true;
+
+            try {
+                await requestPOST('send_friend_request', { aquertyMail });
+                friendInput.value = '';
+                friendStatus.className = 'myspace-friend-status ok';
+                friendStatus.textContent = tr(
+                    'Demande envoyée dans AQ-Mail.',
+                    'Friend request sent to AQ-Mail.'
+                );
+                friendStatus.hidden = false;
+            } catch (error) {
+                const messages = {
+                    friend_user_not_found: tr('Aucun compte AQ-NEO avec cette adresse.', 'No AQ-NEO account uses this address.'),
+                    already_friends: tr('Vous êtes déjà amis.', 'You are already friends.'),
+                    friend_request_already_pending: tr('Une demande est déjà en attente.', 'A request is already pending.'),
+                    incoming_friend_request_exists: tr('Cette personne t’a déjà envoyé une demande. Regarde AQ-Mail.', 'This person already sent you a request. Check AQ-Mail.'),
+                    cannot_friend_self: tr('Tu ne peux pas t’ajouter toi-même.', 'You cannot add yourself.'),
+                    invalid_aquerty_mail: tr('Entre une adresse AQ-Mail valide.', 'Enter a valid AQ-Mail address.')
+                };
+                friendStatus.className = 'myspace-friend-status error';
+                friendStatus.textContent = messages[error.message] || (tr('Demande impossible : ', 'Unable to send request: ') + error.message);
+                friendStatus.hidden = false;
+            } finally {
+                friendSend.disabled = false;
+                friendInput.disabled = false;
+                friendInput.focus();
+            }
+        };
+
+        friendSend.addEventListener('click', sendFriendRequest);
+        friendInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendFriendRequest();
+            }
+        });
+
+        friendForm.append(friendInput, friendSend);
+        friendBody.append(friendForm, friendStatus);
+        friendBox.appendChild(friendBody);
+        content.appendChild(friendBox);
+
         const shell = document.createElement('div');
         shell.className = 'myspace-chat-shell';
 
@@ -443,8 +516,8 @@ async function loadMessages() {
             const empty = document.createElement('div');
             empty.className = 'myspace-chat-no-contacts';
             empty.textContent = tr(
-                'Aucun autre profil MySpace n’est disponible pour le moment.',
-                'No other MySpace profile is available yet.'
+                'Aucun ami pour le moment. Ajoute quelqu’un avec son adresse AQ-Mail.',
+                'No friends yet. Add someone using their AQ-Mail address.'
             );
             contacts.appendChild(empty);
         } else {
@@ -1248,6 +1321,12 @@ window.addEventListener('aq:myspace-open', () => {
     ms.session = window.JAJSession || ms.session;
     updateSessionChrome();
     refreshCurrentView();
+});
+
+window.addEventListener('aq:friends-changed', () => {
+    if (document.getElementById('win-myspace')?.style.display === 'block' && ms.tab === 'messages') {
+        loadMessages();
+    }
 });
 
 window.addEventListener('aq:language-changed', () => {

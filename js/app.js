@@ -2143,6 +2143,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             if (winId === 'win-player') triggerContextualPopup('openPlayer');
             if (winId === 'win-ie') triggerContextualPopup('openInternet');
             if (winId === 'win-tempus') triggerContextualPopup('openTempus');
+            if (winId === 'win-mail') void loadMail(true);
             if (winId === 'win-myspace') window.dispatchEvent(new Event('aq:myspace-open'));
             if (winId === 'win-publisher') window.dispatchEvent(new Event('aq:publisher-open'));
             if (winId === 'win-acc') {
@@ -3589,6 +3590,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     mailRenderList();
     mailRenderView();
     loadMail(true);
+    window.AQMail = {
+        refresh: () => loadMail(true),
+        address: () => getAquertySessionMail()
+    };
     applyLanguage(getCurrentLanguage());
 
 // Catalogue-backed Navigator pages. Data attributes keep titles and IDs out of inline code.

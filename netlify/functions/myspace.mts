@@ -10,6 +10,8 @@ const POST_LIMIT = 30;
 const TOPIC_LIMIT = 40;
 const ALLOWED_REACTIONS = new Set(["like", "heart", "fire"]);
 const PROFILE_STYLES = new Set(["blue", "orange", "purple", "green", "black"]);
+const ONLINE_WINDOW_MS = 2 * 60 * 1000;
+const WALL_COMMENT_LIMIT = 30;
 const DEFAULT_FORUMS = [
   {
     id: "default-general",
@@ -139,6 +141,70 @@ function identityCreatedAt(user: any) {
   );
 }
 
+function cleanTopFriendIds(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(
+    value
+      .map((item) => safeId(item))
+      .filter(Boolean),
+  )].slice(0, 8);
+}
+
+async function presenceForUser(store: any, userId: unknown) {
+  const id = safeId(userId);
+  if (!id) return { online: false, lastSeenAt: null };
+
+  const record = await store.get(`presence/${id}.json`, { type: "json" });
+  const lastSeenAt = record?.lastSeenAt || null;
+  const time = lastSeenAt ? Date.parse(lastSeenAt) : NaN;
+
+  return {
+    online: Number.isFinite(time) && (Date.now() - time) <= ONLINE_WINDOW_MS,
+    lastSeenAt,
+  };
+}
+
+async function wallCommentsForUser(store: any, userId: string) {
+  const comments = await listJSON(store, `profile-comments/${userId}/`);
+  comments.sort((a: any, b: any) =>
+    String(b?.createdAt || "").localeCompare(String(a?.createdAt || ""))
+  );
+
+  const selected = comments.slice(0, WALL_COMMENT_LIMIT).reverse();
+
+  return await Promise.all(
+    selected.map(async (comment: any) => ({
+      ...comment,
+      authorAvatar: await avatarForUser(store, comment.authorId),
+    })),
+  );
+}
+
+async function unreadSummaryForUser(userId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("myspace_messages")
+    .select("sender_id,created_at")
+    .eq("recipient_id", userId)
+    .is("read_at", null)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (error) throw error;
+
+  const bySender: Record<string, number> = {};
+  for (const row of data || []) {
+    const senderId = String(row?.sender_id || "");
+    if (!senderId) continue;
+    bySender[senderId] = (bySender[senderId] || 0) + 1;
+  }
+
+  return {
+    unreadCount: (data || []).length,
+    bySender,
+  };
+}
+
 function safeId(value: unknown) {
   const id = String(value ?? "");
   return /^[a-zA-Z0-9_-]{1,120}$/.test(id) ? id : "";
@@ -188,6 +254,8 @@ async function profileForUser(store: any, sessionUser: any) {
     website: saved?.website ? cleanWebsite(saved.website) : "",
     avatar: saved?.avatar ? cleanAvatarData(saved.avatar) : "",
     profileStyle: cleanProfileStyle(saved?.profileStyle || "blue"),
+    profileTrackId: cleanSingleLine(saved?.profileTrackId || "", 120),
+    topFriendIds: cleanTopFriendIds(saved?.topFriendIds),
     joinedAt: saved?.joinedAt || identityCreatedAt(live) || new Date().toISOString(),
     roles: normalizeRoles(live?.roles),
     updatedAt: saved?.updatedAt || null,
@@ -283,6 +351,7 @@ async function publicIdentity(store: any, user: any) {
     avatar: saved?.avatar ? cleanAvatarData(saved.avatar) : "",
     website: saved?.website ? cleanWebsite(saved.website) : "",
     joinedAt: saved?.joinedAt || identityCreatedAt(user) || "",
+    ...(await presenceForUser(store, user.id)),
   };
 }
 
@@ -425,11 +494,26 @@ export default async (request: Request, _context: Context) => {
       }
 
       const friends = profile ? await friendsForUser(store, userId) : [];
+      const topFriendIds = cleanTopFriendIds(profile?.topFriendIds);
+      const friendById = new Map(friends.map((friend: any) => [friend.userId, friend]));
+      const topFriends = topFriendIds
+        .map((id) => friendById.get(id))
+        .filter(Boolean);
+      const displayTopFriends = topFriends.length
+        ? topFriends
+        : friends.slice(0, 8);
+      const wallComments = profile ? await wallCommentsForUser(store, userId) : [];
+      const presence = profile
+        ? await presenceForUser(store, userId)
+        : { online: false, lastSeenAt: null };
 
       return json({
-        profile: profile || null,
-        friends: friends.slice(0, 24),
+        profile: profile ? { ...profile, ...presence } : null,
+        friends: friends.slice(0, 100),
+        topFriends: displayTopFriends,
+        topFriendIds,
         friendCount: friends.length,
+        wallComments,
       });
     }
 
@@ -483,6 +567,35 @@ export default async (request: Request, _context: Context) => {
         topic: { ...topic, authorAvatar: await avatarForUser(store, topic.authorId), replyCount: replies.length },
         replies: hydratedReplies
       });
+    }
+
+    if (view === "friends") {
+      if (!sessionUser) {
+        return json({ error: "login_required" }, { status: 401 });
+      }
+
+      const [friends, profile] = await Promise.all([
+        friendsForUser(store, sessionUser.id),
+        profileForUser(store, sessionUser),
+      ]);
+
+      return json({
+        friends,
+        topFriendIds: cleanTopFriendIds(profile.topFriendIds),
+      });
+    }
+
+    if (view === "chat_summary") {
+      if (!sessionUser) {
+        return json({ error: "login_required" }, { status: 401 });
+      }
+
+      try {
+        return json(await unreadSummaryForUser(sessionUser.id));
+      } catch (error) {
+        console.warn("[AQ MySpace] unread summary failed", error);
+        return json({ error: "chat_summary_unavailable" }, { status: 500 });
+      }
     }
 
     if (view === "friend_requests") {
@@ -615,6 +728,110 @@ export default async (request: Request, _context: Context) => {
 
   const action = String(body?.action || "");
   const author = await profileForUser(store, sessionUser);
+
+  if (action === "heartbeat") {
+    const lastSeenAt = new Date().toISOString();
+    await store.setJSON(`presence/${sessionUser.id}.json`, {
+      userId: sessionUser.id,
+      lastSeenAt,
+    });
+    return json({ ok: true, lastSeenAt });
+  }
+
+  if (action === "save_top_friends") {
+    const requested = cleanTopFriendIds(body.friendIds);
+    const friendIds = new Set(await friendIdsForUser(store, sessionUser.id));
+
+    if (requested.some((id) => !friendIds.has(id))) {
+      return json({ error: "invalid_top_friend" }, { status: 400 });
+    }
+
+    const profile = {
+      ...author,
+      topFriendIds: requested,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await store.setJSON(`profiles/${sessionUser.id}.json`, profile);
+    return json({ ok: true, topFriendIds: requested });
+  }
+
+  if (action === "remove_friend") {
+    const friendId = safeId(body.friendId);
+    if (!friendId || friendId === sessionUser.id) {
+      return json({ error: "invalid_friend" }, { status: 400 });
+    }
+
+    const id = friendshipId(sessionUser.id, friendId);
+    const friendship = id
+      ? await store.get(`friendships/${id}.json`, { type: "json" })
+      : null;
+
+    if (!id || !friendship) {
+      return json({ error: "friendship_not_found" }, { status: 404 });
+    }
+
+    await store.delete(`friendships/${id}.json`);
+
+    const selfProfile = {
+      ...author,
+      topFriendIds: cleanTopFriendIds(author.topFriendIds).filter((value) => value !== friendId),
+      updatedAt: new Date().toISOString(),
+    };
+    await store.setJSON(`profiles/${sessionUser.id}.json`, selfProfile);
+
+    const friendProfile = await store.get(`profiles/${friendId}.json`, { type: "json" });
+    if (friendProfile) {
+      await store.setJSON(`profiles/${friendId}.json`, {
+        ...friendProfile,
+        topFriendIds: cleanTopFriendIds(friendProfile.topFriendIds)
+          .filter((value) => value !== sessionUser.id),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    return json({ ok: true, friendId });
+  }
+
+  if (action === "wall_comment") {
+    const targetUserId = safeId(body.targetUserId);
+    const text = cleanText(body.text, 500);
+
+    if (!targetUserId || !text) {
+      return json({ error: "invalid_wall_comment" }, { status: 400 });
+    }
+
+    try {
+      await admin.getUser(targetUserId);
+    } catch {
+      return json({ error: "profile_not_found" }, { status: 404 });
+    }
+
+    const id = crypto.randomUUID();
+    const comment = {
+      id,
+      targetUserId,
+      authorId: sessionUser.id,
+      authorName: author.displayName,
+      authorMail: author.aquertyMail,
+      authorRoles: author.roles,
+      text,
+      createdAt: new Date().toISOString(),
+    };
+
+    await store.setJSON(
+      `profile-comments/${targetUserId}/${id}.json`,
+      comment,
+    );
+
+    return json({
+      ok: true,
+      comment: {
+        ...comment,
+        authorAvatar: author.avatar || "",
+      },
+    });
+  }
 
   if (action === "send_friend_request") {
     const targetMail = cleanSingleLine(body.aquertyMail, 120).toLowerCase();
@@ -810,6 +1027,8 @@ export default async (request: Request, _context: Context) => {
       website: cleanWebsite(body.website),
       avatar: body.avatar !== undefined ? cleanAvatarData(body.avatar) : (author.avatar || ""),
       profileStyle: cleanProfileStyle(body.profileStyle || author.profileStyle || "blue"),
+      profileTrackId: cleanSingleLine(body.profileTrackId || author.profileTrackId || "", 120),
+      topFriendIds: cleanTopFriendIds(author.topFriendIds),
       joinedAt: author.joinedAt || identityCreatedAt(await liveIdentity(sessionUser)) || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

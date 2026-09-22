@@ -95,6 +95,32 @@
     text-decoration: none;
 }
 
+.myspace-nav-badge,
+.myspace-contact-unread {
+    display: inline-grid;
+    min-width: 16px;
+    height: 16px;
+    box-sizing: border-box;
+    place-items: center;
+    padding: 0 4px;
+    border: 1px solid #8d1111;
+    border-radius: 8px;
+    background: #d51d1d;
+    color: #fff;
+    font-size: 8px;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.myspace-nav-badge {
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.myspace-nav-badge[hidden] {
+    display: none;
+}
+
 .myspace-main {
     flex: 1 1 auto;
     min-height: 0;
@@ -430,6 +456,32 @@
     font-style: italic;
 }
 
+.myspace-profile-presence,
+.myspace-chat-header-presence,
+.myspace-chat-contact-presence,
+.myspace-friends-page-presence {
+    margin-top: 4px;
+    color: #777;
+    font-size: 9px;
+}
+
+.myspace-profile-presence.online,
+.myspace-chat-header-presence.online,
+.myspace-chat-contact-presence.online,
+.myspace-friends-page-presence.online {
+    color: #217a28;
+    font-weight: bold;
+}
+
+.myspace-profile-link {
+    cursor: pointer;
+}
+
+.myspace-profile-link:hover .myspace-chat-header-name,
+.myspace-profile-link.myspace-mini-avatar:hover {
+    text-decoration: underline;
+}
+
 .myspace-profile-grid {
     display: grid;
     grid-template-columns: 130px minmax(0, 1fr);
@@ -508,6 +560,220 @@
     color: #666;
     font-size: 9px;
     text-align: right;
+}
+
+.myspace-friend-card {
+    position: relative;
+}
+
+.myspace-friend-card-presence {
+    position: absolute;
+    right: 5px;
+    top: 4px;
+    color: #888;
+    font-size: 9px;
+}
+
+.myspace-friend-card-presence.online {
+    color: #24912e;
+}
+
+.myspace-manage-friends {
+    margin-top: 8px;
+}
+
+.myspace-friends-page-grid {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.myspace-friends-page-card {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    gap: 9px;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid #c5d4ef;
+    background: #f8fbff;
+}
+
+.myspace-friends-page-avatar {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.myspace-friends-page-copy {
+    min-width: 0;
+}
+
+.myspace-friends-page-name {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #003399;
+    font: bold 11px Verdana, Arial, sans-serif;
+    text-align: left;
+    cursor: pointer;
+}
+
+.myspace-friends-page-name:hover {
+    text-decoration: underline;
+}
+
+.myspace-friends-page-mail {
+    margin-top: 3px;
+    overflow: hidden;
+    color: #777;
+    font: 9px "Courier New", monospace;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.myspace-friends-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    max-width: 240px;
+}
+
+.myspace-danger-btn {
+    color: #8a1111;
+}
+
+.myspace-profile-music {
+    margin-top: 10px;
+}
+
+.myspace-profile-music-body {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 9px;
+    align-items: center;
+}
+
+.myspace-profile-music-cover {
+    width: 62px;
+    height: 62px;
+    border: 1px solid #777;
+    object-fit: cover;
+    background: #ddd;
+}
+
+.myspace-profile-music-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.myspace-profile-music-copy strong {
+    color: #003399;
+}
+
+.myspace-profile-music-copy > span {
+    color: #666;
+    font-size: 9px;
+}
+
+.myspace-profile-music-copy audio {
+    width: 100%;
+    height: 30px;
+}
+
+.myspace-profile-wall {
+    margin-top: 10px;
+}
+
+.myspace-profile-wall-empty {
+    color: #777;
+    font-style: italic;
+}
+
+.myspace-wall-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.myspace-wall-comment {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 7px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid #eee;
+}
+
+.myspace-wall-comment:last-child {
+    border-bottom: 0;
+}
+
+.myspace-wall-comment .myspace-mini-avatar {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    cursor: pointer;
+}
+
+.myspace-wall-comment-copy {
+    min-width: 0;
+}
+
+.myspace-wall-comment-meta {
+    color: #777;
+    font-size: 9px;
+}
+
+.myspace-wall-author {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #003399;
+    font: bold 9px Verdana, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.myspace-wall-author:hover {
+    text-decoration: underline;
+}
+
+.myspace-wall-comment-text {
+    margin-top: 3px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+}
+
+.myspace-wall-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px dashed #bbb;
+}
+
+.myspace-wall-form textarea {
+    min-height: 54px;
+    box-sizing: border-box;
+    padding: 6px;
+    border: 1px solid #777;
+    resize: vertical;
+    font: 10px Verdana, Arial, sans-serif;
+}
+
+.myspace-wall-form .myspace-btn {
+    align-self: end;
+}
+
+.myspace-system-notification .popup-icon {
+    font-weight: bold;
 }
 
 .myspace-topic-identity {
@@ -662,6 +928,35 @@ body.global-dark #win-myspace .myspace-compose textarea {
     .myspace-topic-identity .myspace-mini-avatar {
         display: none;
     }
+
+    .myspace-friends-page-card {
+        grid-template-columns: 44px minmax(0, 1fr);
+    }
+
+    .myspace-friends-page-avatar {
+        width: 40px;
+        height: 40px;
+        flex-basis: 40px;
+    }
+
+    .myspace-friends-page-actions {
+        grid-column: 1 / -1;
+        max-width: none;
+        justify-content: flex-start;
+    }
+
+    .myspace-profile-music-body {
+        grid-template-columns: 48px minmax(0, 1fr);
+    }
+
+    .myspace-profile-music-cover {
+        width: 46px;
+        height: 46px;
+    }
+
+    .myspace-wall-form {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 760px) {
@@ -787,6 +1082,11 @@ body.global-dark #win-myspace .myspace-compose textarea {
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+
+.myspace-chat-contact .myspace-contact-unread {
+    margin-left: auto;
+    flex: 0 0 auto;
 }
 
 .myspace-chat-contact-copy strong {

@@ -10,6 +10,7 @@ const ms = {
     chatClient: null,
     chatChannel: null,
     chatTokenRefreshTimer: null,
+    selfAvatarData: '',
     loadedOnce: false
 };
 
@@ -70,6 +71,24 @@ function initial(value) {
     return String(value || '?').trim().charAt(0).toUpperCase() || '?';
 }
 
+function applyAvatarElement(element, name, avatarUrl) {
+    if (!element) return;
+    const safeAvatar = typeof avatarUrl === 'string' && avatarUrl.startsWith('data:image/') ? avatarUrl : '';
+    if (safeAvatar) {
+        element.textContent = '';
+        element.style.backgroundImage = `url("${safeAvatar}")`;
+        element.style.backgroundSize = 'cover';
+        element.style.backgroundPosition = 'center';
+        element.style.backgroundRepeat = 'no-repeat';
+    } else {
+        element.style.backgroundImage = '';
+        element.style.backgroundSize = '';
+        element.style.backgroundPosition = '';
+        element.style.backgroundRepeat = '';
+        element.textContent = initial(name);
+    }
+}
+
 function setStatus(message = '', type = '') {
     if (!statusEl) return;
     statusEl.textContent = message;
@@ -116,10 +135,27 @@ function updateSessionChrome() {
     }
     if (selfName) selfName.textContent = name;
     if (selfMail) selfMail.textContent = mail || tr('Lecture seule', 'Read only');
-    if (selfAvatar) selfAvatar.textContent = initial(name);
+    applyAvatarElement(selfAvatar, name, ms.selfAvatarData);
     if (selfRoles) {
         selfRoles.innerHTML = '';
         selfRoles.appendChild(roleBadges(roles));
+    }
+}
+
+async function refreshSelfAvatar() {
+    if (!isLoggedIn() || !ms.session?.id) {
+        ms.selfAvatarData = '';
+        updateSessionChrome();
+        return;
+    }
+
+    try {
+        const data = await requestGET('profile', { userId: ms.session.id });
+        ms.selfAvatarData = data.profile?.avatar || '';
+        updateSessionChrome();
+    } catch (_) {
+        ms.selfAvatarData = '';
+        updateSessionChrome();
     }
 }
 
@@ -317,7 +353,7 @@ async function openChat(peerId) {
 
     const header = document.createElement('div');
     header.className = 'myspace-chat-header';
-    header.append(makeMiniAvatar(contact.displayName));
+    header.append(makeMiniAvatar(contact.displayName, contact.avatar));
 
     const identity = document.createElement('div');
     identity.className = 'myspace-chat-header-copy';
@@ -527,7 +563,7 @@ async function loadMessages() {
                 button.className = 'myspace-chat-contact';
                 button.dataset.userId = contact.userId;
 
-                const avatar = makeMiniAvatar(contact.displayName);
+                const avatar = makeMiniAvatar(contact.displayName, contact.avatar);
                 const copy = document.createElement('span');
                 copy.className = 'myspace-chat-contact-copy';
 
@@ -600,10 +636,10 @@ function makeAuthor(authorId, authorName, authorRoles) {
     return box;
 }
 
-function makeMiniAvatar(name) {
+function makeMiniAvatar(name, avatarUrl = '') {
     const avatar = document.createElement('div');
     avatar.className = 'myspace-mini-avatar';
-    avatar.textContent = initial(name);
+    applyAvatarElement(avatar, name, avatarUrl);
     return avatar;
 }
 
@@ -690,7 +726,7 @@ function renderPost(post) {
 
     const head = document.createElement('div');
     head.className = 'myspace-post-head';
-    head.appendChild(makeMiniAvatar(post.authorName));
+    head.appendChild(makeMiniAvatar(post.authorName, post.authorAvatar));
     head.appendChild(makeAuthor(post.authorId, post.authorName, post.authorRoles));
 
     const meta = document.createElement('div');
@@ -774,6 +810,10 @@ function renderComments(container, post, comments) {
         const row = document.createElement('div');
         row.className = 'myspace-comment';
 
+        const commentHead = document.createElement('div');
+        commentHead.className = 'myspace-comment-head';
+        commentHead.appendChild(makeMiniAvatar(comment.authorName, comment.authorAvatar));
+
         const meta = document.createElement('div');
         meta.className = 'myspace-comment-meta';
 
@@ -783,12 +823,13 @@ function renderComments(container, post, comments) {
         author.addEventListener('click', () => showProfile(comment.authorId));
 
         meta.append(author, document.createTextNode(' · ' + formatDate(comment.createdAt)));
+        commentHead.appendChild(meta);
 
         const body = document.createElement('div');
         body.className = 'myspace-comment-body';
         body.textContent = comment.text || '';
 
-        row.append(meta, body);
+        row.append(commentHead, body);
         container.appendChild(row);
     });
 
@@ -866,11 +907,12 @@ function renderProfile(profile, editable) {
 
     const header = document.createElement('div');
     header.className = 'myspace-profile-header';
+    header.dataset.profileStyle = profile.profileStyle || 'blue';
 
     const avatar = document.createElement('div');
     avatar.className = 'myspace-avatar';
     avatar.style.margin = '0';
-    avatar.textContent = initial(profile.displayName);
+    applyAvatarElement(avatar, profile.displayName, profile.avatar);
 
     const copy = document.createElement('div');
     copy.className = 'myspace-profile-copy';
@@ -883,10 +925,16 @@ function renderProfile(profile, editable) {
     headline.className = 'myspace-profile-headline';
     headline.textContent = profile.headline || tr('Pas encore de statut.', 'No status yet.');
 
+    const mood = document.createElement('div');
+    mood.className = 'myspace-profile-mood';
+    mood.textContent = profile.mood
+        ? `${tr('Humeur', 'Mood')} : ${profile.mood}`
+        : tr('Humeur non renseignée', 'Mood not set');
+
     const badges = roleBadges(profile.roles || []);
     badges.style.justifyContent = 'flex-start';
 
-    copy.append(name, headline, badges);
+    copy.append(name, headline, mood, badges);
     header.append(avatar, copy);
     content.appendChild(header);
 
@@ -895,6 +943,7 @@ function renderProfile(profile, editable) {
     const pairs = [
         ['AQ-Mail', profile.aquertyMail || '—'],
         [tr('Localisation', 'Location'), profile.location || '—'],
+        [tr('Centres d’intérêt', 'Interests'), profile.interests || '—'],
         [tr('Musique', 'Music'), profile.favoriteMusic || '—'],
         [tr('À propos', 'About'), profile.bio || '—']
     ];
@@ -917,15 +966,88 @@ function renderProfile(profile, editable) {
     const form = document.createElement('div');
     form.className = 'myspace-box-body myspace-form';
 
+    let avatarData = profile.avatar || '';
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'myspace-avatar-editor';
+
+    const avatarLabel = document.createElement('div');
+    avatarLabel.style.fontWeight = 'bold';
+    avatarLabel.style.marginBottom = '5px';
+    avatarLabel.textContent = tr('Photo de profil', 'Profile picture');
+
+    const avatarRow = document.createElement('div');
+    avatarRow.className = 'myspace-avatar-editor-row';
+
+    const avatarPreview = document.createElement('div');
+    avatarPreview.className = 'myspace-avatar myspace-avatar-preview';
+    applyAvatarElement(avatarPreview, profile.displayName, avatarData);
+
+    const avatarControls = document.createElement('div');
+    avatarControls.className = 'myspace-avatar-controls';
+
+    const avatarInput = document.createElement('input');
+    avatarInput.type = 'file';
+    avatarInput.accept = 'image/png,image/jpeg,image/webp';
+
+    const avatarHelp = document.createElement('div');
+    avatarHelp.className = 'myspace-status';
+    avatarHelp.style.marginTop = '5px';
+    avatarHelp.textContent = tr('PNG, JPEG ou WebP · 1 Mo max.', 'PNG, JPEG or WebP · 1 MB max.');
+
+    const removeAvatar = document.createElement('button');
+    removeAvatar.type = 'button';
+    removeAvatar.className = 'myspace-btn';
+    removeAvatar.style.marginTop = '5px';
+    removeAvatar.textContent = tr('Retirer la photo', 'Remove picture');
+
+    const inputs = {};
+
+    removeAvatar.addEventListener('click', () => {
+        avatarData = '';
+        avatarInput.value = '';
+        applyAvatarElement(avatarPreview, inputs.displayName?.value || profile.displayName, '');
+    });
+
+    avatarInput.addEventListener('change', () => {
+        const file = avatarInput.files?.[0];
+        if (!file) return;
+
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+            setStatus(tr('Choisis une image PNG, JPEG ou WebP.', 'Choose a PNG, JPEG or WebP image.'), 'error');
+            avatarInput.value = '';
+            return;
+        }
+
+        if (file.size > 1024 * 1024) {
+            setStatus(tr('La photo de profil doit faire 1 Mo maximum.', 'The profile picture must be 1 MB or smaller.'), 'error');
+            avatarInput.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            avatarData = String(reader.result || '');
+            applyAvatarElement(avatarPreview, inputs.displayName?.value || profile.displayName, avatarData);
+            setStatus('');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    avatarControls.append(avatarInput, avatarHelp, removeAvatar);
+    avatarRow.append(avatarPreview, avatarControls);
+    avatarWrap.append(avatarLabel, avatarRow);
+    form.appendChild(avatarWrap);
+
     const fields = [
         ['displayName', tr('Nom affiché', 'Display name'), 40, false],
         ['headline', tr('Statut / phrase de profil', 'Status / profile line'), 100, false],
+        ['mood', tr('Humeur', 'Mood'), 60, false],
         ['location', tr('Localisation', 'Location'), 80, false],
+        ['interests', tr('Centres d’intérêt', 'Interests'), 240, false],
         ['favoriteMusic', tr('Musique / artistes favoris', 'Favorite music / artists'), 180, false],
         ['bio', tr('À propos de moi', 'About me'), 700, true]
     ];
 
-    const inputs = {};
     fields.forEach(([key, label, max, multiline]) => {
         const wrap = document.createElement('label');
         const title = document.createElement('span');
@@ -938,6 +1060,26 @@ function renderProfile(profile, editable) {
         wrap.append(title, input);
         form.appendChild(wrap);
     });
+
+    const styleWrap = document.createElement('label');
+    const styleTitle = document.createElement('span');
+    styleTitle.textContent = tr('Couleur du profil', 'Profile color');
+    const styleSelect = document.createElement('select');
+    [
+        ['blue', tr('Bleu MySpace', 'MySpace blue')],
+        ['orange', tr('Orange', 'Orange')],
+        ['purple', tr('Violet', 'Purple')],
+        ['green', tr('Vert', 'Green')],
+        ['black', tr('Noir', 'Black')]
+    ].forEach(([value, label]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        if ((profile.profileStyle || 'blue') === value) option.selected = true;
+        styleSelect.appendChild(option);
+    });
+    styleWrap.append(styleTitle, styleSelect);
+    form.appendChild(styleWrap);
 
     const actions = document.createElement('div');
     actions.className = 'myspace-actions';
@@ -953,11 +1095,21 @@ function renderProfile(profile, editable) {
                 Object.entries(inputs).map(([key, input]) => [key, input.value])
             );
             payload.aquertyMail = ms.session?.aquertyMail || profile.aquertyMail;
+            payload.avatar = avatarData;
+            payload.profileStyle = styleSelect.value;
+
             const data = await requestPOST('save_profile', payload);
+            ms.selfAvatarData = data.profile?.avatar || '';
+            updateSessionChrome();
             setStatus(tr('Profil sauvegardé.', 'Profile saved.'), 'ok');
             renderProfileRefresh(data.profile);
         } catch (error) {
-            setStatus(tr('Sauvegarde impossible : ', 'Unable to save: ') + error.message, 'error');
+            const friendly = error.message === 'avatar_too_large'
+                ? tr('La photo dépasse 1 Mo.', 'The picture exceeds 1 MB.')
+                : error.message === 'invalid_avatar'
+                    ? tr('Format de photo invalide.', 'Invalid picture format.')
+                    : error.message;
+            setStatus(tr('Sauvegarde impossible : ', 'Unable to save: ') + friendly, 'error');
         } finally {
             save.disabled = false;
         }
@@ -972,6 +1124,20 @@ function renderProfile(profile, editable) {
 function renderProfileRefresh(profile) {
     clearContent();
     renderProfile(profile, true);
+}
+
+function forumTitle(topic) {
+    if (!topic) return tr('Sans titre', 'Untitled');
+    return isEnglish()
+        ? (topic.titleEn || topic.title || 'Untitled')
+        : (topic.title || topic.titleEn || 'Sans titre');
+}
+
+function forumText(topic) {
+    if (!topic) return '';
+    return isEnglish()
+        ? (topic.textEn || topic.text || '')
+        : (topic.text || topic.textEn || '');
 }
 
 async function loadForums() {
@@ -1156,7 +1322,7 @@ async function loadForums() {
                 const left = document.createElement('div');
                 const title = document.createElement('div');
                 title.className = 'myspace-topic-title';
-                title.textContent = topic.title || tr('Sans titre', 'Untitled');
+                title.textContent = forumTitle(topic);
                 const meta = document.createElement('div');
                 meta.className = 'myspace-topic-meta';
                 meta.textContent = `${tr('par', 'by')} ${topic.authorName || tr('Utilisateur', 'User')} · ${formatDate(topic.lastActivityAt || topic.createdAt)}`;
@@ -1200,11 +1366,11 @@ async function openTopic(topicId) {
         topicBox.className = 'myspace-box';
         const title = document.createElement('div');
         title.className = 'myspace-thread-title';
-        title.textContent = data.topic.title || tr('Sujet', 'Topic');
+        title.textContent = forumTitle(data.topic);
 
         const head = document.createElement('div');
         head.className = 'myspace-post-head';
-        head.append(makeMiniAvatar(data.topic.authorName), makeAuthor(data.topic.authorId, data.topic.authorName, data.topic.authorRoles));
+        head.append(makeMiniAvatar(data.topic.authorName, data.topic.authorAvatar), makeAuthor(data.topic.authorId, data.topic.authorName, data.topic.authorRoles));
         const meta = document.createElement('div');
         meta.className = 'myspace-post-meta';
         meta.textContent = formatDate(data.topic.createdAt);
@@ -1212,7 +1378,7 @@ async function openTopic(topicId) {
 
         const body = document.createElement('div');
         body.className = 'myspace-topic-body';
-        body.textContent = data.topic.text || '';
+        body.textContent = forumText(data.topic);
 
         topicBox.append(title, head, body);
         content.appendChild(topicBox);
@@ -1222,7 +1388,7 @@ async function openTopic(topicId) {
             replyBox.className = 'myspace-post';
             const replyHead = document.createElement('div');
             replyHead.className = 'myspace-post-head';
-            replyHead.append(makeMiniAvatar(reply.authorName), makeAuthor(reply.authorId, reply.authorName, reply.authorRoles));
+            replyHead.append(makeMiniAvatar(reply.authorName, reply.authorAvatar), makeAuthor(reply.authorId, reply.authorName, reply.authorRoles));
             const replyMeta = document.createElement('div');
             replyMeta.className = 'myspace-post-meta';
             replyMeta.textContent = formatDate(reply.createdAt);
@@ -1311,15 +1477,18 @@ window.addEventListener('jaj:session-changed', async (event) => {
     ms.chatPeerId = null;
     ms.chatContacts = [];
     ms.session = event.detail || null;
+    ms.selfAvatarData = '';
     updateSessionChrome();
+    await refreshSelfAvatar();
     if (document.getElementById('win-myspace')?.style.display === 'block') {
         refreshCurrentView();
     }
 });
 
-window.addEventListener('aq:myspace-open', () => {
+window.addEventListener('aq:myspace-open', async () => {
     ms.session = window.JAJSession || ms.session;
     updateSessionChrome();
+    await refreshSelfAvatar();
     refreshCurrentView();
 });
 
@@ -1336,3 +1505,4 @@ window.addEventListener('aq:language-changed', () => {
 
 applyMySpaceLanguage();
 updateSessionChrome();
+refreshSelfAvatar();

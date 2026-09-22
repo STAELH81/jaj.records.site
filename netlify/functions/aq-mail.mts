@@ -1,21 +1,16 @@
-import { getDeployStore, getStore } from "@netlify/blobs";
+import { getStore } from "@netlify/blobs";
 import { admin, getUser, verifyRequestOrigin } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
 
 declare const Netlify: any;
 
-const STORE_NAME = "aq-mail-v1";
-const PREVIEW_STORE_NAME = "aq-mail-preview-v1";
+const STORE_NAME = "aq-mail-v2";
+const PREVIEW_STORE_NAME = "aq-mail-preview-v2";
 const MESSAGE_LIMIT = 250;
 
 function getMailStore() {
-  if (Netlify?.context?.deploy?.context === "production") {
-    return getStore(STORE_NAME, { consistency: "strong" });
-  }
-  // Mail must survive rebuilds of the same deploy-preview. A deploy-scoped
-  // store is replaced every time Netlify creates a new preview deploy.
-  // Keep preview data isolated from production in its own global store.
-  return getStore(PREVIEW_STORE_NAME, { consistency: "strong" });
+  const isProduction = Netlify?.context?.deploy?.context === "production";
+  return getStore(isProduction ? STORE_NAME : PREVIEW_STORE_NAME, { consistency: "strong" });
 }
 
 function json(data: unknown, init: ResponseInit = {}) {
@@ -65,8 +60,6 @@ function aquertyMailFor(user: any) {
   const explicit = cleanSingleLine(meta.aquerty_mail, 120).toLowerCase();
   if (/^[a-z0-9._-]{1,64}@aquerty\.fr$/.test(explicit)) return explicit;
 
-  // Keep the server fallback byte-for-byte compatible with js/auth.js.
-  // Older accounts may not have aquerty_mail in Identity metadata.
   const idPart = String(user?.id || "").replace(/[^a-z0-9]/gi, "").slice(0, 5).toLowerCase();
   return `${slugifyAquerty(displayNameFor(user))}.${idPart || "neo"}@aquerty.fr`;
 }
@@ -76,34 +69,58 @@ function normalizeAddress(value: unknown) {
   return /^[a-z0-9._-]{1,64}@aquerty\.fr$/.test(mail) ? mail : "";
 }
 
-function mailboxPrefix(mail: string) {
-  return `mailboxes/${encodeURIComponent(mail)}/`;
+function mailboxKey(mail: string) {
+  return `mailbox/${encodeURIComponent(mail)}.json`;
 }
 
-async function listJSON(store: any, prefix: string) {
-  const listed = await store.list({ prefix });
-  const values = await Promise.all(listed.blobs.map((item: any) => store.get(item.key, { type: "json" })));
-  return values.filter(Boolean);
+function normalizeMessages(value: any) {
+  return Array.isArray(value)
+    ? value
+        .filter((item) => item && item.id && item.folder)
+        .slice(0, MESSAGE_LIMIT)
+    : [];
 }
 
-async function seedMailbox(store: any, mail: string) {
-  const marker = `${mailboxPrefix(mail)}.seed-v1.json`;
-  if (await store.get(marker, { type: "json" })) return;
+function welcomeMessage(mail: string) {
   const now = new Date().toISOString();
-  const id = `welcome-${crypto.randomUUID()}`;
-  await store.setJSON(`${mailboxPrefix(mail)}${id}.json`, {
-    id,
+  return {
+    id: `welcome-${crypto.randomUUID()}`,
     threadId: "aq-welcome",
     folder: "inbox",
     from: "system@aquerty.fr",
     to: mail,
     subject: "Bienvenue sur AQ-Mail",
-    body: "AQ-Mail est maintenant connecté à AQ-NET. Tu peux envoyer des messages aux autres adresses @aquerty.fr.",
+    body: "AQ-Mail est connecté à AQ-NET. Tu peux envoyer des messages aux autres adresses @aquerty.fr.",
     createdAt: now,
     unread: true,
     system: true,
+  };
+}
+
+async function readMailbox(store: any, mail: string, ensureWelcome = true) {
+  const key = mailboxKey(mail);
+  const saved = await store.get(key, { type: "json" });
+  let messages = normalizeMessages(saved?.messages);
+
+  if (!saved && ensureWelcome) {
+    messages = [welcomeMessage(mail)];
+    await store.setJSON(key, { version: 2, mail, messages, updatedAt: new Date().toISOString() });
+  }
+
+  return messages;
+}
+
+async function writeMailbox(store: any, mail: string, messages: any[]) {
+  const trimmed = normalizeMessages(messages)
+    .sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .slice(0, MESSAGE_LIMIT);
+  await store.setJSON(mailboxKey(mail), {
+    version: 2,
+    mail,
+    messages: trimmed,
+    updatedAt: new Date().toISOString(),
   });
-  await store.setJSON(marker, { seededAt: now });
+  return trimmed;
 }
 
 async function ownContext() {
@@ -118,15 +135,9 @@ export default async (request: Request, _context: Context) => {
   const own = await ownContext();
   if (!own) return json({ error: "login_required" }, { status: 401 });
 
-  await seedMailbox(store, own.mail);
-
   if (request.method === "GET") {
-    const messages = await listJSON(store, mailboxPrefix(own.mail));
-    messages.sort((a: any, b: any) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || "")));
-    return json({
-      address: own.mail,
-      messages: messages.filter((item: any) => item?.id && !String(item.id).startsWith(".seed")).slice(0, MESSAGE_LIMIT),
-    });
+    const messages = await readMailbox(store, own.mail, true);
+    return json({ address: own.mail, messages });
   }
 
   if (request.method !== "POST") {
@@ -157,9 +168,6 @@ export default async (request: Request, _context: Context) => {
 
     const threadId = cleanSingleLine(body.threadId, 120) || crypto.randomUUID();
     const createdAt = new Date().toISOString();
-    const inboxId = crypto.randomUUID();
-    const sentId = crypto.randomUUID();
-
     const shared = {
       threadId,
       from: own.mail,
@@ -169,49 +177,64 @@ export default async (request: Request, _context: Context) => {
       createdAt,
     };
 
-    await Promise.all([
-      store.setJSON(`${mailboxPrefix(to)}${inboxId}.json`, {
-        ...shared,
-        id: inboxId,
-        folder: "inbox",
-        unread: true,
-      }),
-      store.setJSON(`${mailboxPrefix(own.mail)}${sentId}.json`, {
-        ...shared,
-        id: sentId,
-        folder: "sent",
-        unread: false,
-      }),
-    ]);
+    const sent = {
+      ...shared,
+      id: crypto.randomUUID(),
+      folder: "sent",
+      unread: false,
+    };
+    const inbox = {
+      ...shared,
+      id: crypto.randomUUID(),
+      folder: "inbox",
+      unread: true,
+    };
 
-    return json({ ok: true, message: { ...shared, id: sentId, folder: "sent", unread: false } });
+    if (to === own.mail) {
+      const messages = await readMailbox(store, own.mail, true);
+      await writeMailbox(store, own.mail, [inbox, sent, ...messages]);
+    } else {
+      const [senderMessages, recipientMessages] = await Promise.all([
+        readMailbox(store, own.mail, true),
+        readMailbox(store, to, false),
+      ]);
+      await writeMailbox(store, own.mail, [sent, ...senderMessages]);
+      await writeMailbox(store, to, [inbox, ...recipientMessages]);
+    }
+
+    return json({ ok: true, message: sent });
   }
 
   const id = cleanSingleLine(body.id, 120);
   if (!/^[a-zA-Z0-9_-]{1,120}$/.test(id)) return json({ error: "invalid_message_id" }, { status: 400 });
-  const key = `${mailboxPrefix(own.mail)}${id}.json`;
-  const message = await store.get(key, { type: "json" });
-  if (!message) return json({ error: "message_not_found" }, { status: 404 });
+
+  const messages = await readMailbox(store, own.mail, true);
+  const index = messages.findIndex((message: any) => message.id === id);
+  if (index < 0) return json({ error: "message_not_found" }, { status: 404 });
 
   if (action === "mark_read") {
-    await store.setJSON(key, { ...message, unread: false, readAt: new Date().toISOString() });
+    messages[index] = { ...messages[index], unread: false, readAt: new Date().toISOString() };
+    await writeMailbox(store, own.mail, messages);
     return json({ ok: true });
   }
 
   if (action === "trash") {
-    await store.setJSON(key, {
-      ...message,
-      previousFolder: message.folder === "trash" ? message.previousFolder || "inbox" : message.folder,
+    const current = messages[index];
+    messages[index] = {
+      ...current,
+      previousFolder: current.folder === "trash" ? current.previousFolder || "inbox" : current.folder,
       folder: "trash",
       unread: false,
       trashedAt: new Date().toISOString(),
-    });
+    };
+    await writeMailbox(store, own.mail, messages);
     return json({ ok: true });
   }
 
   if (action === "delete") {
-    if (message.folder !== "trash") return json({ error: "trash_first" }, { status: 409 });
-    await store.delete(key);
+    if (messages[index].folder !== "trash") return json({ error: "trash_first" }, { status: 409 });
+    messages.splice(index, 1);
+    await writeMailbox(store, own.mail, messages);
     return json({ ok: true });
   }
 

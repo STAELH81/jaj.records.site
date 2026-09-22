@@ -122,6 +122,41 @@ async function listJSON(store: any, prefix: string) {
   return values.filter(Boolean);
 }
 
+function friendshipId(userA: unknown, userB: unknown) {
+  const a = safeId(userA);
+  const b = safeId(userB);
+  if (!a || !b || a === b) return "";
+  return [a, b].sort().join("__");
+}
+
+async function getFriendship(store: any, userA: unknown, userB: unknown) {
+  const id = friendshipId(userA, userB);
+  if (!id) return null;
+  return await store.get(`friendships/${id}.json`, { type: "json" });
+}
+
+async function publicIdentity(store: any, user: any) {
+  const saved = await store.get(`profiles/${user.id}.json`, { type: "json" });
+  const meta = identityMetadata(user);
+
+  return {
+    userId: user.id,
+    displayName: cleanSingleLine(
+      saved?.displayName ||
+        meta.display_name ||
+        meta.full_name ||
+        user.email?.split("@")[0] ||
+        "Utilisateur",
+      40,
+    ),
+    aquertyMail: cleanSingleLine(
+      saved?.aquertyMail || fallbackAquertyMail(user),
+      120,
+    ),
+    roles: normalizeRoles(user.roles),
+  };
+}
+
 async function reactionSummary(store: any, postId: string, viewerId?: string) {
   const reactions = await listJSON(store, `reactions/${postId}/`);
   const counts = { like: 0, heart: 0, fire: 0 } as Record<string, number>;
@@ -244,45 +279,54 @@ export default async (request: Request, _context: Context) => {
       return json({ topic: { ...topic, replyCount: replies.length }, replies });
     }
 
+    if (view === "friend_requests") {
+      if (!sessionUser) {
+        return json({ error: "login_required" }, { status: 401 });
+      }
+
+      const requests = await listJSON(
+        store,
+        `friend-requests/${sessionUser.id}/`,
+      );
+
+      requests.sort((a: any, b: any) =>
+        String(b?.createdAt || "").localeCompare(String(a?.createdAt || ""))
+      );
+
+      return json({ requests });
+    }
+
     if (view === "chat_contacts") {
       if (!sessionUser) {
         return json({ error: "login_required" }, { status: 401 });
       }
 
-      const [profiles, users] = await Promise.all([
-        listJSON(store, "profiles/"),
-        admin.listUsers(),
-      ]);
+      const friendships = await listJSON(store, "friendships/");
+      const friendIds = new Set<string>();
 
-      const profileByUserId = new Map(
-        profiles
-          .filter((profile: any) => profile?.userId)
-          .map((profile: any) => [profile.userId, profile]),
-      );
+      friendships.forEach((friendship: any) => {
+        const users = Array.isArray(friendship?.users) ? friendship.users : [];
+        if (!users.includes(sessionUser.id)) return;
 
-      const contacts = users
-        .filter((user: any) => user?.id && user.id !== sessionUser.id)
-        .map((user: any) => {
-          const saved = profileByUserId.get(user.id);
-          const meta = identityMetadata(user);
+        users.forEach((id: string) => {
+          if (id && id !== sessionUser.id) friendIds.add(id);
+        });
+      });
 
-          return {
-            userId: user.id,
-            displayName: cleanSingleLine(
-              saved?.displayName ||
-                meta.display_name ||
-                meta.full_name ||
-                user.email?.split("@")[0] ||
-                "Utilisateur",
-              40,
-            ),
-            aquertyMail: cleanSingleLine(
-              saved?.aquertyMail || fallbackAquertyMail(user),
-              120,
-            ),
-            roles: normalizeRoles(user.roles),
-          };
-        })
+      const contacts = (
+        await Promise.all(
+          [...friendIds].map(async (userId) => {
+            try {
+              const user = await admin.getUser(userId);
+              return await publicIdentity(store, user);
+            } catch (error) {
+              console.warn("[AQ MySpace] friend Identity lookup failed", userId, error);
+              return null;
+            }
+          }),
+        )
+      )
+        .filter(Boolean)
         .sort((a: any, b: any) =>
           String(a.displayName).localeCompare(String(b.displayName))
         );
@@ -299,6 +343,11 @@ export default async (request: Request, _context: Context) => {
 
       if (!peerId) {
         return json({ error: "invalid_peer" }, { status: 400 });
+      }
+
+      const friendship = await getFriendship(store, sessionUser.id, peerId);
+      if (!friendship) {
+        return json({ error: "friends_required" }, { status: 403 });
       }
 
       const supabase = getSupabaseAdmin();
@@ -390,6 +439,118 @@ export default async (request: Request, _context: Context) => {
   const action = String(body?.action || "");
   const author = await profileForUser(store, sessionUser);
 
+  if (action === "send_friend_request") {
+    const targetMail = cleanSingleLine(body.aquertyMail, 120).toLowerCase();
+
+    if (!targetMail || !targetMail.endsWith("@aquerty.fr")) {
+      return json({ error: "invalid_aquerty_mail" }, { status: 400 });
+    }
+
+    const [users, profiles] = await Promise.all([
+      admin.listUsers(),
+      listJSON(store, "profiles/"),
+    ]);
+
+    const profileByUserId = new Map(
+      profiles
+        .filter((profile: any) => profile?.userId)
+        .map((profile: any) => [profile.userId, profile]),
+    );
+
+    const recipient = users.find((user: any) => {
+      if (!user?.id) return false;
+      const saved = profileByUserId.get(user.id);
+      const mail = cleanSingleLine(
+        saved?.aquertyMail || fallbackAquertyMail(user),
+        120,
+      ).toLowerCase();
+      return mail === targetMail;
+    });
+
+    if (!recipient) {
+      return json({ error: "friend_user_not_found" }, { status: 404 });
+    }
+
+    if (recipient.id === sessionUser.id) {
+      return json({ error: "cannot_friend_self" }, { status: 400 });
+    }
+
+    if (await getFriendship(store, sessionUser.id, recipient.id)) {
+      return json({ error: "already_friends" }, { status: 409 });
+    }
+
+    const [outgoing, incoming] = await Promise.all([
+      listJSON(store, `friend-requests/${recipient.id}/`),
+      listJSON(store, `friend-requests/${sessionUser.id}/`),
+    ]);
+
+    if (outgoing.some((item: any) => item?.senderId === sessionUser.id)) {
+      return json({ error: "friend_request_already_pending" }, { status: 409 });
+    }
+
+    if (incoming.some((item: any) => item?.senderId === recipient.id)) {
+      return json({ error: "incoming_friend_request_exists" }, { status: 409 });
+    }
+
+    const recipientIdentity = await publicIdentity(store, recipient);
+    const id = crypto.randomUUID();
+    const requestRecord = {
+      id,
+      senderId: sessionUser.id,
+      senderName: author.displayName,
+      senderMail: author.aquertyMail,
+      recipientId: recipient.id,
+      recipientName: recipientIdentity.displayName,
+      recipientMail: recipientIdentity.aquertyMail,
+      createdAt: new Date().toISOString(),
+    };
+
+    await store.setJSON(
+      `friend-requests/${recipient.id}/${id}.json`,
+      requestRecord,
+    );
+
+    return json({ ok: true, request: requestRecord });
+  }
+
+  if (action === "respond_friend_request") {
+    const requestId = safeId(body.requestId);
+    const decision = String(body.decision || "");
+
+    if (!requestId || !["accept", "reject"].includes(decision)) {
+      return json({ error: "invalid_friend_response" }, { status: 400 });
+    }
+
+    const key = `friend-requests/${sessionUser.id}/${requestId}.json`;
+    const requestRecord = await store.get(key, { type: "json" });
+
+    if (!requestRecord) {
+      return json({ error: "friend_request_not_found" }, { status: 404 });
+    }
+
+    if (decision === "accept") {
+      const id = friendshipId(sessionUser.id, requestRecord.senderId);
+      if (!id) {
+        return json({ error: "invalid_friendship" }, { status: 400 });
+      }
+
+      await store.setJSON(`friendships/${id}.json`, {
+        id,
+        users: [sessionUser.id, requestRecord.senderId].sort(),
+        acceptedAt: new Date().toISOString(),
+        requestId,
+      });
+    }
+
+    await store.delete(key);
+
+    return json({
+      ok: true,
+      decision,
+      senderId: requestRecord.senderId,
+    });
+  }
+
   if (action === "send_message") {
     const recipientId = safeId(body.recipientId);
     const text = cleanText(body.text, 2000);
@@ -412,6 +573,11 @@ export default async (request: Request, _context: Context) => {
         { error: "recipient_not_found" },
         { status: 404 },
       );
+    }
+
+    const friendship = await getFriendship(store, sessionUser.id, recipientId);
+    if (!friendship) {
+      return json({ error: "friends_required" }, { status: 403 });
     }
 
     const supabase = getSupabaseAdmin();

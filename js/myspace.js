@@ -5,6 +5,11 @@ const ms = {
     tab: 'feed',
     profileUserId: null,
     topicId: null,
+    chatPeerId: null,
+    chatContacts: [],
+    chatClient: null,
+    chatChannel: null,
+    chatTokenRefreshTimer: null,
     loadedOnce: false
 };
 
@@ -38,7 +43,8 @@ function applyMySpaceLanguage() {
     const nav = document.querySelectorAll('#win-myspace .myspace-nav-btn');
     if (nav[0]) nav[0].textContent = tr('Accueil', 'Home');
     if (nav[1]) nav[1].textContent = tr('Mon profil', 'My profile');
-    if (nav[2]) nav[2].textContent = 'Forums';
+    if (nav[2]) nav[2].textContent = tr('Messages', 'Messages');
+    if (nav[3]) nav[3].textContent = 'Forums';
 
     const boxTitles = document.querySelectorAll('#win-myspace .myspace-sidebar .myspace-box-title');
     if (boxTitles[0]) boxTitles[0].textContent = tr('Mon AQ-ID', 'My AQ-ID');
@@ -148,6 +154,423 @@ async function requestPOST(action, payload = {}) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'request_failed');
     return data;
+}
+
+async function requestChatToken() {
+    const response = await fetch('/api/myspace-chat-token', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'chat_token_failed');
+    return data;
+}
+
+async function stopChatRealtime() {
+    if (ms.chatTokenRefreshTimer) {
+        clearInterval(ms.chatTokenRefreshTimer);
+        ms.chatTokenRefreshTimer = null;
+    }
+
+    if (ms.chatClient && ms.chatChannel) {
+        try {
+            await ms.chatClient.removeChannel(ms.chatChannel);
+        } catch (_) {}
+    }
+
+    ms.chatChannel = null;
+    ms.chatClient = null;
+}
+
+async function ensureChatRealtime() {
+    if (!isLoggedIn()) return;
+
+    if (ms.chatClient && ms.chatChannel) return;
+
+    const config = await requestChatToken();
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.117.0');
+
+    const client = createClient(
+        config.supabaseUrl,
+        config.supabasePublishableKey,
+        {
+            auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false
+            }
+        }
+    );
+
+    client.realtime.setAuth(config.token);
+
+    const channel = client
+        .channel('aq-myspace-messages')
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'myspace_messages'
+            },
+            (payload) => {
+                const message = payload.new;
+                const myId = ms.session?.id;
+                const peerId = ms.chatPeerId;
+
+                if (!myId || !peerId) return;
+
+                const belongsToOpenChat =
+                    (message.sender_id === myId && message.recipient_id === peerId) ||
+                    (message.sender_id === peerId && message.recipient_id === myId);
+
+                if (!belongsToOpenChat) return;
+
+                appendChatMessage(message);
+
+                if (message.recipient_id === myId) {
+                    requestGET('messages', { with: peerId }).catch(() => {});
+                }
+            }
+        )
+        .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR') {
+                setStatus(
+                    tr('Le temps réel du chat a rencontré une erreur.', 'Realtime chat encountered an error.'),
+                    'error'
+                );
+            }
+        });
+
+    ms.chatClient = client;
+    ms.chatChannel = channel;
+
+    ms.chatTokenRefreshTimer = setInterval(async () => {
+        try {
+            const fresh = await requestChatToken();
+            client.realtime.setAuth(fresh.token);
+        } catch (error) {
+            console.warn('[AQ MySpace] chat token refresh failed', error);
+        }
+    }, 4 * 60 * 1000);
+}
+
+function chatContactById(userId) {
+    return ms.chatContacts.find((contact) => contact.userId === userId) || null;
+}
+
+function appendChatMessage(message) {
+    const list = document.getElementById('myspace-chat-messages');
+    if (!list || !message?.id) return;
+
+    if (list.querySelector(`[data-message-id="${CSS.escape(String(message.id))}"]`)) {
+        return;
+    }
+
+    const mine = message.sender_id === ms.session?.id;
+    const row = document.createElement('div');
+    row.className = 'myspace-chat-message ' + (mine ? 'mine' : 'theirs');
+    row.dataset.messageId = String(message.id);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'myspace-chat-bubble';
+
+    const text = document.createElement('div');
+    text.className = 'myspace-chat-text';
+    text.textContent = message.body || '';
+
+    const meta = document.createElement('div');
+    meta.className = 'myspace-chat-meta';
+    meta.textContent = formatDate(message.created_at);
+
+    bubble.append(text, meta);
+    row.appendChild(bubble);
+    list.appendChild(row);
+    list.scrollTop = list.scrollHeight;
+}
+
+async function openChat(peerId) {
+    if (!isLoggedIn()) {
+        setStatus(
+            tr('Connecte-toi avec un compte AQ-NEO pour utiliser les messages.', 'Sign in with an AQ-NEO account to use messages.'),
+            'error'
+        );
+        return;
+    }
+
+    const contact = chatContactById(peerId);
+    if (!contact) return;
+
+    ms.tab = 'messages';
+    ms.chatPeerId = peerId;
+    setActiveNav('messages');
+
+    document.querySelectorAll('.myspace-chat-contact').forEach((button) => {
+        button.classList.toggle('active', button.dataset.userId === peerId);
+    });
+
+    const panel = document.getElementById('myspace-chat-panel');
+    if (!panel) return;
+
+    panel.innerHTML = '';
+
+    const header = document.createElement('div');
+    header.className = 'myspace-chat-header';
+    header.append(makeMiniAvatar(contact.displayName));
+
+    const identity = document.createElement('div');
+    identity.className = 'myspace-chat-header-copy';
+
+    const name = document.createElement('div');
+    name.className = 'myspace-chat-header-name';
+    name.textContent = contact.displayName || tr('Utilisateur', 'User');
+
+    const mail = document.createElement('div');
+    mail.className = 'myspace-chat-header-mail';
+    mail.textContent = contact.aquertyMail || '';
+
+    identity.append(name, mail);
+    header.appendChild(identity);
+
+    const messages = document.createElement('div');
+    messages.id = 'myspace-chat-messages';
+    messages.className = 'myspace-chat-messages';
+
+    const composer = document.createElement('div');
+    composer.className = 'myspace-chat-composer';
+
+    const textarea = document.createElement('textarea');
+    textarea.maxLength = 2000;
+    textarea.rows = 2;
+    textarea.placeholder = tr('Écrire un message…', 'Write a message…');
+
+    const send = document.createElement('button');
+    send.type = 'button';
+    send.className = 'myspace-btn primary';
+    send.textContent = tr('Envoyer', 'Send');
+
+    const sendMessage = async () => {
+        const text = textarea.value.trim();
+        if (!text) return;
+
+        send.disabled = true;
+        textarea.disabled = true;
+
+        try {
+            const result = await requestPOST('send_message', {
+                recipientId: peerId,
+                text
+            });
+
+            textarea.value = '';
+            appendChatMessage(result.message);
+        } catch (error) {
+            setStatus(
+                tr('Impossible d’envoyer le message : ', 'Unable to send message: ') + error.message,
+                'error'
+            );
+        } finally {
+            send.disabled = false;
+            textarea.disabled = false;
+            textarea.focus();
+        }
+    };
+
+    send.addEventListener('click', sendMessage);
+    textarea.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+
+    composer.append(textarea, send);
+    panel.append(header, messages, composer);
+
+    setStatus(tr('Chargement de la conversation…', 'Loading conversation…'));
+
+    try {
+        const data = await requestGET('messages', { with: peerId });
+        setStatus('');
+        const rows = Array.isArray(data.messages) ? data.messages : [];
+        rows.forEach(appendChatMessage);
+        await ensureChatRealtime();
+    } catch (error) {
+        setStatus(
+            tr('Conversation indisponible : ', 'Conversation unavailable: ') + error.message,
+            'error'
+        );
+    }
+}
+
+async function loadMessages() {
+    ms.tab = 'messages';
+    ms.profileUserId = null;
+    ms.topicId = null;
+    setActiveNav('messages');
+    clearContent();
+
+    if (!isLoggedIn()) {
+        const empty = document.createElement('div');
+        empty.className = 'myspace-empty';
+        empty.textContent = tr(
+            'Les messages privés sont disponibles après connexion à un compte AQ-NEO.',
+            'Private messages are available after signing in to an AQ-NEO account.'
+        );
+        content.appendChild(empty);
+        return;
+    }
+
+    setStatus(tr('Chargement des contacts…', 'Loading contacts…'));
+
+    try {
+        const data = await requestGET('chat_contacts');
+        ms.chatContacts = Array.isArray(data.contacts) ? data.contacts : [];
+
+        const friendBox = document.createElement('div');
+        friendBox.className = 'myspace-box myspace-friend-add';
+        friendBox.innerHTML = `<div class="myspace-box-title orange">${tr('Ajouter un ami', 'Add a friend')}</div>`;
+
+        const friendBody = document.createElement('div');
+        friendBody.className = 'myspace-box-body';
+
+        const friendForm = document.createElement('div');
+        friendForm.className = 'myspace-friend-form';
+
+        const friendInput = document.createElement('input');
+        friendInput.type = 'email';
+        friendInput.placeholder = tr('adresse@aquerty.fr', 'address@aquerty.fr');
+        friendInput.autocomplete = 'off';
+
+        const friendSend = document.createElement('button');
+        friendSend.type = 'button';
+        friendSend.className = 'myspace-btn primary';
+        friendSend.textContent = tr('Envoyer la demande', 'Send request');
+
+        const friendStatus = document.createElement('div');
+        friendStatus.className = 'myspace-friend-status';
+        friendStatus.hidden = true;
+
+        const sendFriendRequest = async () => {
+            const aquertyMail = friendInput.value.trim();
+            if (!aquertyMail) return;
+
+            friendSend.disabled = true;
+            friendInput.disabled = true;
+            friendStatus.hidden = true;
+
+            try {
+                await requestPOST('send_friend_request', { aquertyMail });
+                friendInput.value = '';
+                friendStatus.className = 'myspace-friend-status ok';
+                friendStatus.textContent = tr(
+                    'Demande envoyée dans AQ-Mail.',
+                    'Friend request sent to AQ-Mail.'
+                );
+                friendStatus.hidden = false;
+            } catch (error) {
+                const messages = {
+                    friend_user_not_found: tr('Aucun compte AQ-NEO avec cette adresse.', 'No AQ-NEO account uses this address.'),
+                    already_friends: tr('Vous êtes déjà amis.', 'You are already friends.'),
+                    friend_request_already_pending: tr('Une demande est déjà en attente.', 'A request is already pending.'),
+                    incoming_friend_request_exists: tr('Cette personne t’a déjà envoyé une demande. Regarde AQ-Mail.', 'This person already sent you a request. Check AQ-Mail.'),
+                    cannot_friend_self: tr('Tu ne peux pas t’ajouter toi-même.', 'You cannot add yourself.'),
+                    invalid_aquerty_mail: tr('Entre une adresse AQ-Mail valide.', 'Enter a valid AQ-Mail address.')
+                };
+                friendStatus.className = 'myspace-friend-status error';
+                friendStatus.textContent = messages[error.message] || (tr('Demande impossible : ', 'Unable to send request: ') + error.message);
+                friendStatus.hidden = false;
+            } finally {
+                friendSend.disabled = false;
+                friendInput.disabled = false;
+                friendInput.focus();
+            }
+        };
+
+        friendSend.addEventListener('click', sendFriendRequest);
+        friendInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendFriendRequest();
+            }
+        });
+
+        friendForm.append(friendInput, friendSend);
+        friendBody.append(friendForm, friendStatus);
+        friendBox.appendChild(friendBody);
+        content.appendChild(friendBox);
+
+        const shell = document.createElement('div');
+        shell.className = 'myspace-chat-shell';
+
+        const contacts = document.createElement('div');
+        contacts.className = 'myspace-chat-contacts';
+
+        const contactsTitle = document.createElement('div');
+        contactsTitle.className = 'myspace-chat-contacts-title';
+        contactsTitle.textContent = tr('Contacts', 'Contacts');
+        contacts.appendChild(contactsTitle);
+
+        if (!ms.chatContacts.length) {
+            const empty = document.createElement('div');
+            empty.className = 'myspace-chat-no-contacts';
+            empty.textContent = tr(
+                'Aucun ami pour le moment. Ajoute quelqu’un avec son adresse AQ-Mail.',
+                'No friends yet. Add someone using their AQ-Mail address.'
+            );
+            contacts.appendChild(empty);
+        } else {
+            ms.chatContacts.forEach((contact) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'myspace-chat-contact';
+                button.dataset.userId = contact.userId;
+
+                const avatar = makeMiniAvatar(contact.displayName);
+                const copy = document.createElement('span');
+                copy.className = 'myspace-chat-contact-copy';
+
+                const name = document.createElement('strong');
+                name.textContent = contact.displayName || tr('Utilisateur', 'User');
+
+                const mail = document.createElement('span');
+                mail.textContent = contact.aquertyMail || '';
+
+                copy.append(name, mail);
+                button.append(avatar, copy);
+                button.addEventListener('click', () => openChat(contact.userId));
+                contacts.appendChild(button);
+            });
+        }
+
+        const panel = document.createElement('div');
+        panel.id = 'myspace-chat-panel';
+        panel.className = 'myspace-chat-panel';
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'myspace-chat-placeholder';
+        placeholder.textContent = tr(
+            'Sélectionne un contact pour ouvrir une conversation.',
+            'Select a contact to open a conversation.'
+        );
+        panel.appendChild(placeholder);
+
+        shell.append(contacts, panel);
+        content.appendChild(shell);
+        setStatus('');
+
+        await ensureChatRealtime();
+
+        if (ms.chatPeerId && chatContactById(ms.chatPeerId)) {
+            await openChat(ms.chatPeerId);
+        }
+    } catch (error) {
+        setStatus(
+            tr('Messagerie indisponible : ', 'Messaging unavailable: ') + error.message,
+            'error'
+        );
+    }
 }
 
 function requireAccount() {
@@ -863,6 +1286,8 @@ function refreshCurrentView() {
     if (!root) return;
     if (ms.tab === 'profile') {
         showProfile(ms.profileUserId || ms.session?.id);
+    } else if (ms.tab === 'messages') {
+        loadMessages();
     } else if (ms.tab === 'forums') {
         if (ms.topicId) openTopic(ms.topicId);
         else loadForums();
@@ -875,12 +1300,16 @@ document.querySelectorAll('.myspace-nav-btn').forEach((button) => {
     button.addEventListener('click', () => {
         const tab = button.dataset.tab;
         if (tab === 'profile') showProfile(ms.session?.id);
+        else if (tab === 'messages') loadMessages();
         else if (tab === 'forums') loadForums();
         else loadFeed();
     });
 });
 
-window.addEventListener('jaj:session-changed', (event) => {
+window.addEventListener('jaj:session-changed', async (event) => {
+    await stopChatRealtime();
+    ms.chatPeerId = null;
+    ms.chatContacts = [];
     ms.session = event.detail || null;
     updateSessionChrome();
     if (document.getElementById('win-myspace')?.style.display === 'block') {
@@ -892,6 +1321,12 @@ window.addEventListener('aq:myspace-open', () => {
     ms.session = window.JAJSession || ms.session;
     updateSessionChrome();
     refreshCurrentView();
+});
+
+window.addEventListener('aq:friends-changed', () => {
+    if (document.getElementById('win-myspace')?.style.display === 'block' && ms.tab === 'messages') {
+        loadMessages();
+    }
 });
 
 window.addEventListener('aq:language-changed', () => {

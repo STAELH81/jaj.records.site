@@ -16,6 +16,7 @@
     "test:artists:ui": "node tests/artist-profiles-ui.cjs"
   },
   "devDependencies": {
+    "@types/node": "^26.6.2",
     "playwright": "1.62.1"
   }
 }

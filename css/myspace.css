@@ -648,43 +648,74 @@
 }
 
 .myspace-profile-music {
+    width: min(440px, 100%);
     margin-top: 10px;
 }
 
 .myspace-profile-music-body {
     display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
-    gap: 9px;
+    grid-template-columns: 46px 30px minmax(0, 1fr);
+    gap: 7px;
     align-items: center;
+    padding: 6px;
 }
 
 .myspace-profile-music-cover {
-    width: 62px;
-    height: 62px;
+    width: 44px !important;
+    height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
+    display: block;
     border: 1px solid #777;
     object-fit: cover;
     background: #ddd;
+}
+
+.myspace-profile-music-play {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid #666;
+    border-radius: 2px;
+    background: linear-gradient(#fff, #ddd);
+    color: #003399;
+    font: bold 13px Verdana, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.myspace-profile-music-play:hover {
+    background: #eef4ff;
 }
 
 .myspace-profile-music-copy {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 
 .myspace-profile-music-copy strong {
+    overflow: hidden;
     color: #003399;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .myspace-profile-music-copy > span {
+    overflow: hidden;
     color: #666;
-    font-size: 9px;
+    font-size: 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.myspace-profile-music-copy audio {
-    width: 100%;
-    height: 30px;
+.myspace-profile-music-time {
+    font-family: "Courier New", monospace;
+}
+
+.myspace-profile-audio {
+    display: none;
 }
 
 .myspace-profile-wall {
@@ -945,13 +976,19 @@ body.global-dark #win-myspace .myspace-compose textarea {
         justify-content: flex-start;
     }
 
+    .myspace-profile-music {
+        width: 100%;
+    }
+
     .myspace-profile-music-body {
-        grid-template-columns: 48px minmax(0, 1fr);
+        grid-template-columns: 40px 28px minmax(0, 1fr);
     }
 
     .myspace-profile-music-cover {
-        width: 46px;
-        height: 46px;
+        width: 38px !important;
+        height: 38px !important;
+        max-width: 38px !important;
+        max-height: 38px !important;
     }
 
     .myspace-wall-form {

@@ -1500,6 +1500,12 @@ function renderProfile(data, editable) {
         cover.src = selectedTrack.cover;
         cover.alt = '';
 
+        const play = document.createElement('button');
+        play.type = 'button';
+        play.className = 'myspace-profile-music-play';
+        play.textContent = '▶';
+        play.setAttribute('aria-label', tr('Lire la musique du profil', 'Play profile music'));
+
         const musicCopy = document.createElement('div');
         musicCopy.className = 'myspace-profile-music-copy';
 
@@ -1509,13 +1515,59 @@ function renderProfile(data, editable) {
         const musicMeta = document.createElement('span');
         musicMeta.textContent = `${selectedTrack.artistName} — ${selectedTrack.releaseTitle}`;
 
+        const time = document.createElement('span');
+        time.className = 'myspace-profile-music-time';
+        time.textContent = '0:00';
+
         const audio = document.createElement('audio');
-        audio.controls = true;
-        audio.preload = 'none';
+        audio.className = 'myspace-profile-audio';
+        audio.preload = 'metadata';
         audio.src = selectedTrack.audio;
 
-        musicCopy.append(musicTitle, musicMeta, audio);
-        musicBody.append(cover, musicCopy);
+        const formatAudioTime = (seconds) => {
+            if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+            return `${minutes}:${secs}`;
+        };
+
+        play.addEventListener('click', async () => {
+            if (audio.paused) {
+                document.querySelectorAll('.myspace-profile-audio').forEach((other) => {
+                    if (other !== audio) {
+                        other.pause();
+                        const otherButton = other.closest('.myspace-profile-music-body')?.querySelector('.myspace-profile-music-play');
+                        if (otherButton) otherButton.textContent = '▶';
+                    }
+                });
+
+                try {
+                    await audio.play();
+                    play.textContent = 'Ⅱ';
+                } catch (_) {
+                    setStatus(tr('Lecture audio impossible.', 'Unable to play audio.'), 'error');
+                }
+            } else {
+                audio.pause();
+                play.textContent = '▶';
+            }
+        });
+
+        audio.addEventListener('timeupdate', () => {
+            const current = formatAudioTime(audio.currentTime);
+            const total = Number.isFinite(audio.duration) ? ` / ${formatAudioTime(audio.duration)}` : '';
+            time.textContent = current + total;
+        });
+
+        audio.addEventListener('ended', () => {
+            play.textContent = '▶';
+            time.textContent = Number.isFinite(audio.duration)
+                ? `${formatAudioTime(audio.duration)} / ${formatAudioTime(audio.duration)}`
+                : '0:00';
+        });
+
+        musicCopy.append(musicTitle, musicMeta, time);
+        musicBody.append(cover, play, musicCopy, audio);
         musicBox.appendChild(musicBody);
         content.appendChild(musicBox);
     }

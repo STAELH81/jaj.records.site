@@ -8,6 +8,43 @@ const STORE_NAME = "aq-myspace-v1";
 const POST_LIMIT = 30;
 const TOPIC_LIMIT = 40;
 const ALLOWED_REACTIONS = new Set(["like", "heart", "fire"]);
+const DEFAULT_FORUMS = [
+  {
+    id: "default-general",
+    title: "Général",
+    titleEn: "General",
+    text: "Le forum pour parler de tout ce qui ne rentre pas ailleurs sur AQ-NET.",
+    textEn: "The forum for everything that does not fit elsewhere on AQ-NET."
+  },
+  {
+    id: "default-gaming",
+    title: "Jeux vidéo",
+    titleEn: "Gaming",
+    text: "Jeux PC, consoles, indés, mods, serveurs et découvertes.",
+    textEn: "PC games, consoles, indies, mods, servers and discoveries."
+  },
+  {
+    id: "default-music",
+    title: "Musique",
+    titleEn: "Music",
+    text: "Sorties, production, artistes, matériel, playlists et recommandations.",
+    textEn: "Releases, production, artists, gear, playlists and recommendations."
+  },
+  {
+    id: "default-sports",
+    title: "Sport",
+    titleEn: "Sports",
+    text: "Matchs, compétitions, pratique, résultats et discussions sportives.",
+    textEn: "Matches, competitions, training, results and sports discussion."
+  },
+  {
+    id: "default-tech",
+    title: "Tech & Internet",
+    titleEn: "Tech & Internet",
+    text: "PC, réseaux, logiciels, web, bidouilles et actualité tech.",
+    textEn: "PCs, networks, software, web, tinkering and tech news."
+  }
+];
 
 function getMyspaceStore() {
   if (Netlify?.context?.deploy?.context === "production") {
@@ -41,6 +78,16 @@ function cleanText(value: unknown, max: number) {
 
 function cleanSingleLine(value: unknown, max: number) {
   return cleanText(value, max).replace(/\s+/g, " ");
+}
+
+function cleanAvatarData(value: unknown) {
+  const avatar = String(value ?? "").trim();
+  if (!avatar) return "";
+  const match = avatar.match(/^data:image\/(png|jpeg|webp);base64,([a-zA-Z0-9+/=]+)$/);
+  if (!match) throw new Error("invalid_avatar");
+  const estimatedBytes = Math.floor(match[2].length * 3 / 4);
+  if (estimatedBytes > 1024 * 1024) throw new Error("avatar_too_large");
+  return avatar;
 }
 
 function safeId(value: unknown) {
@@ -86,6 +133,7 @@ async function profileForUser(store: any, sessionUser: any) {
     bio: cleanText(saved?.bio || "", 700),
     location: cleanSingleLine(saved?.location || "", 80),
     favoriteMusic: cleanSingleLine(saved?.favoriteMusic || "", 180),
+    avatar: saved?.avatar ? cleanAvatarData(saved.avatar) : "",
     roles: normalizeRoles(live?.roles),
     updatedAt: saved?.updatedAt || null,
   };
@@ -160,6 +208,41 @@ async function createTopicRecord(store: any, author: any, titleValue: unknown, t
   return topic;
 }
 
+async function ensureDefaultForums(store: any) {
+  const createdAt = "2026-09-01T12:00:00.000Z";
+  await Promise.all(DEFAULT_FORUMS.map(async (forum) => {
+    const key = `topics/${forum.id}.json`;
+    const existing = await store.get(key, { type: "json" });
+    if (existing) return;
+    await store.setJSON(key, {
+      id: forum.id,
+      title: forum.title,
+      titleEn: forum.titleEn,
+      text: forum.text,
+      textEn: forum.textEn,
+      authorId: "aq-net",
+      authorName: "AQ-NET",
+      authorMail: "system@aquerty.fr",
+      authorRoles: ["admin"],
+      createdAt,
+      lastActivityAt: createdAt,
+      replyCount: 0,
+      defaultForum: true
+    });
+  }));
+}
+
+async function avatarForUser(store: any, userId: unknown) {
+  const id = safeId(userId);
+  if (!id || id === "aq-net") return "";
+  const profile = await store.get(`profiles/${id}.json`, { type: "json" });
+  try {
+    return profile?.avatar ? cleanAvatarData(profile.avatar) : "";
+  } catch {
+    return "";
+  }
+}
+
 export default async (request: Request, _context: Context) => {
   const store = getMyspaceStore();
   const url = new URL(request.url);
@@ -176,7 +259,8 @@ export default async (request: Request, _context: Context) => {
       const hydrated = await Promise.all(selected.map(async (post: any) => {
         const reactions = await reactionSummary(store, post.id, sessionUser?.id);
         const comments = await commentCount(store, post.id);
-        return { ...post, reactions: reactions.counts, myReaction: reactions.mine, commentCount: comments };
+        const authorAvatar = await avatarForUser(store, post.authorId);
+        return { ...post, authorAvatar, reactions: reactions.counts, myReaction: reactions.mine, commentCount: comments };
       }));
 
       return json({ posts: hydrated });
@@ -198,13 +282,23 @@ export default async (request: Request, _context: Context) => {
       if (!postId) return json({ error: "invalid_post_id" }, { status: 400 });
       const comments = await listJSON(store, `comments/${postId}/`);
       comments.sort((a: any, b: any) => String(a?.createdAt || "").localeCompare(String(b?.createdAt || "")));
-      return json({ comments });
+      const hydrated = await Promise.all(comments.map(async (comment: any) => ({
+        ...comment,
+        authorAvatar: await avatarForUser(store, comment.authorId)
+      })));
+      return json({ comments: hydrated });
     }
 
     if (view === "topics") {
+      await ensureDefaultForums(store);
       const topics = await listJSON(store, "topics/");
       topics.sort((a: any, b: any) => String(b?.lastActivityAt || b?.createdAt || "").localeCompare(String(a?.lastActivityAt || a?.createdAt || "")));
-      return json({ topics: topics.slice(0, TOPIC_LIMIT) });
+      const selected = topics.slice(0, TOPIC_LIMIT);
+      const hydrated = await Promise.all(selected.map(async (topic: any) => ({
+        ...topic,
+        authorAvatar: await avatarForUser(store, topic.authorId)
+      })));
+      return json({ topics: hydrated });
     }
 
     if (view === "forum_requests") {
@@ -220,11 +314,19 @@ export default async (request: Request, _context: Context) => {
     if (view === "topic") {
       const topicId = safeId(url.searchParams.get("topicId"));
       if (!topicId) return json({ error: "invalid_topic_id" }, { status: 400 });
+      await ensureDefaultForums(store);
       const topic = await store.get(`topics/${topicId}.json`, { type: "json" });
       if (!topic) return json({ error: "topic_not_found" }, { status: 404 });
       const replies = await listJSON(store, `topic-replies/${topicId}/`);
       replies.sort((a: any, b: any) => String(a?.createdAt || "").localeCompare(String(b?.createdAt || "")));
-      return json({ topic: { ...topic, replyCount: replies.length }, replies });
+      const hydratedReplies = await Promise.all(replies.map(async (reply: any) => ({
+        ...reply,
+        authorAvatar: await avatarForUser(store, reply.authorId)
+      })));
+      return json({
+        topic: { ...topic, authorAvatar: await avatarForUser(store, topic.authorId), replyCount: replies.length },
+        replies: hydratedReplies
+      });
     }
 
     return json({ error: "unknown_view" }, { status: 400 });
@@ -266,6 +368,7 @@ export default async (request: Request, _context: Context) => {
       bio: cleanText(body.bio, 700),
       location: cleanSingleLine(body.location, 80),
       favoriteMusic: cleanSingleLine(body.favoriteMusic, 180),
+      avatar: body.avatar !== undefined ? cleanAvatarData(body.avatar) : (author.avatar || ""),
       updatedAt: new Date().toISOString(),
     };
 

@@ -5,6 +5,7 @@ const ms = {
     tab: 'feed',
     profileUserId: null,
     topicId: null,
+    selfAvatarData: '',
     loadedOnce: false
 };
 
@@ -39,6 +40,9 @@ function applyMySpaceLanguage() {
     if (nav[0]) nav[0].textContent = tr('Accueil', 'Home');
     if (nav[1]) nav[1].textContent = tr('Mon profil', 'My profile');
     if (nav[2]) nav[2].textContent = 'Forums';
+    if (nav[3]) nav[3].textContent = isAdmin()
+        ? tr('Demandes de forum', 'Forum requests')
+        : tr('Proposer un forum', 'Request a forum');
 
     const boxTitles = document.querySelectorAll('#win-myspace .myspace-sidebar .myspace-box-title');
     if (boxTitles[0]) boxTitles[0].textContent = tr('Mon AQ-ID', 'My AQ-ID');
@@ -62,6 +66,24 @@ function isAdmin() {
 
 function initial(value) {
     return String(value || '?').trim().charAt(0).toUpperCase() || '?';
+}
+
+function applyAvatarElement(element, name, avatarUrl) {
+    if (!element) return;
+    const safeAvatar = typeof avatarUrl === 'string' && avatarUrl.startsWith('data:image/') ? avatarUrl : '';
+    if (safeAvatar) {
+        element.textContent = '';
+        element.style.backgroundImage = `url("${safeAvatar}")`;
+        element.style.backgroundSize = 'cover';
+        element.style.backgroundPosition = 'center';
+        element.style.backgroundRepeat = 'no-repeat';
+    } else {
+        element.style.backgroundImage = '';
+        element.style.backgroundSize = '';
+        element.style.backgroundPosition = '';
+        element.style.backgroundRepeat = '';
+        element.textContent = initial(name);
+    }
 }
 
 function setStatus(message = '', type = '') {
@@ -110,10 +132,26 @@ function updateSessionChrome() {
     }
     if (selfName) selfName.textContent = name;
     if (selfMail) selfMail.textContent = mail || tr('Lecture seule', 'Read only');
-    if (selfAvatar) selfAvatar.textContent = initial(name);
+    applyAvatarElement(selfAvatar, name, ms.selfAvatarData);
     if (selfRoles) {
         selfRoles.innerHTML = '';
         selfRoles.appendChild(roleBadges(roles));
+    }
+}
+
+async function refreshSelfAvatar() {
+    if (!isLoggedIn() || !ms.session?.id) {
+        ms.selfAvatarData = '';
+        updateSessionChrome();
+        return;
+    }
+    try {
+        const data = await requestGET('profile', { userId: ms.session.id });
+        ms.selfAvatarData = data.profile?.avatar || '';
+        updateSessionChrome();
+    } catch (_) {
+        ms.selfAvatarData = '';
+        updateSessionChrome();
     }
 }
 
@@ -177,10 +215,10 @@ function makeAuthor(authorId, authorName, authorRoles) {
     return box;
 }
 
-function makeMiniAvatar(name) {
+function makeMiniAvatar(name, avatarUrl = '') {
     const avatar = document.createElement('div');
     avatar.className = 'myspace-mini-avatar';
-    avatar.textContent = initial(name);
+    applyAvatarElement(avatar, name, avatarUrl);
     return avatar;
 }
 
@@ -267,7 +305,7 @@ function renderPost(post) {
 
     const head = document.createElement('div');
     head.className = 'myspace-post-head';
-    head.appendChild(makeMiniAvatar(post.authorName));
+    head.appendChild(makeMiniAvatar(post.authorName, post.authorAvatar));
     head.appendChild(makeAuthor(post.authorId, post.authorName, post.authorRoles));
 
     const meta = document.createElement('div');
@@ -426,6 +464,10 @@ async function showProfile(userId) {
     try {
         const data = await requestGET('profile', { userId: ms.profileUserId });
         setStatus('');
+        if (ms.profileUserId === ms.session?.id) {
+            ms.selfAvatarData = data.profile?.avatar || '';
+            updateSessionChrome();
+        }
         renderProfile(data.profile, ms.profileUserId === ms.session?.id && isLoggedIn());
     } catch (error) {
         setStatus(tr('Profil indisponible : ', 'Profile unavailable: ') + error.message, 'error');
@@ -447,7 +489,7 @@ function renderProfile(profile, editable) {
     const avatar = document.createElement('div');
     avatar.className = 'myspace-avatar';
     avatar.style.margin = '0';
-    avatar.textContent = initial(profile.displayName);
+    applyAvatarElement(avatar, profile.displayName, profile.avatar);
 
     const copy = document.createElement('div');
     copy.className = 'myspace-profile-copy';
@@ -494,6 +536,74 @@ function renderProfile(profile, editable) {
     const form = document.createElement('div');
     form.className = 'myspace-box-body myspace-form';
 
+    let avatarData = profile.avatar || '';
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'myspace-avatar-editor';
+
+    const avatarLabel = document.createElement('div');
+    avatarLabel.style.fontWeight = 'bold';
+    avatarLabel.style.marginBottom = '5px';
+    avatarLabel.textContent = tr('Photo de profil', 'Profile picture');
+
+    const avatarRow = document.createElement('div');
+    avatarRow.style.cssText = 'display:flex;gap:10px;align-items:center;margin-bottom:10px;';
+
+    const avatarPreview = document.createElement('div');
+    avatarPreview.className = 'myspace-avatar';
+    avatarPreview.style.cssText += ';width:72px;height:72px;margin:0;font-size:32px;flex:0 0 72px;';
+    applyAvatarElement(avatarPreview, profile.displayName, avatarData);
+
+    const avatarControls = document.createElement('div');
+    avatarControls.style.flex = '1';
+
+    const avatarInput = document.createElement('input');
+    avatarInput.type = 'file';
+    avatarInput.accept = 'image/png,image/jpeg,image/webp';
+    avatarInput.style.width = '100%';
+
+    const avatarHelp = document.createElement('div');
+    avatarHelp.className = 'myspace-status';
+    avatarHelp.style.marginTop = '5px';
+    avatarHelp.textContent = tr('PNG, JPEG ou WebP · 1 Mo max.', 'PNG, JPEG or WebP · 1 MB max.');
+
+    const removeAvatar = document.createElement('button');
+    removeAvatar.type = 'button';
+    removeAvatar.className = 'myspace-btn';
+    removeAvatar.style.marginTop = '5px';
+    removeAvatar.textContent = tr('Retirer la photo', 'Remove picture');
+    removeAvatar.addEventListener('click', () => {
+        avatarData = '';
+        avatarInput.value = '';
+        applyAvatarElement(avatarPreview, inputs.displayName?.value || profile.displayName, '');
+    });
+
+    avatarInput.addEventListener('change', () => {
+        const file = avatarInput.files?.[0];
+        if (!file) return;
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+            setStatus(tr('Choisis une image PNG, JPEG ou WebP.', 'Choose a PNG, JPEG or WebP image.'), 'error');
+            avatarInput.value = '';
+            return;
+        }
+        if (file.size > 1024 * 1024) {
+            setStatus(tr('La photo de profil doit faire 1 Mo maximum.', 'The profile picture must be 1 MB or smaller.'), 'error');
+            avatarInput.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            avatarData = String(reader.result || '');
+            applyAvatarElement(avatarPreview, inputs.displayName?.value || profile.displayName, avatarData);
+            setStatus('');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    avatarControls.append(avatarInput, avatarHelp, removeAvatar);
+    avatarRow.append(avatarPreview, avatarControls);
+    avatarWrap.append(avatarLabel, avatarRow);
+    form.appendChild(avatarWrap);
+
     const fields = [
         ['displayName', tr('Nom affiché', 'Display name'), 40, false],
         ['headline', tr('Statut / phrase de profil', 'Status / profile line'), 100, false],
@@ -530,11 +640,19 @@ function renderProfile(profile, editable) {
                 Object.entries(inputs).map(([key, input]) => [key, input.value])
             );
             payload.aquertyMail = ms.session?.aquertyMail || profile.aquertyMail;
+            payload.avatar = avatarData;
             const data = await requestPOST('save_profile', payload);
+            ms.selfAvatarData = data.profile?.avatar || '';
+            updateSessionChrome();
             setStatus(tr('Profil sauvegardé.', 'Profile saved.'), 'ok');
             renderProfileRefresh(data.profile);
         } catch (error) {
-            setStatus(tr('Sauvegarde impossible : ', 'Unable to save: ') + error.message, 'error');
+            const friendly = error.message === 'avatar_too_large'
+                ? tr('La photo dépasse 1 Mo.', 'The picture exceeds 1 MB.')
+                : error.message === 'invalid_avatar'
+                    ? tr('Format de photo invalide.', 'Invalid picture format.')
+                    : error.message;
+            setStatus(tr('Sauvegarde impossible : ', 'Unable to save: ') + friendly, 'error');
         } finally {
             save.disabled = false;
         }
@@ -551,6 +669,16 @@ function renderProfileRefresh(profile) {
     renderProfile(profile, true);
 }
 
+function forumTitle(topic) {
+    if (!topic) return tr('Sans titre', 'Untitled');
+    return isEnglish() ? (topic.titleEn || topic.title || 'Untitled') : (topic.title || topic.titleEn || 'Sans titre');
+}
+
+function forumText(topic) {
+    if (!topic) return '';
+    return isEnglish() ? (topic.textEn || topic.text || '') : (topic.text || topic.textEn || '');
+}
+
 async function loadForums() {
     ms.tab = 'forums';
     ms.profileUserId = null;
@@ -559,171 +687,31 @@ async function loadForums() {
     clearContent();
     setStatus(tr('Chargement des forums…', 'Loading forums…'));
 
-    const create = document.createElement('div');
-    create.className = 'myspace-box';
-    create.innerHTML = `<div class="myspace-box-title orange">${isAdmin() ? tr('Créer un sujet', 'Create topic') : tr('Demander un sujet', 'Request a topic')}</div>`;
-    const createBody = document.createElement('div');
-    createBody.className = 'myspace-box-body';
-
-    if (isLoggedIn()) {
-        const form = document.createElement('div');
-        form.className = 'myspace-form';
-
-        const explain = document.createElement('div');
-        explain.className = 'myspace-status';
-        explain.style.marginBottom = '8px';
-        explain.textContent = isAdmin()
-            ? tr('Compte ADMIN : tu peux créer directement un sujet public.', 'ADMIN account: you can create a public topic directly.')
-            : tr('Pour éviter le bazar, les membres proposent un sujet. Un ADMIN doit l’approuver avant sa publication.', 'To keep things organized, members request a topic. An ADMIN must approve it before publication.');
-
-        const title = document.createElement('input');
-        title.maxLength = 90;
-        title.placeholder = tr('Titre du sujet', 'Topic title');
-
-        const body = document.createElement('textarea');
-        body.maxLength = 2000;
-        body.placeholder = isAdmin() ? tr('Message d’ouverture…', 'Opening message…') : tr('Décris le sujet que tu voudrais ouvrir…', 'Describe the topic you would like to open…');
-
-        const actions = document.createElement('div');
-        actions.className = 'myspace-actions';
-
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'myspace-btn primary';
-        button.textContent = isAdmin() ? tr('Créer le sujet', 'Create topic') : tr('Envoyer la demande', 'Send request');
-
-        button.addEventListener('click', async () => {
-            if (!title.value.trim() || !body.value.trim()) return;
-            button.disabled = true;
-            try {
-                if (isAdmin()) {
-                    const data = await requestPOST('create_topic', {
-                        title: title.value,
-                        text: body.value
-                    });
-                    await openTopic(data.topic.id);
-                    return;
-                }
-
-                await requestPOST('request_topic', {
-                    title: title.value,
-                    text: body.value
-                });
-                title.value = '';
-                body.value = '';
-                setStatus(tr('Demande envoyée aux administrateurs.', 'Request sent to the administrators.'), 'ok');
-            } catch (error) {
-                setStatus(tr('Action impossible : ', 'Action failed: ') + error.message, 'error');
-            } finally {
-                button.disabled = false;
-            }
-        });
-
-        actions.appendChild(button);
-        form.append(explain, title, body, actions);
-        createBody.appendChild(form);
-    } else {
-        createBody.textContent = tr('Connecte-toi pour demander un sujet ou répondre aux discussions.', 'Sign in to request a topic or reply to discussions.');
-    }
-
-    create.appendChild(createBody);
-    content.appendChild(create);
-
-    if (isAdmin()) {
-        try {
-            const pending = await requestGET('forum_requests');
-            const requests = Array.isArray(pending.requests) ? pending.requests : [];
-
-            const moderation = document.createElement('div');
-            moderation.className = 'myspace-box';
-            moderation.innerHTML = `<div class="myspace-box-title">${tr('Demandes en attente', 'Pending requests')}</div>`;
-
-            if (!requests.length) {
-                const empty = document.createElement('div');
-                empty.className = 'myspace-box-body';
-                empty.textContent = tr('Aucune demande de sujet.', 'No topic requests.');
-                moderation.appendChild(empty);
-            } else {
-                requests.forEach((request) => {
-                    const row = document.createElement('div');
-                    row.className = 'myspace-forum-request';
-
-                    const copy = document.createElement('div');
-                    copy.className = 'myspace-forum-request-copy';
-
-                    const title = document.createElement('div');
-                    title.className = 'myspace-topic-title';
-                    title.textContent = request.title || tr('Sans titre', 'Untitled');
-
-                    const meta = document.createElement('div');
-                    meta.className = 'myspace-topic-meta';
-                    meta.textContent = `${tr('Demandé par', 'Requested by')} ${request.requesterName || tr('Utilisateur', 'User')} · ${formatDate(request.createdAt)}`;
-
-                    const text = document.createElement('div');
-                    text.className = 'myspace-forum-request-text';
-                    text.textContent = request.text || '';
-
-                    copy.append(title, meta, text);
-
-                    const actions = document.createElement('div');
-                    actions.className = 'myspace-forum-request-actions';
-
-                    const approve = document.createElement('button');
-                    approve.type = 'button';
-                    approve.className = 'myspace-btn primary';
-                    approve.textContent = tr('Approuver', 'Approve');
-
-                    const reject = document.createElement('button');
-                    reject.type = 'button';
-                    reject.className = 'myspace-btn';
-                    reject.textContent = tr('Refuser', 'Reject');
-
-                    const decide = async (decision) => {
-                        approve.disabled = true;
-                        reject.disabled = true;
-                        try {
-                            const result = await requestPOST('moderate_topic_request', {
-                                requestId: request.id,
-                                decision
-                            });
-                            if (decision === 'approve' && result.topic?.id) {
-                                await openTopic(result.topic.id);
-                            } else {
-                                await loadForums();
-                            }
-                        } catch (error) {
-                            setStatus(tr('Modération impossible : ', 'Moderation failed: ') + error.message, 'error');
-                            approve.disabled = false;
-                            reject.disabled = false;
-                        }
-                    };
-
-                    approve.addEventListener('click', () => decide('approve'));
-                    reject.addEventListener('click', () => decide('reject'));
-                    actions.append(approve, reject);
-                    row.append(copy, actions);
-                    moderation.appendChild(row);
-                });
-            }
-
-            content.appendChild(moderation);
-        } catch (error) {
-            setStatus(tr('Impossible de charger les demandes : ', 'Unable to load requests: ') + error.message, 'error');
-        }
-    }
-
     try {
         const data = await requestGET('topics');
         setStatus('');
         const topics = Array.isArray(data.topics) ? data.topics : [];
+
+        const intro = document.createElement('div');
+        intro.className = 'myspace-box';
+        intro.innerHTML = `<div class="myspace-box-title orange">${tr('Forums AQ-NET', 'AQ-NET Forums')}</div>`;
+        const introBody = document.createElement('div');
+        introBody.className = 'myspace-box-body';
+        introBody.textContent = tr(
+            'Choisis un forum pour discuter. Les nouveaux forums se proposent depuis l’onglet dédié.',
+            'Choose a forum to chat. New forums can be requested from the dedicated tab.'
+        );
+        intro.appendChild(introBody);
+        content.appendChild(intro);
+
         const box = document.createElement('div');
         box.className = 'myspace-box';
-        box.innerHTML = '<div class="myspace-box-title">Forums AQ-NET</div>';
+        box.innerHTML = `<div class="myspace-box-title">${tr('Communautés', 'Communities')}</div>`;
 
         if (!topics.length) {
             const empty = document.createElement('div');
             empty.className = 'myspace-empty';
-            empty.textContent = tr('Aucun sujet pour le moment.', 'No topics yet.');
+            empty.textContent = tr('Aucun forum pour le moment.', 'No forums yet.');
             box.appendChild(empty);
         } else {
             topics.forEach((topic) => {
@@ -733,11 +721,19 @@ async function loadForums() {
                 const left = document.createElement('div');
                 const title = document.createElement('div');
                 title.className = 'myspace-topic-title';
-                title.textContent = topic.title || tr('Sans titre', 'Untitled');
+                title.textContent = forumTitle(topic);
+
                 const meta = document.createElement('div');
                 meta.className = 'myspace-topic-meta';
-                meta.textContent = `${tr('par', 'by')} ${topic.authorName || tr('Utilisateur', 'User')} · ${formatDate(topic.lastActivityAt || topic.createdAt)}`;
-                left.append(title, meta);
+                meta.textContent = topic.defaultForum
+                    ? tr('Forum officiel AQ-NET', 'Official AQ-NET forum')
+                    : `${tr('créé par', 'created by')} ${topic.authorName || tr('Utilisateur', 'User')} · ${formatDate(topic.lastActivityAt || topic.createdAt)}`;
+
+                const description = document.createElement('div');
+                description.style.cssText = 'margin-top:4px;color:#555;font-size:10px;';
+                description.textContent = forumText(topic).slice(0, 180);
+
+                left.append(title, meta, description);
 
                 const count = document.createElement('div');
                 count.textContent = `${topic.replyCount || 0} ${tr('rép.', 'repl.')}`;
@@ -752,6 +748,149 @@ async function loadForums() {
         content.appendChild(box);
     } catch (error) {
         setStatus(tr('Forums indisponibles : ', 'Forums unavailable: ') + error.message, 'error');
+    }
+}
+
+async function loadForumRequests() {
+    ms.tab = 'forum-request';
+    ms.profileUserId = null;
+    ms.topicId = null;
+    setActiveNav('forum-request');
+    clearContent();
+    setStatus('');
+
+    const create = document.createElement('div');
+    create.className = 'myspace-box';
+    create.innerHTML = `<div class="myspace-box-title orange">${isAdmin() ? tr('Créer un forum', 'Create forum') : tr('Proposer un forum', 'Request a forum')}</div>`;
+    const createBody = document.createElement('div');
+    createBody.className = 'myspace-box-body';
+
+    if (isLoggedIn()) {
+        const form = document.createElement('div');
+        form.className = 'myspace-form';
+
+        const explain = document.createElement('div');
+        explain.className = 'myspace-status';
+        explain.style.marginBottom = '8px';
+        explain.textContent = isAdmin()
+            ? tr('Compte ADMIN : le forum sera publié immédiatement.', 'ADMIN account: the forum will be published immediately.')
+            : tr('Ta proposition sera envoyée aux ADMIN avant publication.', 'Your request will be sent to ADMIN users before publication.');
+
+        const title = document.createElement('input');
+        title.maxLength = 90;
+        title.placeholder = tr('Nom du forum', 'Forum name');
+
+        const body = document.createElement('textarea');
+        body.maxLength = 2000;
+        body.placeholder = tr('Description / message d’ouverture…', 'Description / opening message…');
+
+        const actions = document.createElement('div');
+        actions.className = 'myspace-actions';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'myspace-btn primary';
+        button.textContent = isAdmin() ? tr('Créer le forum', 'Create forum') : tr('Envoyer la demande', 'Send request');
+
+        button.addEventListener('click', async () => {
+            if (!title.value.trim() || !body.value.trim()) return;
+            button.disabled = true;
+            try {
+                if (isAdmin()) {
+                    const data = await requestPOST('create_topic', { title: title.value, text: body.value });
+                    await openTopic(data.topic.id);
+                    return;
+                }
+                await requestPOST('request_topic', { title: title.value, text: body.value });
+                title.value = '';
+                body.value = '';
+                setStatus(tr('Demande de forum envoyée aux administrateurs.', 'Forum request sent to the administrators.'), 'ok');
+            } catch (error) {
+                setStatus(tr('Action impossible : ', 'Action failed: ') + error.message, 'error');
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        actions.appendChild(button);
+        form.append(explain, title, body, actions);
+        createBody.appendChild(form);
+    } else {
+        createBody.textContent = tr('Connecte-toi pour proposer un nouveau forum.', 'Sign in to request a new forum.');
+    }
+
+    create.appendChild(createBody);
+    content.appendChild(create);
+
+    if (!isAdmin()) return;
+
+    try {
+        const pending = await requestGET('forum_requests');
+        const requests = Array.isArray(pending.requests) ? pending.requests : [];
+        const moderation = document.createElement('div');
+        moderation.className = 'myspace-box';
+        moderation.innerHTML = `<div class="myspace-box-title">${tr('Demandes en attente', 'Pending requests')}</div>`;
+
+        if (!requests.length) {
+            const empty = document.createElement('div');
+            empty.className = 'myspace-box-body';
+            empty.textContent = tr('Aucune demande de forum.', 'No forum requests.');
+            moderation.appendChild(empty);
+        } else {
+            requests.forEach((request) => {
+                const row = document.createElement('div');
+                row.className = 'myspace-forum-request';
+
+                const copy = document.createElement('div');
+                copy.className = 'myspace-forum-request-copy';
+
+                const title = document.createElement('div');
+                title.className = 'myspace-topic-title';
+                title.textContent = request.title || tr('Sans titre', 'Untitled');
+
+                const meta = document.createElement('div');
+                meta.className = 'myspace-topic-meta';
+                meta.textContent = `${tr('Demandé par', 'Requested by')} ${request.requesterName || tr('Utilisateur', 'User')} · ${formatDate(request.createdAt)}`;
+
+                const text = document.createElement('div');
+                text.className = 'myspace-forum-request-text';
+                text.textContent = request.text || '';
+                copy.append(title, meta, text);
+
+                const actions = document.createElement('div');
+                actions.className = 'myspace-forum-request-actions';
+                const approve = document.createElement('button');
+                approve.type = 'button';
+                approve.className = 'myspace-btn primary';
+                approve.textContent = tr('Approuver', 'Approve');
+                const reject = document.createElement('button');
+                reject.type = 'button';
+                reject.className = 'myspace-btn';
+                reject.textContent = tr('Refuser', 'Reject');
+
+                const decide = async (decision) => {
+                    approve.disabled = true;
+                    reject.disabled = true;
+                    try {
+                        const result = await requestPOST('moderate_topic_request', { requestId: request.id, decision });
+                        if (decision === 'approve' && result.topic?.id) await openTopic(result.topic.id);
+                        else await loadForumRequests();
+                    } catch (error) {
+                        setStatus(tr('Modération impossible : ', 'Moderation failed: ') + error.message, 'error');
+                        approve.disabled = false;
+                        reject.disabled = false;
+                    }
+                };
+
+                approve.addEventListener('click', () => decide('approve'));
+                reject.addEventListener('click', () => decide('reject'));
+                actions.append(approve, reject);
+                row.append(copy, actions);
+                moderation.appendChild(row);
+            });
+        }
+        content.appendChild(moderation);
+    } catch (error) {
+        setStatus(tr('Impossible de charger les demandes : ', 'Unable to load requests: ') + error.message, 'error');
     }
 }
 
@@ -777,11 +916,11 @@ async function openTopic(topicId) {
         topicBox.className = 'myspace-box';
         const title = document.createElement('div');
         title.className = 'myspace-thread-title';
-        title.textContent = data.topic.title || tr('Sujet', 'Topic');
+        title.textContent = forumTitle(data.topic) || tr('Sujet', 'Topic');
 
         const head = document.createElement('div');
         head.className = 'myspace-post-head';
-        head.append(makeMiniAvatar(data.topic.authorName), makeAuthor(data.topic.authorId, data.topic.authorName, data.topic.authorRoles));
+        head.append(makeMiniAvatar(data.topic.authorName, data.topic.authorAvatar), makeAuthor(data.topic.authorId, data.topic.authorName, data.topic.authorRoles));
         const meta = document.createElement('div');
         meta.className = 'myspace-post-meta';
         meta.textContent = formatDate(data.topic.createdAt);
@@ -789,7 +928,7 @@ async function openTopic(topicId) {
 
         const body = document.createElement('div');
         body.className = 'myspace-topic-body';
-        body.textContent = data.topic.text || '';
+        body.textContent = forumText(data.topic);
 
         topicBox.append(title, head, body);
         content.appendChild(topicBox);
@@ -799,7 +938,7 @@ async function openTopic(topicId) {
             replyBox.className = 'myspace-post';
             const replyHead = document.createElement('div');
             replyHead.className = 'myspace-post-head';
-            replyHead.append(makeMiniAvatar(reply.authorName), makeAuthor(reply.authorId, reply.authorName, reply.authorRoles));
+            replyHead.append(makeMiniAvatar(reply.authorName, reply.authorAvatar), makeAuthor(reply.authorId, reply.authorName, reply.authorRoles));
             const replyMeta = document.createElement('div');
             replyMeta.className = 'myspace-post-meta';
             replyMeta.textContent = formatDate(reply.createdAt);
@@ -866,6 +1005,8 @@ function refreshCurrentView() {
     } else if (ms.tab === 'forums') {
         if (ms.topicId) openTopic(ms.topicId);
         else loadForums();
+    } else if (ms.tab === 'forum-request') {
+        loadForumRequests();
     } else {
         loadFeed();
     }
@@ -876,13 +1017,16 @@ document.querySelectorAll('.myspace-nav-btn').forEach((button) => {
         const tab = button.dataset.tab;
         if (tab === 'profile') showProfile(ms.session?.id);
         else if (tab === 'forums') loadForums();
+        else if (tab === 'forum-request') loadForumRequests();
         else loadFeed();
     });
 });
 
 window.addEventListener('jaj:session-changed', (event) => {
     ms.session = event.detail || null;
+    ms.selfAvatarData = '';
     updateSessionChrome();
+    refreshSelfAvatar();
     if (document.getElementById('win-myspace')?.style.display === 'block') {
         refreshCurrentView();
     }
@@ -891,6 +1035,7 @@ window.addEventListener('jaj:session-changed', (event) => {
 window.addEventListener('aq:myspace-open', () => {
     ms.session = window.JAJSession || ms.session;
     updateSessionChrome();
+    refreshSelfAvatar();
     refreshCurrentView();
 });
 
@@ -901,3 +1046,4 @@ window.addEventListener('aq:language-changed', () => {
 
 applyMySpaceLanguage();
 updateSessionChrome();
+refreshSelfAvatar();

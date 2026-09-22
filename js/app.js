@@ -3239,6 +3239,137 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         { id: 'm3', folder: 'sent', from: getAquertySessionMail(), to: 'support@aquerty.local', subject: '', date: '2026-04-24 11:21', unread: false, body: '' }
     ];
 
+    function mailFormatServerDate(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value || '');
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const hh = String(date.getHours()).padStart(2, '0');
+        const mi = String(date.getMinutes()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    }
+
+    function mailApplyFriendRequestLabels(message) {
+        if (message?.kind !== 'friend_request') return;
+        const isEn = getCurrentLanguage() === 'en';
+        message.subject = isEn
+            ? `Friend request — ${message.senderName}`
+            : `Demande d’ami — ${message.senderName}`;
+        message.body = isEn
+            ? `${message.senderName} (${message.senderMail}) wants to add you as a friend on AQ-MySpace.`
+            : `${message.senderName} (${message.senderMail}) veut t’ajouter en ami sur AQ-MySpace.`;
+    }
+
+    async function mailRefreshFriendRequests() {
+        if (window.JAJSession?.type !== 'user') {
+            mailData = mailData.filter((message) => message.kind !== 'friend_request');
+            if (isMailI18nReady) {
+                mailRenderList();
+                mailRenderView();
+            }
+            return;
+        }
+
+        try {
+            const url = new URL('/api/myspace', window.location.origin);
+            url.searchParams.set('view', 'friend_requests');
+
+            const response = await fetch(url, {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json' }
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'friend_requests_unavailable');
+
+            const requests = Array.isArray(data.requests) ? data.requests : [];
+            const activeIds = new Set(requests.map((request) => request.id));
+            const existingByRequestId = new Map(
+                mailData
+                    .filter((message) => message.kind === 'friend_request')
+                    .map((message) => [message.requestId, message])
+            );
+
+            mailData = mailData.filter(
+                (message) =>
+                    message.kind !== 'friend_request' ||
+                    activeIds.has(message.requestId)
+            );
+
+            requests.forEach((request) => {
+                let message = existingByRequestId.get(request.id);
+
+                if (!message) {
+                    message = {
+                        id: `friend_${request.id}`,
+                        requestId: request.id,
+                        kind: 'friend_request',
+                        folder: 'inbox',
+                        from: 'myspace@aquerty.fr',
+                        to: getAquertySessionMail(),
+                        subject: '',
+                        date: mailFormatServerDate(request.createdAt),
+                        unread: true,
+                        body: '',
+                        senderName: request.senderName || 'Utilisateur',
+                        senderMail: request.senderMail || '',
+                        senderId: request.senderId || ''
+                    };
+                    mailData.unshift(message);
+                } else {
+                    message.to = getAquertySessionMail();
+                    message.date = mailFormatServerDate(request.createdAt);
+                    message.senderName = request.senderName || message.senderName;
+                    message.senderMail = request.senderMail || message.senderMail;
+                    message.senderId = request.senderId || message.senderId;
+                }
+
+                mailApplyFriendRequestLabels(message);
+            });
+
+            if (isMailI18nReady) {
+                mailRenderList();
+                mailRenderView();
+            }
+        } catch (error) {
+            console.warn('[AQ-Mail] friend requests unavailable', error);
+        }
+    }
+
+    async function mailRespondFriendRequest(message, decision) {
+        if (!message?.requestId) return;
+
+        const response = await fetch('/api/myspace', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'respond_friend_request',
+                requestId: message.requestId,
+                decision
+            })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'friend_response_failed');
+
+        mailData = mailData.filter((item) => item.requestId !== message.requestId);
+        mailSelectedId = null;
+        mailRenderList();
+        mailRenderView();
+        window.dispatchEvent(new CustomEvent('aq:friends-changed', {
+            detail: {
+                decision,
+                friendUserId: data.senderId || message.senderId || null
+            }
+        }));
+    }
+
     function updateMailTranslations() {
         const isEn = getCurrentLanguage() === 'en';
         const defaults = {
@@ -3260,6 +3391,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             }
         };
         mailData.forEach((m) => {
+            if (m.kind === 'friend_request') {
+                mailApplyFriendRequestLabels(m);
+                return;
+            }
             if (!defaults[m.id]) return;
             m.subject = defaults[m.id].subject;
             m.body = defaults[m.id].body;
@@ -3306,7 +3441,85 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             mailViewEl.innerHTML = `<div class="mail-empty">${tUI().mailSelect}</div>`;
             return;
         }
+
         const t = tUI();
+
+        if (m.kind === 'friend_request') {
+            const isEn = getCurrentLanguage() === 'en';
+            mailViewEl.innerHTML = '';
+
+            const subject = document.createElement('div');
+            subject.className = 'mail-subject';
+            subject.textContent = m.subject;
+
+            const meta = document.createElement('div');
+            meta.className = 'mail-meta';
+
+            const from = document.createElement('div');
+            const fromLabel = document.createElement('strong');
+            fromLabel.textContent = t.mailFrom + ' ';
+            from.append(fromLabel, document.createTextNode(m.from));
+
+            const to = document.createElement('div');
+            const toLabel = document.createElement('strong');
+            toLabel.textContent = t.mailToLabel + ' ';
+            to.append(toLabel, document.createTextNode(m.to));
+
+            const date = document.createElement('div');
+            const dateLabel = document.createElement('strong');
+            dateLabel.textContent = t.mailDate + ' ';
+            date.append(dateLabel, document.createTextNode(m.date));
+
+            meta.append(from, to, date);
+
+            const body = document.createElement('div');
+            body.style.whiteSpace = 'pre-wrap';
+            body.style.fontFamily = 'Tahoma, sans-serif';
+            body.style.fontSize = '12px';
+            body.textContent = m.body;
+
+            const actions = document.createElement('div');
+            actions.style.display = 'flex';
+            actions.style.gap = '6px';
+            actions.style.marginTop = '14px';
+
+            const accept = document.createElement('button');
+            accept.type = 'button';
+            accept.className = 'retro-btn';
+            accept.textContent = isEn ? 'Accept' : 'Accepter';
+
+            const reject = document.createElement('button');
+            reject.type = 'button';
+            reject.className = 'retro-btn';
+            reject.textContent = isEn ? 'Decline' : 'Refuser';
+
+            const status = document.createElement('span');
+            status.style.alignSelf = 'center';
+            status.style.fontSize = '11px';
+
+            const respond = async (decision) => {
+                accept.disabled = true;
+                reject.disabled = true;
+                status.textContent = isEn ? 'Sending…' : 'Envoi…';
+
+                try {
+                    await mailRespondFriendRequest(m, decision);
+                    addSystemLog(`Mail: demande d'ami ${decision}`);
+                } catch (error) {
+                    status.textContent = (isEn ? 'Error: ' : 'Erreur : ') + error.message;
+                    accept.disabled = false;
+                    reject.disabled = false;
+                }
+            };
+
+            accept.addEventListener('click', () => respond('accept'));
+            reject.addEventListener('click', () => respond('reject'));
+            actions.append(accept, reject, status);
+
+            mailViewEl.append(subject, meta, body, actions);
+            return;
+        }
+
         mailViewEl.innerHTML = `
             <div class="mail-subject">${m.subject}</div>
             <div class="mail-meta">
@@ -3332,6 +3545,10 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const idx = mailData.findIndex(x => x.id === mailSelectedId);
         if (idx === -1) return;
         const m = mailData[idx];
+        if (m.kind === 'friend_request') {
+            addSystemLog('Mail: utilise Accepter ou Refuser pour cette demande');
+            return;
+        }
         if (m.folder !== 'trash') {
             m.folder = 'trash';
         } else {
@@ -3397,7 +3614,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     mailDeleteBtn.addEventListener('click', mailDeleteSelected);
     mailReplyBtn.addEventListener('click', () => {
         const m = mailData.find(x => x.id === mailSelectedId);
-        if (!m) return;
+        if (!m || m.kind === 'friend_request') return;
         mailOpenCompose({
             to: m.from,
             subject: `Re: ${m.subject}`,
@@ -3416,6 +3633,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             mailRenderList();
             mailRenderView();
         }
+        mailRefreshFriendRequests();
     });
 
     isMailI18nReady = true;
@@ -3424,6 +3642,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     mailRenderFolders();
     mailRenderList();
     mailRenderView();
+    mailRefreshFriendRequests();
+    setInterval(() => {
+        if (document.getElementById('win-mail')?.style.display === 'block') {
+            mailRefreshFriendRequests();
+        }
+    }, 15000);
     applyLanguage(getCurrentLanguage());
 
 // Catalogue-backed Navigator pages. Data attributes keep titles and IDs out of inline code.

@@ -1504,7 +1504,8 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
         const mailAddressLabel = document.querySelector('#win-mail .mail-account-strip .mail-account-label');
         if (mailAddressLabel) mailAddressLabel.textContent = isEn ? 'YOUR AQ-MAIL ADDRESS' : 'TON ADRESSE AQ-MAIL';
-        if (mailCopyAddressBtn) mailCopyAddressBtn.textContent = isEn ? 'Copy' : 'Copier';
+        const mailCopyAddressButton = document.getElementById('mail-copy-address');
+        if (mailCopyAddressButton) mailCopyAddressButton.textContent = isEn ? 'Copy' : 'Copier';
         const mailCurrentAddress = document.getElementById('mail-current-address');
         if (mailCurrentAddress) mailCurrentAddress.title = isEn ? 'Click to select' : 'Clique pour sélectionner';
         const mailFoldersTitle = document.querySelector('#win-mail .mail-sidebar .setting-title');

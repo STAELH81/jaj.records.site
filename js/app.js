@@ -1502,8 +1502,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const netStatus = document.getElementById('tray-net-status');
         if (netStatus) netStatus.textContent = t.trayConnected;
 
-        const mailAddressLabel = document.querySelector('#win-mail .mail-account-strip span');
-        if (mailAddressLabel) mailAddressLabel.textContent = isEn ? 'AQ-Mail address:' : 'Adresse AQ-Mail :';
+        const mailAddressLabel = document.querySelector('#win-mail .mail-account-strip .mail-account-label');
+        if (mailAddressLabel) mailAddressLabel.textContent = isEn ? 'YOUR AQ-MAIL ADDRESS' : 'TON ADRESSE AQ-MAIL';
+        const mailCopyAddressButton = document.getElementById('mail-copy-address');
+        if (mailCopyAddressButton) mailCopyAddressButton.textContent = isEn ? 'Copy' : 'Copier';
+        const mailCurrentAddress = document.getElementById('mail-current-address');
+        if (mailCurrentAddress) mailCurrentAddress.title = isEn ? 'Click to select' : 'Clique pour sélectionner';
         const mailFoldersTitle = document.querySelector('#win-mail .mail-sidebar .setting-title');
         if (mailFoldersTitle) mailFoldersTitle.textContent = t.mailFoldersTitle;
         const mailFolders = document.querySelectorAll('#win-mail .mail-folder span');
@@ -2139,6 +2143,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             if (winId === 'win-player') triggerContextualPopup('openPlayer');
             if (winId === 'win-ie') triggerContextualPopup('openInternet');
             if (winId === 'win-tempus') triggerContextualPopup('openTempus');
+            if (winId === 'win-mail') void loadMail(true);
             if (winId === 'win-myspace') window.dispatchEvent(new Event('aq:myspace-open'));
             if (winId === 'win-publisher') window.dispatchEvent(new Event('aq:publisher-open'));
             if (winId === 'win-acc') {
@@ -3220,34 +3225,77 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     const mailSubjectEl = document.getElementById('mail-subject');
     const mailBodyEl = document.getElementById('mail-body');
     const mailSendEl = document.getElementById('mail-send');
+    const mailCopyAddressBtn = document.getElementById('mail-copy-address');
 
     let mailFolder = 'inbox';
     let mailSelectedId = null;
+    let mailData = [];
+    let mailBusy = false;
+    let mailLoadedAddress = '';
 
     function getAquertySessionMail() {
         return window.JAJSession?.aquertyMail || 'guest@aquerty.fr';
     }
 
+    function isMailAccountReady() {
+        return window.JAJSession?.type === 'user';
+    }
+
     function updateMailAccountStrip() {
         const addressEl = document.getElementById('mail-current-address');
         if (addressEl) addressEl.textContent = getAquertySessionMail();
+        const disabled = !isMailAccountReady();
+        const selected = mailData.find((message) => message.id === mailSelectedId);
+        const selectedIsFriendRequest = selected?.kind === 'friend_request';
+        if (mailComposeBtn) mailComposeBtn.disabled = disabled || mailBusy;
+        if (mailReplyBtn) mailReplyBtn.disabled = disabled || !mailSelectedId || mailBusy || selectedIsFriendRequest;
+        if (mailDeleteBtn) mailDeleteBtn.disabled = disabled || !mailSelectedId || mailBusy || selectedIsFriendRequest;
     }
 
-    let mailData = [
-        { id: 'm1', folder: 'inbox', from: 'updates@aquerty.local', to: getAquertySessionMail(), subject: '', date: '2026-04-24 11:02', unread: true, body: '' },
-        { id: 'm2', folder: 'inbox', from: 'support@aquerty.local', to: getAquertySessionMail(), subject: '', date: '2026-04-24 11:18', unread: true, body: '' },
-        { id: 'm3', folder: 'sent', from: getAquertySessionMail(), to: 'support@aquerty.local', subject: '', date: '2026-04-24 11:21', unread: false, body: '' }
-    ];
+    async function mailAPI(method = 'GET', payload = null) {
+        const response = await fetch('/api/aq-mail', {
+            method,
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+                Accept: 'application/json',
+                ...(payload ? { 'Content-Type': 'application/json' } : {})
+            },
+            ...(payload ? { body: JSON.stringify(payload) } : {})
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'mail_service_unavailable');
+        return data;
+    }
 
-    function mailFormatServerDate(value) {
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return String(value || '');
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const hh = String(date.getHours()).padStart(2, '0');
-        const mi = String(date.getMinutes()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    function updateMailTranslations() {
+        mailData.forEach(mailApplyFriendRequestLabels);
+        updateMailAccountStrip();
+    }
+
+    function mailFormatDate(value) {
+        if (!value) return '';
+        try {
+            return new Intl.DateTimeFormat(getCurrentLanguage() === 'en' ? 'en-GB' : 'fr-FR', {
+                dateStyle: 'short',
+                timeStyle: 'short'
+            }).format(new Date(value));
+        } catch (_) {
+            return String(value);
+        }
+    }
+
+    function mailFriendlyError(error) {
+        const code = String(error?.message || error || '');
+        const isEn = getCurrentLanguage() === 'en';
+        const map = {
+            login_required: isEn ? 'Sign in to use AQ-Mail.' : 'Connecte-toi pour utiliser AQ-Mail.',
+            invalid_recipient: isEn ? 'Use a valid @aquerty.fr address.' : 'Utilise une adresse @aquerty.fr valide.',
+            empty_message: isEn ? 'Write a message before sending.' : 'Écris un message avant de l’envoyer.',
+            message_not_found: isEn ? 'This message no longer exists.' : 'Ce message n’existe plus.',
+            mail_service_unavailable: isEn ? 'AQ-Mail is temporarily unavailable.' : 'AQ-Mail est temporairement indisponible.'
+        };
+        return map[code] || (isEn ? `AQ-Mail error: ${code}` : `Erreur AQ-Mail : ${code}`);
     }
 
     function mailApplyFriendRequestLabels(message) {
@@ -3261,81 +3309,40 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             : `${message.senderName} (${message.senderMail}) veut t’ajouter en ami sur AQ-MySpace.`;
     }
 
-    async function mailRefreshFriendRequests() {
-        if (window.JAJSession?.type !== 'user') {
-            mailData = mailData.filter((message) => message.kind !== 'friend_request');
-            if (isMailI18nReady) {
-                mailRenderList();
-                mailRenderView();
-            }
-            return;
-        }
+    async function mailFetchFriendRequests() {
+        if (!isMailAccountReady()) return [];
 
-        try {
-            const url = new URL('/api/myspace', window.location.origin);
-            url.searchParams.set('view', 'friend_requests');
+        const url = new URL('/api/myspace', window.location.origin);
+        url.searchParams.set('view', 'friend_requests');
 
-            const response = await fetch(url, {
-                credentials: 'same-origin',
-                cache: 'no-store',
-                headers: { 'Accept': 'application/json' }
-            });
+        const response = await fetch(url, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json' }
+        });
 
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'friend_requests_unavailable');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'friend_requests_unavailable');
 
-            const requests = Array.isArray(data.requests) ? data.requests : [];
-            const activeIds = new Set(requests.map((request) => request.id));
-            const existingByRequestId = new Map(
-                mailData
-                    .filter((message) => message.kind === 'friend_request')
-                    .map((message) => [message.requestId, message])
-            );
-
-            mailData = mailData.filter(
-                (message) =>
-                    message.kind !== 'friend_request' ||
-                    activeIds.has(message.requestId)
-            );
-
-            requests.forEach((request) => {
-                let message = existingByRequestId.get(request.id);
-
-                if (!message) {
-                    message = {
-                        id: `friend_${request.id}`,
-                        requestId: request.id,
-                        kind: 'friend_request',
-                        folder: 'inbox',
-                        from: 'myspace@aquerty.fr',
-                        to: getAquertySessionMail(),
-                        subject: '',
-                        date: mailFormatServerDate(request.createdAt),
-                        unread: true,
-                        body: '',
-                        senderName: request.senderName || 'Utilisateur',
-                        senderMail: request.senderMail || '',
-                        senderId: request.senderId || ''
-                    };
-                    mailData.unshift(message);
-                } else {
-                    message.to = getAquertySessionMail();
-                    message.date = mailFormatServerDate(request.createdAt);
-                    message.senderName = request.senderName || message.senderName;
-                    message.senderMail = request.senderMail || message.senderMail;
-                    message.senderId = request.senderId || message.senderId;
-                }
-
-                mailApplyFriendRequestLabels(message);
-            });
-
-            if (isMailI18nReady) {
-                mailRenderList();
-                mailRenderView();
-            }
-        } catch (error) {
-            console.warn('[AQ-Mail] friend requests unavailable', error);
-        }
+        return (Array.isArray(data.requests) ? data.requests : []).map((request) => {
+            const message = {
+                id: `friend_${request.id}`,
+                requestId: request.id,
+                kind: 'friend_request',
+                folder: 'inbox',
+                from: 'myspace@aquerty.fr',
+                to: getAquertySessionMail(),
+                subject: '',
+                body: '',
+                createdAt: request.createdAt,
+                unread: true,
+                senderId: request.senderId || '',
+                senderName: request.senderName || 'Utilisateur',
+                senderMail: request.senderMail || ''
+            };
+            mailApplyFriendRequestLabels(message);
+            return message;
+        });
     }
 
     async function mailRespondFriendRequest(message, decision) {
@@ -3358,47 +3365,14 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || 'friend_response_failed');
 
-        mailData = mailData.filter((item) => item.requestId !== message.requestId);
         mailSelectedId = null;
-        mailRenderList();
-        mailRenderView();
         window.dispatchEvent(new CustomEvent('aq:friends-changed', {
             detail: {
                 decision,
                 friendUserId: data.senderId || message.senderId || null
             }
         }));
-    }
-
-    function updateMailTranslations() {
-        const isEn = getCurrentLanguage() === 'en';
-        const defaults = {
-            m1: {
-                subject: isEn ? 'Welcome to Aquerty AQ-NEO' : 'Bienvenue sur Aquerty AQ-NEO',
-                body: isEn
-                    ? 'Your AQ-NEO environment is ready.\n\n- Player: OK\n- ACC: OK\n- Minesweeper: OK\n\nHave fun.'
-                    : 'Ton environnement AQ-NEO est pret.\n\n- Player: OK\n- ACC: OK\n- Demineur: OK\n\nBon test.'
-            },
-            m2: {
-                subject: isEn ? 'Ticket #1042 - Audio settings' : 'Ticket #1042 - Paramètres audio',
-                body: isEn
-                    ? 'We received your request.\n\nTip: adjust the master volume with the Sound icon (bottom right).'
-                    : 'On a bien recu ta demande.\n\nConseil: regle le volume master via l icone Son (en bas a droite).'
-            },
-            m3: {
-                subject: 'Re: Ticket #1042',
-                body: isEn ? 'Thanks, that works.' : 'Merci, c est bon.'
-            }
-        };
-        mailData.forEach((m) => {
-            if (m.kind === 'friend_request') {
-                mailApplyFriendRequestLabels(m);
-                return;
-            }
-            if (!defaults[m.id]) return;
-            m.subject = defaults[m.id].subject;
-            m.body = defaults[m.id].body;
-        });
+        await loadMail(true);
     }
 
     function mailRenderFolders() {
@@ -3411,77 +3385,96 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const q = (mailSearchEl.value || '').trim().toLowerCase();
         return mailData
             .filter(m => m.folder === mailFolder)
-            .filter(m => !q || m.subject.toLowerCase().includes(q) || m.from.toLowerCase().includes(q) || m.body.toLowerCase().includes(q))
-            .sort((a, b) => (a.date < b.date ? 1 : -1));
+            .filter(m => !q || [m.subject, m.from, m.to, m.body].some(value => String(value || '').toLowerCase().includes(q)))
+            .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
     }
 
     function mailRenderList() {
         const list = mailGetVisibleList();
         mailListEl.innerHTML = '';
+
+        if (!isMailAccountReady()) {
+            const empty = document.createElement('div');
+            empty.className = 'mail-empty';
+            empty.textContent = getCurrentLanguage() === 'en'
+                ? 'Sign in with an AQ-NEO account to use AQ-Mail.'
+                : 'Connecte-toi avec un compte AQ-NEO pour utiliser AQ-Mail.';
+            mailListEl.appendChild(empty);
+            return;
+        }
+
         if (list.length === 0) {
             mailListEl.innerHTML = `<div class="mail-empty">${tUI().mailNoMessages}</div>`;
             return;
         }
+
         list.forEach((m) => {
             const row = document.createElement('div');
             row.className = `mail-item${m.unread ? ' unread' : ''}${m.id === mailSelectedId ? ' active' : ''}`;
-            row.innerHTML = `<div style="display:flex; justify-content:space-between; gap:8px;">
-                <span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${m.subject}</span>
-                <span style="opacity:0.75; font-size:11px;">${m.date.slice(11,16)}</span>
-            </div>
-            <div style="opacity:0.85; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${m.from}</div>`;
+
+            const top = document.createElement('div');
+            top.style.cssText = 'display:flex;justify-content:space-between;gap:8px;';
+
+            const subject = document.createElement('span');
+            subject.style.cssText = 'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+            subject.textContent = m.subject || tUI().mailNoSubject;
+
+            const time = document.createElement('span');
+            time.style.cssText = 'opacity:.75;font-size:11px;white-space:nowrap;';
+            time.textContent = mailFormatDate(m.createdAt);
+
+            const correspondent = document.createElement('div');
+            correspondent.style.cssText = 'opacity:.85;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+            correspondent.textContent = mailFolder === 'sent' ? m.to : m.from;
+
+            top.append(subject, time);
+            row.append(top, correspondent);
             row.addEventListener('click', () => mailOpen(m.id));
             mailListEl.appendChild(row);
         });
     }
 
-    function mailRenderView() {
-        const m = mailData.find(x => x.id === mailSelectedId);
+    function mailRenderView(message = null) {
+        const m = message || mailData.find(x => x.id === mailSelectedId);
+        mailViewEl.innerHTML = '';
+
         if (!m) {
-            mailViewEl.innerHTML = `<div class="mail-empty">${tUI().mailSelect}</div>`;
+            const empty = document.createElement('div');
+            empty.className = 'mail-empty';
+            empty.textContent = tUI().mailSelect;
+            mailViewEl.appendChild(empty);
+            updateMailAccountStrip();
             return;
         }
 
-        const t = tUI();
+        const title = document.createElement('div');
+        title.className = 'mail-subject';
+        title.textContent = m.subject || tUI().mailNoSubject;
+
+        const meta = document.createElement('div');
+        meta.className = 'mail-meta';
+        [
+            [tUI().mailFrom, m.from],
+            [tUI().mailToLabel, m.to],
+            [tUI().mailDate, mailFormatDate(m.createdAt)]
+        ].forEach(([label, value]) => {
+            const line = document.createElement('div');
+            const strong = document.createElement('strong');
+            strong.textContent = label + ' ';
+            line.append(strong, document.createTextNode(value || '—'));
+            meta.appendChild(line);
+        });
+
+        const body = document.createElement('pre');
+        body.style.cssText = 'white-space:pre-wrap;margin:0;font-family:Tahoma,sans-serif;font-size:12px;overflow-wrap:anywhere;';
+        body.textContent = m.body || '';
+
+        mailViewEl.append(title, meta, body);
 
         if (m.kind === 'friend_request') {
             const isEn = getCurrentLanguage() === 'en';
-            mailViewEl.innerHTML = '';
-
-            const subject = document.createElement('div');
-            subject.className = 'mail-subject';
-            subject.textContent = m.subject;
-
-            const meta = document.createElement('div');
-            meta.className = 'mail-meta';
-
-            const from = document.createElement('div');
-            const fromLabel = document.createElement('strong');
-            fromLabel.textContent = t.mailFrom + ' ';
-            from.append(fromLabel, document.createTextNode(m.from));
-
-            const to = document.createElement('div');
-            const toLabel = document.createElement('strong');
-            toLabel.textContent = t.mailToLabel + ' ';
-            to.append(toLabel, document.createTextNode(m.to));
-
-            const date = document.createElement('div');
-            const dateLabel = document.createElement('strong');
-            dateLabel.textContent = t.mailDate + ' ';
-            date.append(dateLabel, document.createTextNode(m.date));
-
-            meta.append(from, to, date);
-
-            const body = document.createElement('div');
-            body.style.whiteSpace = 'pre-wrap';
-            body.style.fontFamily = 'Tahoma, sans-serif';
-            body.style.fontSize = '12px';
-            body.textContent = m.body;
-
             const actions = document.createElement('div');
-            actions.style.display = 'flex';
-            actions.style.gap = '6px';
-            actions.style.marginTop = '14px';
+            actions.style.cssText = 'display:flex;gap:6px;margin-top:14px;align-items:center;';
 
             const accept = document.createElement('button');
             accept.type = 'button';
@@ -3494,14 +3487,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             reject.textContent = isEn ? 'Decline' : 'Refuser';
 
             const status = document.createElement('span');
-            status.style.alignSelf = 'center';
             status.style.fontSize = '11px';
 
             const respond = async (decision) => {
                 accept.disabled = true;
                 reject.disabled = true;
                 status.textContent = isEn ? 'Sending…' : 'Envoi…';
-
                 try {
                     await mailRespondFriendRequest(m, decision);
                     addSystemLog(`Mail: demande d'ami ${decision}`);
@@ -3515,87 +3506,159 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             accept.addEventListener('click', () => respond('accept'));
             reject.addEventListener('click', () => respond('reject'));
             actions.append(accept, reject, status);
+            mailViewEl.appendChild(actions);
+        }
 
-            mailViewEl.append(subject, meta, body, actions);
+        updateMailAccountStrip();
+    }
+
+    async function loadMail(force = false) {
+        updateMailAccountStrip();
+        if (!isMailAccountReady()) {
+            mailData = [];
+            mailSelectedId = null;
+            mailLoadedAddress = '';
+            mailRenderFolders();
+            mailRenderList();
+            mailRenderView();
             return;
         }
 
-        mailViewEl.innerHTML = `
-            <div class="mail-subject">${m.subject}</div>
-            <div class="mail-meta">
-                <div><strong>${t.mailFrom}</strong> ${m.from}</div>
-                <div><strong>${t.mailToLabel}</strong> ${m.to}</div>
-                <div><strong>${t.mailDate}</strong> ${m.date}</div>
-            </div>
-            <pre style="white-space:pre-wrap; margin:0; font-family:Tahoma,sans-serif; font-size:12px;">${m.body}</pre>
-        `;
+        const address = getAquertySessionMail();
+        if (!force && mailLoadedAddress === address && mailData.length) {
+            mailRenderFolders();
+            mailRenderList();
+            mailRenderView();
+            return;
+        }
+
+        mailBusy = true;
+        updateMailAccountStrip();
+        try {
+            const [data, friendRequests] = await Promise.all([
+                mailAPI(),
+                mailFetchFriendRequests().catch((error) => {
+                    console.warn('[AQ-Mail] friend requests unavailable', error);
+                    return [];
+                })
+            ]);
+            mailData = [
+                ...friendRequests,
+                ...(Array.isArray(data.messages) ? data.messages : [])
+            ];
+            mailLoadedAddress = data.address || address;
+            if (mailSelectedId && !mailData.some(message => message.id === mailSelectedId)) mailSelectedId = null;
+            mailRenderFolders();
+            mailRenderList();
+            mailRenderView();
+        } catch (error) {
+            mailData = [];
+            mailSelectedId = null;
+            mailListEl.innerHTML = '';
+            const empty = document.createElement('div');
+            empty.className = 'mail-empty';
+            empty.textContent = mailFriendlyError(error);
+            mailListEl.appendChild(empty);
+            mailRenderView();
+        } finally {
+            mailBusy = false;
+            updateMailAccountStrip();
+        }
     }
 
-    function mailOpen(id) {
+    async function mailOpen(id) {
         mailSelectedId = id;
         const m = mailData.find(x => x.id === id);
-        if (m) m.unread = false;
-        mailRenderList();
-        mailRenderView();
+        if (!m) return;
+        if (m.unread) {
+            m.unread = false;
+            mailRenderList();
+            if (m.kind !== 'friend_request') {
+                try { await mailAPI('POST', { action: 'mark_read', id }); } catch (_) {}
+            }
+        }
+        mailRenderView(m);
         addSystemLog(`Mail: ouvert ${id}`);
     }
 
-    function mailDeleteSelected() {
-        if (!mailSelectedId) return;
-        const idx = mailData.findIndex(x => x.id === mailSelectedId);
-        if (idx === -1) return;
-        const m = mailData[idx];
-        if (m.kind === 'friend_request') {
-            addSystemLog('Mail: utilise Accepter ou Refuser pour cette demande');
-            return;
+    async function mailDeleteSelected() {
+        if (!mailSelectedId || mailBusy || !isMailAccountReady()) return;
+        const current = mailData.find(x => x.id === mailSelectedId);
+        if (!current || current.kind === 'friend_request') return;
+
+        mailBusy = true;
+        updateMailAccountStrip();
+        try {
+            await mailAPI('POST', {
+                action: current.folder === 'trash' ? 'delete' : 'trash',
+                id: current.id
+            });
+            mailSelectedId = null;
+            await loadMail(true);
+            addSystemLog(current.folder === 'trash' ? 'Mail: suppression définitive' : 'Mail: corbeille');
+        } catch (error) {
+            mailRenderView();
+            const warning = document.createElement('div');
+            warning.className = 'mail-empty';
+            warning.textContent = mailFriendlyError(error);
+            mailViewEl.prepend(warning);
+        } finally {
+            mailBusy = false;
+            updateMailAccountStrip();
         }
-        if (m.folder !== 'trash') {
-            m.folder = 'trash';
-        } else {
-            mailData.splice(idx, 1);
-        }
-        mailSelectedId = null;
-        mailRenderList();
-        mailRenderView();
-        addSystemLog('Mail: suppression');
     }
 
     function mailOpenCompose(prefill = {}) {
+        if (!isMailAccountReady()) {
+            mailRenderView();
+            return;
+        }
         mailOverlayEl.classList.add('open');
-        mailToEl.value = prefill.to || 'support@aquerty.local';
+        mailToEl.value = prefill.to || '';
         mailSubjectEl.value = prefill.subject || '';
         mailBodyEl.value = prefill.body || '';
+        mailToEl.focus();
     }
 
     function mailCloseCompose() {
         mailOverlayEl.classList.remove('open');
     }
 
-    function mailSend() {
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const mi = String(now.getMinutes()).padStart(2, '0');
-        mailData.unshift({
-            id: `s_${Date.now()}`,
-            folder: 'sent',
-            from: getAquertySessionMail(),
-            to: mailToEl.value || 'support@aquerty.local',
-            subject: mailSubjectEl.value || tUI().mailNoSubject,
-            date: `${yyyy}-${mm}-${dd} ${hh}:${mi}`,
-            unread: false,
-            body: mailBodyEl.value || ''
-        });
-        mailCloseCompose();
-        mailFolder = 'sent';
-        mailSelectedId = null;
-        mailRenderFolders();
-        mailRenderList();
-        mailRenderView();
-        addSystemLog('Mail: envoyé');
-        triggerContextualPopup('openInternet');
+    async function mailSend() {
+        if (!isMailAccountReady() || mailBusy) return;
+        const to = mailToEl.value.trim();
+        const body = mailBodyEl.value.trim();
+        if (!to || !body) {
+            const error = new Error(!to ? 'invalid_recipient' : 'empty_message');
+            alert(mailFriendlyError(error));
+            return;
+        }
+
+        mailBusy = true;
+        mailSendEl.disabled = true;
+        updateMailAccountStrip();
+        try {
+            const selected = mailData.find(message => message.id === mailSelectedId);
+            await mailAPI('POST', {
+                action: 'send',
+                to,
+                subject: mailSubjectEl.value.trim() || tUI().mailNoSubject,
+                body,
+                threadId: selected?.threadId || ''
+            });
+            mailCloseCompose();
+            mailFolder = 'sent';
+            mailSelectedId = null;
+            await loadMail(true);
+            addSystemLog('Mail: envoyé via AQ-NET');
+            triggerContextualPopup('openInternet');
+        } catch (error) {
+            alert(mailFriendlyError(error));
+        } finally {
+            mailBusy = false;
+            mailSendEl.disabled = false;
+            updateMailAccountStrip();
+        }
     }
 
     document.querySelectorAll('#win-mail .mail-folder').forEach((el) => {
@@ -3615,25 +3678,39 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     mailReplyBtn.addEventListener('click', () => {
         const m = mailData.find(x => x.id === mailSelectedId);
         if (!m || m.kind === 'friend_request') return;
+        const target = m.from === getAquertySessionMail() ? m.to : m.from;
         mailOpenCompose({
-            to: m.from,
-            subject: `Re: ${m.subject}`,
-            body: `\n\n----\n${m.from} (${m.date})\n${m.body}`
+            to: target,
+            subject: /^Re:/i.test(m.subject || '') ? m.subject : `Re: ${m.subject || tUI().mailNoSubject}`,
+            body: `\n\n----\n${m.from} (${mailFormatDate(m.createdAt)})\n${m.body || ''}`
         });
     });
     mailSendEl.addEventListener('click', mailSend);
-    window.addEventListener('jaj:session-changed', (event) => {
-        const sessionMail = event.detail?.aquertyMail || getAquertySessionMail();
-        updateMailAccountStrip();
-        mailData.forEach((message) => {
-            if (message.id === 'm1' || message.id === 'm2') message.to = sessionMail;
-            if (message.id === 'm3') message.from = sessionMail;
-        });
-        if (isMailI18nReady) {
-            mailRenderList();
-            mailRenderView();
+    document.getElementById('mail-current-address')?.addEventListener('click', (event) => {
+        const range = document.createRange();
+        range.selectNodeContents(event.currentTarget);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+    });
+    mailCopyAddressBtn?.addEventListener('click', async () => {
+        const address = getAquertySessionMail();
+        try {
+            await navigator.clipboard.writeText(address);
+            const previous = mailCopyAddressBtn.textContent;
+            mailCopyAddressBtn.textContent = getCurrentLanguage() === 'en' ? 'Copied!' : 'Copié !';
+            setTimeout(() => {
+                mailCopyAddressBtn.textContent = getCurrentLanguage() === 'en' ? 'Copy' : 'Copier';
+            }, 1200);
+        } catch (_) {
+            window.prompt(getCurrentLanguage() === 'en' ? 'Copy your AQ-Mail address:' : 'Copie ton adresse AQ-Mail :', address);
         }
-        mailRefreshFriendRequests();
+    });
+    window.addEventListener('jaj:session-changed', () => {
+        mailLoadedAddress = '';
+        mailSelectedId = null;
+        updateMailAccountStrip();
+        loadMail(true);
     });
 
     isMailI18nReady = true;
@@ -3642,12 +3719,16 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     mailRenderFolders();
     mailRenderList();
     mailRenderView();
-    mailRefreshFriendRequests();
+    loadMail(true);
     setInterval(() => {
         if (document.getElementById('win-mail')?.style.display === 'block') {
-            mailRefreshFriendRequests();
+            loadMail(true);
         }
     }, 15000);
+    window.AQMail = {
+        refresh: () => loadMail(true),
+        address: () => getAquertySessionMail()
+    };
     applyLanguage(getCurrentLanguage());
 
 // Catalogue-backed Navigator pages. Data attributes keep titles and IDs out of inline code.

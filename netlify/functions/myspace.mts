@@ -319,21 +319,27 @@ export default async (request: Request, _context: Context) => {
         );
       }
 
-      const { data, error } = await supabase
-        .from("myspace_messages")
-        .select(
-          "id,sender_id,recipient_id,body,created_at,read_at"
-        )
-        .or(
-          `and(sender_id.eq.${sessionUser.id},recipient_id.eq.${peerId}),and(sender_id.eq.${peerId},recipient_id.eq.${sessionUser.id})`
-        )
-        .order("created_at", { ascending: true })
-        .limit(300);
+      const [sentResult, receivedResult] = await Promise.all([
+        supabase
+          .from("myspace_messages")
+          .select("id,sender_id,recipient_id,body,created_at,read_at")
+          .eq("sender_id", sessionUser.id)
+          .eq("recipient_id", peerId)
+          .order("created_at", { ascending: true })
+          .limit(300),
+        supabase
+          .from("myspace_messages")
+          .select("id,sender_id,recipient_id,body,created_at,read_at")
+          .eq("sender_id", peerId)
+          .eq("recipient_id", sessionUser.id)
+          .order("created_at", { ascending: true })
+          .limit(300),
+      ]);
 
-      if (error) {
+      if (sentResult.error || receivedResult.error) {
         console.error(
           "[AQ MySpace] message fetch failed",
-          error,
+          sentResult.error || receivedResult.error,
         );
 
         return json(
@@ -342,9 +348,16 @@ export default async (request: Request, _context: Context) => {
         );
       }
 
-      return json({
-        messages: data || [],
-      });
+      const messages = [
+        ...(sentResult.data || []),
+        ...(receivedResult.data || []),
+      ]
+        .sort((a: any, b: any) =>
+          String(a.created_at || "").localeCompare(String(b.created_at || ""))
+        )
+        .slice(-300);
+
+      return json({ messages });
     }
 
     return json({ error: "unknown_view" }, { status: 400 });

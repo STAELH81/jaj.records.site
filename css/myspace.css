@@ -219,7 +219,8 @@
 
 .myspace-compose textarea,
 .myspace-form textarea,
-.myspace-form input {
+.myspace-form input,
+.myspace-form select {
     width: 100%;
     box-sizing: border-box;
     border: 1px solid #777;
@@ -235,8 +236,18 @@
     resize: vertical;
 }
 
-.myspace-form input {
+.myspace-form input,
+.myspace-form select {
     padding: 5px;
+}
+
+.myspace-form select {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #777;
+    background: #fff;
+    color: #111;
+    font: 11px Verdana, Arial, sans-serif;
 }
 
 .myspace-form label {
@@ -475,12 +486,98 @@
     font-weight: bold;
 }
 
+
+.myspace-avatar-editor {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #bbb;
+}
+
+.myspace-avatar-editor-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.myspace-avatar-preview {
+    width: 72px;
+    height: 72px;
+    margin: 0;
+    flex: 0 0 72px;
+    font-size: 32px;
+}
+
+.myspace-avatar-controls {
+    flex: 1;
+    min-width: 0;
+}
+
+.myspace-avatar-controls input[type="file"] {
+    width: 100%;
+}
+
+.myspace-profile-mood {
+    margin-top: 5px;
+    color: #777;
+    font-size: 10px;
+}
+
+.myspace-profile-header[data-profile-style="orange"] {
+    border-color: #d87900;
+    background: #fff1de;
+}
+
+.myspace-profile-header[data-profile-style="orange"] .myspace-profile-name {
+    color: #b45d00;
+}
+
+.myspace-profile-header[data-profile-style="purple"] {
+    border-color: #7752a8;
+    background: #f1eaff;
+}
+
+.myspace-profile-header[data-profile-style="purple"] .myspace-profile-name {
+    color: #5d2f91;
+}
+
+.myspace-profile-header[data-profile-style="green"] {
+    border-color: #4f8b56;
+    background: #eaf7ea;
+}
+
+.myspace-profile-header[data-profile-style="green"] .myspace-profile-name {
+    color: #2e7036;
+}
+
+.myspace-profile-header[data-profile-style="black"] {
+    border-color: #333;
+    background: #ececec;
+}
+
+.myspace-profile-header[data-profile-style="black"] .myspace-profile-name {
+    color: #111;
+}
+
+.myspace-comment-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.myspace-comment-head .myspace-mini-avatar {
+    width: 24px;
+    height: 24px;
+    flex-basis: 24px;
+    font-size: 12px;
+}
+
 body.global-dark #win-myspace .myspace-shell,
 body.global-dark #win-myspace .myspace-main,
 body.global-dark #win-myspace .myspace-box,
 body.global-dark #win-myspace .myspace-post,
 body.global-dark #win-myspace .myspace-form input,
 body.global-dark #win-myspace .myspace-form textarea,
+body.global-dark #win-myspace .myspace-form select,
 body.global-dark #win-myspace .myspace-compose textarea {
     background: #fff;
     color: #111;

@@ -249,20 +249,40 @@ export default async (request: Request, _context: Context) => {
         return json({ error: "login_required" }, { status: 401 });
       }
 
-      const profiles = await listJSON(store, "profiles/");
+      const [profiles, users] = await Promise.all([
+        listJSON(store, "profiles/"),
+        admin.listUsers(),
+      ]);
 
-      const contacts = profiles
-        .filter(
-          (profile: any) =>
-            profile?.userId &&
-            profile.userId !== sessionUser.id
-        )
-        .map((profile: any) => ({
-          userId: profile.userId,
-          displayName: profile.displayName || "Utilisateur",
-          aquertyMail: profile.aquertyMail || "",
-          roles: Array.isArray(profile.roles) ? profile.roles : [],
-        }))
+      const profileByUserId = new Map(
+        profiles
+          .filter((profile: any) => profile?.userId)
+          .map((profile: any) => [profile.userId, profile]),
+      );
+
+      const contacts = users
+        .filter((user: any) => user?.id && user.id !== sessionUser.id)
+        .map((user: any) => {
+          const saved = profileByUserId.get(user.id);
+          const meta = identityMetadata(user);
+
+          return {
+            userId: user.id,
+            displayName: cleanSingleLine(
+              saved?.displayName ||
+                meta.display_name ||
+                meta.full_name ||
+                user.email?.split("@")[0] ||
+                "Utilisateur",
+              40,
+            ),
+            aquertyMail: cleanSingleLine(
+              saved?.aquertyMail || fallbackAquertyMail(user),
+              120,
+            ),
+            roles: normalizeRoles(user.roles),
+          };
+        })
         .sort((a: any, b: any) =>
           String(a.displayName).localeCompare(String(b.displayName))
         );

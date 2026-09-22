@@ -6,7 +6,8 @@
   "dependencies": {
     "@netlify/blobs": "latest",
     "@netlify/functions": "latest",
-    "@netlify/identity": "latest"
+    "@netlify/identity": "latest",
+    "@supabase/supabase-js": "^2.117.0"
   },
   "scripts": {
     "test:phase6c": "node tests/phase6c.cjs",

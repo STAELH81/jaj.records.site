@@ -20,6 +20,7 @@ const ms = {
     friendRequestsInitialized: false,
     knownFriendRequestIds: new Set(),
     notificationTimer: null,
+    viewEpoch: 0,
     loadedOnce: false
 };
 
@@ -743,11 +744,9 @@ async function openChat(peerId) {
 }
 
 async function loadMessages() {
-    ms.tab = 'messages';
+    const viewEpoch = beginView('messages');
     ms.profileUserId = null;
     ms.topicId = null;
-    setActiveNav('messages');
-    clearContent();
 
     if (!isLoggedIn()) {
         const empty = document.createElement('div');
@@ -767,82 +766,10 @@ async function loadMessages() {
             requestGET('chat_contacts'),
             requestGET('chat_summary').catch(() => ({ unreadCount: ms.unreadCount, bySender: ms.unreadBySender }))
         ]);
+        if (!isCurrentView(viewEpoch, 'messages')) return;
         ms.chatContacts = Array.isArray(data.contacts) ? data.contacts : [];
         ms.unreadBySender = summary.bySender || {};
         updateUnreadBadge(summary.unreadCount || 0);
-
-        const friendBox = document.createElement('div');
-        friendBox.className = 'myspace-box myspace-friend-add';
-        friendBox.innerHTML = `<div class="myspace-box-title orange">${tr('Ajouter un ami', 'Add a friend')}</div>`;
-
-        const friendBody = document.createElement('div');
-        friendBody.className = 'myspace-box-body';
-
-        const friendForm = document.createElement('div');
-        friendForm.className = 'myspace-friend-form';
-
-        const friendInput = document.createElement('input');
-        friendInput.type = 'email';
-        friendInput.placeholder = tr('adresse@aquerty.fr', 'address@aquerty.fr');
-        friendInput.autocomplete = 'off';
-
-        const friendSend = document.createElement('button');
-        friendSend.type = 'button';
-        friendSend.className = 'myspace-btn primary';
-        friendSend.textContent = tr('Envoyer la demande', 'Send request');
-
-        const friendStatus = document.createElement('div');
-        friendStatus.className = 'myspace-friend-status';
-        friendStatus.hidden = true;
-
-        const sendFriendRequest = async () => {
-            const aquertyMail = friendInput.value.trim();
-            if (!aquertyMail) return;
-
-            friendSend.disabled = true;
-            friendInput.disabled = true;
-            friendStatus.hidden = true;
-
-            try {
-                await requestPOST('send_friend_request', { aquertyMail });
-                friendInput.value = '';
-                friendStatus.className = 'myspace-friend-status ok';
-                friendStatus.textContent = tr(
-                    'Demande envoyée dans AQ-Mail.',
-                    'Friend request sent to AQ-Mail.'
-                );
-                friendStatus.hidden = false;
-            } catch (error) {
-                const messages = {
-                    friend_user_not_found: tr('Aucun compte AQ-NEO avec cette adresse.', 'No AQ-NEO account uses this address.'),
-                    already_friends: tr('Vous êtes déjà amis.', 'You are already friends.'),
-                    friend_request_already_pending: tr('Une demande est déjà en attente.', 'A request is already pending.'),
-                    incoming_friend_request_exists: tr('Cette personne t’a déjà envoyé une demande. Regarde AQ-Mail.', 'This person already sent you a request. Check AQ-Mail.'),
-                    cannot_friend_self: tr('Tu ne peux pas t’ajouter toi-même.', 'You cannot add yourself.'),
-                    invalid_aquerty_mail: tr('Entre une adresse AQ-Mail valide.', 'Enter a valid AQ-Mail address.')
-                };
-                friendStatus.className = 'myspace-friend-status error';
-                friendStatus.textContent = messages[error.message] || (tr('Demande impossible : ', 'Unable to send request: ') + error.message);
-                friendStatus.hidden = false;
-            } finally {
-                friendSend.disabled = false;
-                friendInput.disabled = false;
-                friendInput.focus();
-            }
-        };
-
-        friendSend.addEventListener('click', sendFriendRequest);
-        friendInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                sendFriendRequest();
-            }
-        });
-
-        friendForm.append(friendInput, friendSend);
-        friendBody.append(friendForm, friendStatus);
-        friendBox.appendChild(friendBody);
-        content.appendChild(friendBox);
 
         const shell = document.createElement('div');
         shell.className = 'myspace-chat-shell';
@@ -916,11 +843,13 @@ async function loadMessages() {
         setStatus('');
 
         await ensureChatRealtime();
+        if (!isCurrentView(viewEpoch, 'messages')) return;
 
         if (ms.chatPeerId && chatContactById(ms.chatPeerId)) {
             await openChat(ms.chatPeerId);
         }
     } catch (error) {
+        if (!isCurrentView(viewEpoch, 'messages')) return;
         setStatus(
             tr('Messagerie indisponible : ', 'Messaging unavailable: ') + error.message,
             'error'
@@ -930,11 +859,9 @@ async function loadMessages() {
 
 
 async function loadFriends() {
-    ms.tab = 'friends';
+    const viewEpoch = beginView('friends');
     ms.profileUserId = null;
     ms.topicId = null;
-    setActiveNav('friends');
-    clearContent();
 
     if (!isLoggedIn()) {
         const empty = document.createElement('div');
@@ -947,10 +874,12 @@ async function loadFriends() {
         return;
     }
 
+    content.appendChild(makeFriendRequestBox());
     setStatus(tr('Chargement des amis…', 'Loading friends…'));
 
     try {
         const data = await requestGET('friends');
+        if (!isCurrentView(viewEpoch, 'friends')) return;
         const friends = Array.isArray(data.friends) ? data.friends : [];
         let topFriendIds = Array.isArray(data.topFriendIds) ? [...data.topFriendIds] : [];
 
@@ -965,8 +894,8 @@ async function loadFriends() {
             const empty = document.createElement('div');
             empty.className = 'myspace-empty';
             empty.textContent = tr(
-                'Aucun ami pour le moment. Envoie une demande depuis Messages.',
-                'No friends yet. Send a request from Messages.'
+                'Aucun ami pour le moment. Envoie une demande juste au-dessus.',
+                'No friends yet. Send a request just above.'
             );
             body.appendChild(empty);
         } else {
@@ -1108,6 +1037,7 @@ async function loadFriends() {
         content.appendChild(box);
         setStatus('');
     } catch (error) {
+        if (!isCurrentView(viewEpoch, 'friends')) return;
         setStatus(tr('Amis indisponibles : ', 'Friends unavailable: ') + error.message, 'error');
     }
 }
@@ -1120,6 +1050,93 @@ function requireAccount() {
 
 function clearContent() {
     if (content) content.innerHTML = '';
+}
+
+function beginView(tab) {
+    ms.tab = tab;
+    ms.viewEpoch += 1;
+    setActiveNav(tab);
+    clearContent();
+    return ms.viewEpoch;
+}
+
+function isCurrentView(epoch, tab) {
+    return ms.viewEpoch === epoch && ms.tab === tab;
+}
+
+function makeFriendRequestBox() {
+    const friendBox = document.createElement('div');
+    friendBox.className = 'myspace-box myspace-friend-add';
+    friendBox.innerHTML = `<div class="myspace-box-title orange">${tr('Ajouter un ami', 'Add a friend')}</div>`;
+
+    const friendBody = document.createElement('div');
+    friendBody.className = 'myspace-box-body';
+
+    const friendForm = document.createElement('div');
+    friendForm.className = 'myspace-friend-form';
+
+    const friendInput = document.createElement('input');
+    friendInput.type = 'email';
+    friendInput.placeholder = tr('adresse@aquerty.fr', 'address@aquerty.fr');
+    friendInput.autocomplete = 'off';
+
+    const friendSend = document.createElement('button');
+    friendSend.type = 'button';
+    friendSend.className = 'myspace-btn primary';
+    friendSend.textContent = tr('Envoyer la demande', 'Send request');
+
+    const friendStatus = document.createElement('div');
+    friendStatus.className = 'myspace-friend-status';
+    friendStatus.hidden = true;
+
+    const sendFriendRequest = async () => {
+        const aquertyMail = friendInput.value.trim();
+        if (!aquertyMail) return;
+
+        friendSend.disabled = true;
+        friendInput.disabled = true;
+        friendStatus.hidden = true;
+
+        try {
+            await requestPOST('send_friend_request', { aquertyMail });
+            friendInput.value = '';
+            friendStatus.className = 'myspace-friend-status ok';
+            friendStatus.textContent = tr(
+                'Demande envoyée dans AQ-Mail.',
+                'Friend request sent to AQ-Mail.'
+            );
+            friendStatus.hidden = false;
+        } catch (error) {
+            const messages = {
+                friend_user_not_found: tr('Aucun compte AQ-NEO avec cette adresse.', 'No AQ-NEO account uses this address.'),
+                already_friends: tr('Vous êtes déjà amis.', 'You are already friends.'),
+                friend_request_already_pending: tr('Une demande est déjà en attente.', 'A request is already pending.'),
+                incoming_friend_request_exists: tr('Cette personne t’a déjà envoyé une demande. Regarde AQ-Mail.', 'This person already sent you a request. Check AQ-Mail.'),
+                cannot_friend_self: tr('Tu ne peux pas t’ajouter toi-même.', 'You cannot add yourself.'),
+                invalid_aquerty_mail: tr('Entre une adresse AQ-Mail valide.', 'Enter a valid AQ-Mail address.')
+            };
+            friendStatus.className = 'myspace-friend-status error';
+            friendStatus.textContent = messages[error.message] || (tr('Demande impossible : ', 'Unable to send request: ') + error.message);
+            friendStatus.hidden = false;
+        } finally {
+            friendSend.disabled = false;
+            friendInput.disabled = false;
+            friendInput.focus();
+        }
+    };
+
+    friendSend.addEventListener('click', sendFriendRequest);
+    friendInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendFriendRequest();
+        }
+    });
+
+    friendForm.append(friendInput, friendSend);
+    friendBody.append(friendForm, friendStatus);
+    friendBox.appendChild(friendBody);
+    return friendBox;
 }
 
 function makeAuthor(authorId, authorName, authorRoles) {
@@ -1147,11 +1164,9 @@ function makeMiniAvatar(name, avatarUrl = '') {
 }
 
 async function loadFeed() {
-    ms.tab = 'feed';
+    const viewEpoch = beginView('feed');
     ms.profileUserId = null;
     ms.topicId = null;
-    setActiveNav('feed');
-    clearContent();
     setStatus(tr('Chargement du fil MySpace…', 'Loading MySpace feed…'));
 
     const compose = document.createElement('div');
@@ -1202,6 +1217,7 @@ async function loadFeed() {
 
     try {
         const data = await requestGET('feed');
+        if (!isCurrentView(viewEpoch, 'feed')) return;
         setStatus('');
         const posts = Array.isArray(data.posts) ? data.posts : [];
 
@@ -1219,6 +1235,7 @@ async function loadFeed() {
 
         posts.forEach((post) => content.appendChild(renderPost(post)));
     } catch (error) {
+        if (!isCurrentView(viewEpoch, 'feed')) return;
         setStatus(tr('MySpace ne répond pas : ', 'MySpace is not responding: ') + error.message, 'error');
     }
 }
@@ -1374,11 +1391,9 @@ function renderComments(container, post, comments) {
 }
 
 async function showProfile(userId) {
-    ms.tab = 'profile';
+    const viewEpoch = beginView('profile');
     ms.profileUserId = userId || ms.session?.id || null;
     ms.topicId = null;
-    setActiveNav('profile');
-    clearContent();
 
     if (!ms.profileUserId) {
         const empty = document.createElement('div');
@@ -1392,9 +1407,11 @@ async function showProfile(userId) {
 
     try {
         const data = await requestGET('profile', { userId: ms.profileUserId });
+        if (!isCurrentView(viewEpoch, 'profile')) return;
         setStatus('');
         renderProfile(data, ms.profileUserId === ms.session?.id && isLoggedIn());
     } catch (error) {
+        if (!isCurrentView(viewEpoch, 'profile')) return;
         setStatus(tr('Profil indisponible : ', 'Profile unavailable: ') + error.message, 'error');
     }
 }
@@ -1951,11 +1968,9 @@ function forumText(topic) {
 }
 
 async function loadForums() {
-    ms.tab = 'forums';
+    const viewEpoch = beginView('forums');
     ms.profileUserId = null;
     ms.topicId = null;
-    setActiveNav('forums');
-    clearContent();
     setStatus(tr('Chargement des forums…', 'Loading forums…'));
 
     const create = document.createElement('div');
@@ -2031,6 +2046,7 @@ async function loadForums() {
     if (isAdmin()) {
         try {
             const pending = await requestGET('forum_requests');
+            if (!isCurrentView(viewEpoch, 'forums')) return;
             const requests = Array.isArray(pending.requests) ? pending.requests : [];
 
             const moderation = document.createElement('div');
@@ -2107,12 +2123,14 @@ async function loadForums() {
 
             content.appendChild(moderation);
         } catch (error) {
+            if (!isCurrentView(viewEpoch, 'forums')) return;
             setStatus(tr('Impossible de charger les demandes : ', 'Unable to load requests: ') + error.message, 'error');
         }
     }
 
     try {
         const data = await requestGET('topics');
+        if (!isCurrentView(viewEpoch, 'forums')) return;
         setStatus('');
         const topics = Array.isArray(data.topics) ? data.topics : [];
         const box = document.createElement('div');
@@ -2158,19 +2176,19 @@ async function loadForums() {
 
         content.appendChild(box);
     } catch (error) {
+        if (!isCurrentView(viewEpoch, 'forums')) return;
         setStatus(tr('Forums indisponibles : ', 'Forums unavailable: ') + error.message, 'error');
     }
 }
 
 async function openTopic(topicId) {
-    ms.tab = 'forums';
+    const viewEpoch = beginView('forums');
     ms.topicId = topicId;
-    setActiveNav('forums');
-    clearContent();
     setStatus(tr('Ouverture du sujet…', 'Opening topic…'));
 
     try {
         const data = await requestGET('topic', { topicId });
+        if (!isCurrentView(viewEpoch, 'forums') || ms.topicId !== topicId) return;
         setStatus('');
 
         const back = document.createElement('button');
@@ -2256,6 +2274,7 @@ async function openTopic(topicId) {
             content.appendChild(replyForm);
         }
     } catch (error) {
+        if (!isCurrentView(viewEpoch, 'forums') || ms.topicId !== topicId) return;
         setStatus(tr('Sujet indisponible : ', 'Topic unavailable: ') + error.message, 'error');
     }
 }

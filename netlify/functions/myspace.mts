@@ -113,6 +113,32 @@ function cleanProfileStyle(value: unknown) {
   return PROFILE_STYLES.has(style) ? style : "blue";
 }
 
+function cleanWebsite(value: unknown) {
+  const raw = cleanSingleLine(value, 180);
+  if (!raw) return "";
+
+  const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const parsed = new URL(candidate);
+    if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("invalid_website");
+    return parsed.toString().slice(0, 180);
+  } catch {
+    throw new Error("invalid_website");
+  }
+}
+
+function identityCreatedAt(user: any) {
+  return cleanSingleLine(
+    user?.created_at ||
+      user?.createdAt ||
+      user?.confirmed_at ||
+      user?.confirmedAt ||
+      "",
+    64,
+  );
+}
+
 function safeId(value: unknown) {
   const id = String(value ?? "");
   return /^[a-zA-Z0-9_-]{1,120}$/.test(id) ? id : "";
@@ -158,8 +184,11 @@ async function profileForUser(store: any, sessionUser: any) {
     location: cleanSingleLine(saved?.location || "", 80),
     interests: cleanSingleLine(saved?.interests || "", 240),
     favoriteMusic: cleanSingleLine(saved?.favoriteMusic || "", 180),
+    topArtists: cleanSingleLine(saved?.topArtists || "", 240),
+    website: saved?.website ? cleanWebsite(saved.website) : "",
     avatar: saved?.avatar ? cleanAvatarData(saved.avatar) : "",
     profileStyle: cleanProfileStyle(saved?.profileStyle || "blue"),
+    joinedAt: saved?.joinedAt || identityCreatedAt(live) || new Date().toISOString(),
     roles: normalizeRoles(live?.roles),
     updatedAt: saved?.updatedAt || null,
   };
@@ -192,6 +221,46 @@ async function getFriendship(store: any, userA: unknown, userB: unknown) {
   return await store.get(`friendships/${id}.json`, { type: "json" });
 }
 
+async function friendIdsForUser(store: any, userId: string) {
+  const friendships = await listJSON(store, "friendships/");
+  const ids = new Set<string>();
+
+  friendships.forEach((friendship: any) => {
+    const users = Array.isArray(friendship?.users) ? friendship.users : [];
+    if (!users.includes(userId)) return;
+
+    users.forEach((id: string) => {
+      if (id && id !== userId) ids.add(id);
+    });
+  });
+
+  return [...ids];
+}
+
+async function friendsForUser(store: any, userId: string) {
+  const ids = await friendIdsForUser(store, userId);
+
+  const friends = (
+    await Promise.all(
+      ids.map(async (friendId) => {
+        try {
+          const user = await admin.getUser(friendId);
+          return await publicIdentity(store, user);
+        } catch (error) {
+          console.warn("[AQ MySpace] profile friend lookup failed", friendId, error);
+          return null;
+        }
+      }),
+    )
+  )
+    .filter(Boolean)
+    .sort((a: any, b: any) =>
+      String(a.displayName || "").localeCompare(String(b.displayName || ""))
+    );
+
+  return friends;
+}
+
 async function publicIdentity(store: any, user: any) {
   const saved = await store.get(`profiles/${user.id}.json`, { type: "json" });
   const meta = identityMetadata(user);
@@ -212,6 +281,8 @@ async function publicIdentity(store: any, user: any) {
     ),
     roles: normalizeRoles(user.roles),
     avatar: saved?.avatar ? cleanAvatarData(saved.avatar) : "",
+    website: saved?.website ? cleanWebsite(saved.website) : "",
+    joinedAt: saved?.joinedAt || identityCreatedAt(user) || "",
   };
 }
 
@@ -333,11 +404,33 @@ export default async (request: Request, _context: Context) => {
       const userId = safeId(url.searchParams.get("userId") || sessionUser?.id);
       if (!userId) return json({ error: "missing_user_id" }, { status: 400 });
 
-      const saved = await store.get(`profiles/${userId}.json`, { type: "json" });
-      if (!saved && sessionUser?.id === userId) {
-        return json({ profile: await profileForUser(store, sessionUser) });
+      let profile = await store.get(`profiles/${userId}.json`, { type: "json" });
+
+      if (!profile && sessionUser?.id === userId) {
+        profile = await profileForUser(store, sessionUser);
+      } else if (profile) {
+        try {
+          const live = await admin.getUser(userId);
+          profile = {
+            ...profile,
+            joinedAt: profile.joinedAt || identityCreatedAt(live) || profile.updatedAt || null,
+            roles: normalizeRoles(live?.roles),
+          };
+        } catch {
+          profile = {
+            ...profile,
+            joinedAt: profile.joinedAt || profile.updatedAt || null,
+          };
+        }
       }
-      return json({ profile: saved || null });
+
+      const friends = profile ? await friendsForUser(store, userId) : [];
+
+      return json({
+        profile: profile || null,
+        friends: friends.slice(0, 24),
+        friendCount: friends.length,
+      });
     }
 
     if (view === "comments") {
@@ -414,36 +507,7 @@ export default async (request: Request, _context: Context) => {
         return json({ error: "login_required" }, { status: 401 });
       }
 
-      const friendships = await listJSON(store, "friendships/");
-      const friendIds = new Set<string>();
-
-      friendships.forEach((friendship: any) => {
-        const users = Array.isArray(friendship?.users) ? friendship.users : [];
-        if (!users.includes(sessionUser.id)) return;
-
-        users.forEach((id: string) => {
-          if (id && id !== sessionUser.id) friendIds.add(id);
-        });
-      });
-
-      const contacts = (
-        await Promise.all(
-          [...friendIds].map(async (userId) => {
-            try {
-              const user = await admin.getUser(userId);
-              return await publicIdentity(store, user);
-            } catch (error) {
-              console.warn("[AQ MySpace] friend Identity lookup failed", userId, error);
-              return null;
-            }
-          }),
-        )
-      )
-        .filter(Boolean)
-        .sort((a: any, b: any) =>
-          String(a.displayName).localeCompare(String(b.displayName))
-        );
-
+      const contacts = await friendsForUser(store, sessionUser.id);
       return json({ contacts });
     }
 
@@ -742,8 +806,11 @@ export default async (request: Request, _context: Context) => {
       location: cleanSingleLine(body.location, 80),
       interests: cleanSingleLine(body.interests, 240),
       favoriteMusic: cleanSingleLine(body.favoriteMusic, 180),
+      topArtists: cleanSingleLine(body.topArtists, 240),
+      website: cleanWebsite(body.website),
       avatar: body.avatar !== undefined ? cleanAvatarData(body.avatar) : (author.avatar || ""),
       profileStyle: cleanProfileStyle(body.profileStyle || author.profileStyle || "blue"),
+      joinedAt: author.joinedAt || identityCreatedAt(await liveIdentity(sessionUser)) || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 

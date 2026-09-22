@@ -5,15 +5,17 @@ import type { Config, Context } from "@netlify/functions";
 declare const Netlify: any;
 
 const STORE_NAME = "aq-mail-v1";
+const PREVIEW_STORE_NAME = "aq-mail-preview-v1";
 const MESSAGE_LIMIT = 250;
 
 function getMailStore() {
   if (Netlify?.context?.deploy?.context === "production") {
     return getStore(STORE_NAME, { consistency: "strong" });
   }
-  // Preview writes must be immediately visible after Send/Delete, otherwise
-  // deploy-scoped eventual consistency can make AQ-Mail look broken for ~60 s.
-  return getDeployStore({ name: STORE_NAME, consistency: "strong" } as any);
+  // Mail must survive rebuilds of the same deploy-preview. A deploy-scoped
+  // store is replaced every time Netlify creates a new preview deploy.
+  // Keep preview data isolated from production in its own global store.
+  return getStore(PREVIEW_STORE_NAME, { consistency: "strong" });
 }
 
 function json(data: unknown, init: ResponseInit = {}) {

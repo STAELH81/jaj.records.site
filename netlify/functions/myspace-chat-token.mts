@@ -78,9 +78,11 @@ export default async (_request: Request, _context: Context) => {
   }
 
   const secret = Netlify.env.get("SUPABASE_JWT_SECRET");
+  const supabaseUrl = Netlify.env.get("SUPABASE_URL");
+  const supabasePublishableKey = Netlify.env.get("SUPABASE_PUBLISHABLE_KEY");
 
-  if (!secret) {
-    console.error("[AQ MySpace] SUPABASE_JWT_SECRET is missing");
+  if (!secret || !supabaseUrl || !supabasePublishableKey) {
+    console.error("[AQ MySpace] Supabase chat environment is incomplete");
     return json(
       { error: "server_configuration_error" },
       { status: 500 },
@@ -104,6 +106,8 @@ export default async (_request: Request, _context: Context) => {
   return json({
     token,
     expiresAt: expiresAt * 1000,
+    supabaseUrl,
+    supabasePublishableKey,
   });
 };
 

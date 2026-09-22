@@ -108,6 +108,17 @@ function formatDate(value) {
     }
 }
 
+function formatDateOnly(value) {
+    if (!value) return '—';
+    try {
+        return new Intl.DateTimeFormat(isEnglish() ? 'en-GB' : 'fr-FR', {
+            dateStyle: 'long'
+        }).format(new Date(value));
+    } catch (_) {
+        return String(value);
+    }
+}
+
 function roleBadges(roles = []) {
     const wrap = document.createElement('span');
     wrap.className = 'myspace-role-list';
@@ -890,13 +901,18 @@ async function showProfile(userId) {
     try {
         const data = await requestGET('profile', { userId: ms.profileUserId });
         setStatus('');
-        renderProfile(data.profile, ms.profileUserId === ms.session?.id && isLoggedIn());
+        renderProfile(
+            data.profile,
+            ms.profileUserId === ms.session?.id && isLoggedIn(),
+            Array.isArray(data.friends) ? data.friends : [],
+            Number(data.friendCount || 0)
+        );
     } catch (error) {
         setStatus(tr('Profil indisponible : ', 'Profile unavailable: ') + error.message, 'error');
     }
 }
 
-function renderProfile(profile, editable) {
+function renderProfile(profile, editable, friends = [], friendCount = friends.length) {
     if (!profile) {
         const empty = document.createElement('div');
         empty.className = 'myspace-empty';
@@ -940,21 +956,91 @@ function renderProfile(profile, editable) {
 
     const details = document.createElement('dl');
     details.className = 'myspace-profile-grid';
-    const pairs = [
-        ['AQ-Mail', profile.aquertyMail || '—'],
-        [tr('Localisation', 'Location'), profile.location || '—'],
-        [tr('Centres d’intérêt', 'Interests'), profile.interests || '—'],
-        [tr('Musique', 'Music'), profile.favoriteMusic || '—'],
-        [tr('À propos', 'About'), profile.bio || '—']
+
+    const rows = [
+        { label: 'AQ-Mail', value: profile.aquertyMail || '—' },
+        { label: tr('Membre depuis', 'Member since'), value: formatDateOnly(profile.joinedAt) },
+        { label: tr('Localisation', 'Location'), value: profile.location || '—' },
+        { label: tr('Centres d’intérêt', 'Interests'), value: profile.interests || '—' },
+        { label: tr('Musique', 'Music'), value: profile.favoriteMusic || '—' },
+        { label: tr('Top artistes', 'Top artists'), value: profile.topArtists || '—' },
+        { label: tr('Site / lien', 'Website / link'), value: profile.website || '—', href: profile.website || '' },
+        { label: tr('À propos', 'About'), value: profile.bio || '—' }
     ];
-    pairs.forEach(([label, value]) => {
+
+    rows.forEach(({ label, value, href }) => {
         const dt = document.createElement('dt');
         dt.textContent = label;
+
         const dd = document.createElement('dd');
-        dd.textContent = value;
+        if (href) {
+            const link = document.createElement('a');
+            link.href = href;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = value;
+            dd.appendChild(link);
+        } else {
+            dd.textContent = value;
+        }
+
         details.append(dt, dd);
     });
+
     content.appendChild(details);
+
+    const friendsBox = document.createElement('div');
+    friendsBox.className = 'myspace-box myspace-profile-friends';
+    friendsBox.innerHTML = `<div class="myspace-box-title">${tr('Amis', 'Friends')} (${friendCount})</div>`;
+
+    const friendsBody = document.createElement('div');
+    friendsBody.className = 'myspace-box-body';
+
+    if (!friends.length) {
+        const emptyFriends = document.createElement('div');
+        emptyFriends.className = 'myspace-profile-friends-empty';
+        emptyFriends.textContent = tr(
+            'Aucun ami affiché pour le moment.',
+            'No friends to show yet.'
+        );
+        friendsBody.appendChild(emptyFriends);
+    } else {
+        const grid = document.createElement('div');
+        grid.className = 'myspace-friends-grid';
+
+        friends.slice(0, 8).forEach((friend) => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'myspace-friend-card';
+            card.title = friend.aquertyMail || friend.displayName || '';
+
+            const friendAvatar = makeMiniAvatar(friend.displayName, friend.avatar);
+            friendAvatar.classList.add('myspace-friend-avatar');
+
+            const friendName = document.createElement('span');
+            friendName.className = 'myspace-friend-name';
+            friendName.textContent = friend.displayName || tr('Utilisateur', 'User');
+
+            card.append(friendAvatar, friendName);
+            card.addEventListener('click', () => showProfile(friend.userId));
+            grid.appendChild(card);
+        });
+
+        friendsBody.appendChild(grid);
+
+        if (friendCount > 8) {
+            const more = document.createElement('div');
+            more.className = 'myspace-profile-friends-more';
+            more.textContent = tr(
+                `+${friendCount - 8} autres amis`,
+                `+${friendCount - 8} more friends`
+            );
+            friendsBody.appendChild(more);
+        }
+    }
+
+    friendsBox.appendChild(friendsBody);
+    content.appendChild(friendsBox);
 
     if (!editable) return;
 
@@ -967,6 +1053,7 @@ function renderProfile(profile, editable) {
     form.className = 'myspace-box-body myspace-form';
 
     let avatarData = profile.avatar || '';
+
     const avatarWrap = document.createElement('div');
     avatarWrap.className = 'myspace-avatar-editor';
 
@@ -1045,6 +1132,8 @@ function renderProfile(profile, editable) {
         ['location', tr('Localisation', 'Location'), 80, false],
         ['interests', tr('Centres d’intérêt', 'Interests'), 240, false],
         ['favoriteMusic', tr('Musique / artistes favoris', 'Favorite music / artists'), 180, false],
+        ['topArtists', tr('Top artistes', 'Top artists'), 240, false],
+        ['website', tr('Site / lien', 'Website / link'), 180, false],
         ['bio', tr('À propos de moi', 'About me'), 700, true]
     ];
 
@@ -1052,10 +1141,16 @@ function renderProfile(profile, editable) {
         const wrap = document.createElement('label');
         const title = document.createElement('span');
         title.textContent = label;
+
         const input = multiline ? document.createElement('textarea') : document.createElement('input');
+        if (key === 'website') {
+            input.type = 'url';
+            input.placeholder = 'https://...';
+        }
         input.maxLength = max;
         input.value = profile[key] || '';
         if (multiline) input.style.minHeight = '100px';
+
         inputs[key] = input;
         wrap.append(title, input);
         form.appendChild(wrap);
@@ -1064,6 +1159,7 @@ function renderProfile(profile, editable) {
     const styleWrap = document.createElement('label');
     const styleTitle = document.createElement('span');
     styleTitle.textContent = tr('Couleur du profil', 'Profile color');
+
     const styleSelect = document.createElement('select');
     [
         ['blue', tr('Bleu MySpace', 'MySpace blue')],
@@ -1078,11 +1174,13 @@ function renderProfile(profile, editable) {
         if ((profile.profileStyle || 'blue') === value) option.selected = true;
         styleSelect.appendChild(option);
     });
+
     styleWrap.append(styleTitle, styleSelect);
     form.appendChild(styleWrap);
 
     const actions = document.createElement('div');
     actions.className = 'myspace-actions';
+
     const save = document.createElement('button');
     save.type = 'button';
     save.className = 'myspace-btn primary';
@@ -1090,10 +1188,12 @@ function renderProfile(profile, editable) {
 
     save.addEventListener('click', async () => {
         save.disabled = true;
+
         try {
             const payload = Object.fromEntries(
                 Object.entries(inputs).map(([key, input]) => [key, input.value])
             );
+
             payload.aquertyMail = ms.session?.aquertyMail || profile.aquertyMail;
             payload.avatar = avatarData;
             payload.profileStyle = styleSelect.value;
@@ -1101,14 +1201,27 @@ function renderProfile(profile, editable) {
             const data = await requestPOST('save_profile', payload);
             ms.selfAvatarData = data.profile?.avatar || '';
             updateSessionChrome();
+
+            const refreshed = await requestGET('profile', {
+                userId: ms.session?.id || profile.userId
+            });
+
+            renderProfileRefresh(
+                refreshed.profile,
+                Array.isArray(refreshed.friends) ? refreshed.friends : [],
+                Number(refreshed.friendCount || 0)
+            );
+
             setStatus(tr('Profil sauvegardé.', 'Profile saved.'), 'ok');
-            renderProfileRefresh(data.profile);
         } catch (error) {
             const friendly = error.message === 'avatar_too_large'
                 ? tr('La photo dépasse 1 Mo.', 'The picture exceeds 1 MB.')
                 : error.message === 'invalid_avatar'
                     ? tr('Format de photo invalide.', 'Invalid picture format.')
-                    : error.message;
+                    : error.message === 'invalid_website'
+                        ? tr('Le lien du site n’est pas valide.', 'The website link is invalid.')
+                        : error.message;
+
             setStatus(tr('Sauvegarde impossible : ', 'Unable to save: ') + friendly, 'error');
         } finally {
             save.disabled = false;
@@ -1121,9 +1234,9 @@ function renderProfile(profile, editable) {
     content.appendChild(editor);
 }
 
-function renderProfileRefresh(profile) {
+function renderProfileRefresh(profile, friends = [], friendCount = friends.length) {
     clearContent();
-    renderProfile(profile, true);
+    renderProfile(profile, true, friends, friendCount);
 }
 
 function forumTitle(topic) {
@@ -1319,20 +1432,28 @@ async function loadForums() {
                 const row = document.createElement('div');
                 row.className = 'myspace-topic';
 
+                const forumIdentity = document.createElement('div');
+                forumIdentity.className = 'myspace-topic-identity';
+
+                const topicAvatar = makeMiniAvatar(topic.authorName || 'AQ-NET', topic.authorAvatar);
+
                 const left = document.createElement('div');
                 const title = document.createElement('div');
                 title.className = 'myspace-topic-title';
                 title.textContent = forumTitle(topic);
+
                 const meta = document.createElement('div');
                 meta.className = 'myspace-topic-meta';
                 meta.textContent = `${tr('par', 'by')} ${topic.authorName || tr('Utilisateur', 'User')} · ${formatDate(topic.lastActivityAt || topic.createdAt)}`;
+
                 left.append(title, meta);
+                forumIdentity.append(topicAvatar, left);
 
                 const count = document.createElement('div');
                 count.textContent = `${topic.replyCount || 0} ${tr('rép.', 'repl.')}`;
                 count.style.color = '#666';
 
-                row.append(left, count);
+                row.append(forumIdentity, count);
                 row.addEventListener('click', () => openTopic(topic.id));
                 box.appendChild(row);
             });

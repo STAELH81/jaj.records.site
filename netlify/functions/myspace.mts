@@ -1,6 +1,7 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
 import { admin, getUser, verifyRequestOrigin } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
+import { createClient } from "@supabase/supabase-js";
 
 declare const Netlify: any;
 
@@ -14,6 +15,22 @@ function getMyspaceStore() {
     return getStore(STORE_NAME, { consistency: "strong" });
   }
   return getDeployStore(STORE_NAME);
+}
+
+function getSupabaseAdmin() {
+  const url = Netlify.env.get("SUPABASE_URL");
+  const secret = Netlify.env.get("SUPABASE_SECRET_KEY");
+
+  if (!url || !secret) {
+    throw new Error("supabase_not_configured");
+  }
+
+  return createClient(url, secret, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 }
 
 function json(data: unknown, init: ResponseInit = {}) {
@@ -227,6 +244,89 @@ export default async (request: Request, _context: Context) => {
       return json({ topic: { ...topic, replyCount: replies.length }, replies });
     }
 
+    if (view === "chat_contacts") {
+      if (!sessionUser) {
+        return json({ error: "login_required" }, { status: 401 });
+      }
+
+      const profiles = await listJSON(store, "profiles/");
+
+      const contacts = profiles
+        .filter(
+          (profile: any) =>
+            profile?.userId &&
+            profile.userId !== sessionUser.id
+        )
+        .map((profile: any) => ({
+          userId: profile.userId,
+          displayName: profile.displayName || "Utilisateur",
+          aquertyMail: profile.aquertyMail || "",
+          roles: Array.isArray(profile.roles) ? profile.roles : [],
+        }))
+        .sort((a: any, b: any) =>
+          String(a.displayName).localeCompare(String(b.displayName))
+        );
+
+      return json({ contacts });
+    }
+
+    if (view === "messages") {
+      if (!sessionUser) {
+        return json({ error: "login_required" }, { status: 401 });
+      }
+
+      const peerId = safeId(url.searchParams.get("with"));
+
+      if (!peerId) {
+        return json({ error: "invalid_peer" }, { status: 400 });
+      }
+
+      const supabase = getSupabaseAdmin();
+
+      const { error: readError } = await supabase
+        .from("myspace_messages")
+        .update({
+          read_at: new Date().toISOString(),
+        })
+        .eq("sender_id", peerId)
+        .eq("recipient_id", sessionUser.id)
+        .is("read_at", null);
+
+      if (readError) {
+        console.warn(
+          "[AQ MySpace] unable to mark messages as read",
+          readError,
+        );
+      }
+
+      const { data, error } = await supabase
+        .from("myspace_messages")
+        .select(
+          "id,sender_id,recipient_id,body,created_at,read_at"
+        )
+        .or(
+          `and(sender_id.eq.${sessionUser.id},recipient_id.eq.${peerId}),and(sender_id.eq.${peerId},recipient_id.eq.${sessionUser.id})`
+        )
+        .order("created_at", { ascending: true })
+        .limit(300);
+
+      if (error) {
+        console.error(
+          "[AQ MySpace] message fetch failed",
+          error,
+        );
+
+        return json(
+          { error: "messages_unavailable" },
+          { status: 500 },
+        );
+      }
+
+      return json({
+        messages: data || [],
+      });
+    }
+
     return json({ error: "unknown_view" }, { status: 400 });
   }
 
@@ -256,6 +356,62 @@ export default async (request: Request, _context: Context) => {
 
   const action = String(body?.action || "");
   const author = await profileForUser(store, sessionUser);
+
+  if (action === "send_message") {
+    const recipientId = safeId(body.recipientId);
+    const text = cleanText(body.text, 2000);
+
+    if (
+      !recipientId ||
+      !text ||
+      recipientId === sessionUser.id
+    ) {
+      return json(
+        { error: "invalid_message" },
+        { status: 400 },
+      );
+    }
+
+    try {
+      await admin.getUser(recipientId);
+    } catch {
+      return json(
+        { error: "recipient_not_found" },
+        { status: 404 },
+      );
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    const { data, error } = await supabase
+      .from("myspace_messages")
+      .insert({
+        sender_id: sessionUser.id,
+        recipient_id: recipientId,
+        body: text,
+      })
+      .select(
+        "id,sender_id,recipient_id,body,created_at,read_at"
+      )
+      .single();
+
+    if (error) {
+      console.error(
+        "[AQ MySpace] message insert failed",
+        error,
+      );
+
+      return json(
+        { error: "message_send_failed" },
+        { status: 500 },
+      );
+    }
+
+    return json({
+      ok: true,
+      message: data,
+    });
+  }
 
   if (action === "save_profile") {
     const profile = {

@@ -434,8 +434,14 @@ export default async (request: Request, _context: Context) => {
         error,
       );
 
+      const isPreview = Netlify?.context?.deploy?.context !== "production";
+
       return json(
-        { error: "message_send_failed" },
+        {
+          error: isPreview
+            ? `message_send_failed:${error.code || "unknown"}:${error.message || "unknown"}`
+            : "message_send_failed",
+        },
         { status: 500 },
       );
     }

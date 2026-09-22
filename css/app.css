@@ -751,7 +751,7 @@
         }
         .mail-main {
             display: grid;
-            grid-template-rows: 42px 18px minmax(0, 1fr);
+            grid-template-rows: 42px 34px minmax(0, 1fr);
             min-width: 0;
             min-height: 0;
         }
@@ -762,6 +762,52 @@
             padding: 6px;
             background: #c0c0c0;
             border-bottom: 1px solid var(--xp-gray);
+        }
+        .mail-account-strip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            padding: 4px 7px;
+            background: #fff8d6;
+            border-top: 1px solid #fff;
+            border-bottom: 1px solid #9c8f55;
+            color: #222;
+            font-size: 11px;
+        }
+        .mail-account-label {
+            flex: 0 0 auto;
+            color: #6f5c00;
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: .2px;
+        }
+        #mail-current-address {
+            min-width: 0;
+            flex: 1 1 auto;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #003399;
+            font: bold 13px "Courier New", monospace;
+            cursor: text;
+            user-select: all;
+        }
+        #mail-copy-address {
+            flex: 0 0 auto;
+            padding: 2px 8px;
+            font-size: 10px;
+        }
+        body.global-dark #win-mail .mail-account-strip {
+            background: #38341f;
+            border-color: #766d3b;
+            color: #fff;
+        }
+        body.global-dark #win-mail .mail-account-label {
+            color: #e4ce65;
+        }
+        body.global-dark #win-mail #mail-current-address {
+            color: #9fc1ff;
         }
         .mail-split {
             display: grid;

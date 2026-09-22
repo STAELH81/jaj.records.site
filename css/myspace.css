@@ -769,3 +769,44 @@ body.global-dark #win-myspace .myspace-compose textarea {
         max-width: 88%;
     }
 }
+
+
+.myspace-friend-add {
+    margin-bottom: 8px;
+}
+
+.myspace-friend-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+}
+
+.myspace-friend-form input {
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 5px 6px;
+    border: 1px solid #777;
+    background: #fff;
+    color: #111;
+    font: 10px Verdana, Arial, sans-serif;
+}
+
+.myspace-friend-status {
+    margin-top: 6px;
+    padding: 5px 6px;
+    border: 1px solid #ccc;
+    background: #f7f7f7;
+    font-size: 9px;
+}
+
+.myspace-friend-status.ok {
+    border-color: #8bb884;
+    background: #f1fff0;
+    color: #245a1f;
+}
+
+.myspace-friend-status.error {
+    border-color: #d27b7b;
+    background: #fff1f1;
+    color: #8b1111;
+}

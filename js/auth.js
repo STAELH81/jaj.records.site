@@ -50,6 +50,15 @@ const signupCancel = document.getElementById('aq-signup-cancel');
 const switchUserBtn = document.getElementById('aq-switch-user-btn');
 const logoutBtn = document.getElementById('aq-logout-btn');
 const sessionSummary = document.getElementById('aq-session-summary');
+const accountGearBtn = document.getElementById('aq-account-gear-btn');
+const accountPanel = document.getElementById('aq-account-panel');
+const accountEmail = document.getElementById('aq-account-email');
+const accountMail = document.getElementById('aq-account-mail');
+const accountCloud = document.getElementById('aq-account-cloud');
+const accountLastSync = document.getElementById('aq-account-last-sync');
+const accountSyncNowBtn = document.getElementById('aq-account-sync-now');
+const startSettingsLink = document.getElementById('aq-start-settings-link');
+const startUpdatesLink = document.getElementById('aq-start-updates-link');
 
 let currentIdentityUser = null;
 let currentSession = null;
@@ -111,6 +120,20 @@ function applyAuthLanguage() {
     set('#aq-welcome-network', tr('AQ-NET · prêt', 'AQ-NET · ready'));
     if (switchUserBtn) switchUserBtn.textContent = tr('Changer d’utilisateur', 'Switch user');
     if (logoutBtn) logoutBtn.textContent = tr('Déconnexion', 'Log out');
+    if (startSettingsLink) startSettingsLink.textContent = tr('Settings', 'Settings');
+    if (startUpdatesLink) startUpdatesLink.textContent = tr('Mises à jour', 'Updates');
+    if (accountGearBtn) {
+        accountGearBtn.title = tr('Mon compte AQ', 'My AQ account');
+        accountGearBtn.setAttribute('aria-label', accountGearBtn.title);
+    }
+    const accountPanelTitle = accountPanel?.querySelector('.start-account-panel-title');
+    if (accountPanelTitle) accountPanelTitle.textContent = tr('Mon compte AQ', 'My AQ account');
+    const accountRows = accountPanel?.querySelectorAll('.start-account-row > span');
+    if (accountRows?.[0]) accountRows[0].textContent = 'E-mail';
+    if (accountRows?.[1]) accountRows[1].textContent = 'AQ-Mail';
+    if (accountRows?.[2]) accountRows[2].textContent = 'Cloud';
+    if (accountRows?.[3]) accountRows[3].textContent = tr('Dernière synchro', 'Last sync');
+    if (accountSyncNowBtn) accountSyncNowBtn.textContent = tr('Synchroniser maintenant', 'Sync now');
 
     renderRecentAccounts();
     updateDesktopSessionUI(currentSession);
@@ -210,12 +233,14 @@ function sessionFromUser(user) {
     const isAdmin = roles.includes('admin');
     const isArtist = roles.includes('artist');
     const ranked = rankRoles(roles);
+    const metadata = user?.user_metadata || {};
     return {
         type: 'user',
         id: user.id,
         email: user.email,
         displayName: getDisplayName(user),
         aquertyMail: buildAquertyMail(user),
+        accountAvatar: metadata.aq_avatar || metadata.avatar_url || metadata.avatar || '',
         roles,
         isArtist,
         isAdmin,
@@ -411,6 +436,32 @@ function makeGuestSession() {
     };
 }
 
+function formatAccountSyncTime(value) {
+    const stamp = Number(value || 0);
+    if (!stamp) return tr('Jamais', 'Never');
+    try {
+        return new Intl.DateTimeFormat(isEnglish() ? 'en-GB' : 'fr-FR', {
+            dateStyle: 'short',
+            timeStyle: 'short'
+        }).format(new Date(stamp));
+    } catch (_) {
+        return tr('Inconnue', 'Unknown');
+    }
+}
+
+function updateAccountCloudUI(detail = {}) {
+    if (accountCloud) {
+        accountCloud.textContent = detail.text || tr('Hors ligne', 'Offline');
+        accountCloud.dataset.state = detail.state || '';
+    }
+    if (accountLastSync) {
+        accountLastSync.textContent = formatAccountSyncTime(detail.lastSyncedAt || 0);
+    }
+    if (accountSyncNowBtn) {
+        accountSyncNowBtn.disabled = !currentSession || currentSession.type !== 'user' || detail.state === 'syncing';
+    }
+}
+
 function updateDesktopSessionUI(session) {
     const sessionName = document.getElementById('aq-session-name');
     const sessionAvatar = document.getElementById('aq-session-avatar');
@@ -427,8 +478,22 @@ function updateDesktopSessionUI(session) {
     }
 
     if (sessionAvatar) {
-        sessionAvatar.textContent = avatarInitial(session?.displayName || '?');
+        const accountAvatar = String(session?.accountAvatar || '');
+        if (accountAvatar && (/^data:image\//i.test(accountAvatar) || /^https?:\/\//i.test(accountAvatar))) {
+            sessionAvatar.textContent = '';
+            sessionAvatar.style.backgroundImage = `url("${accountAvatar}")`;
+            sessionAvatar.style.backgroundSize = 'cover';
+            sessionAvatar.style.backgroundPosition = 'center';
+        } else {
+            sessionAvatar.style.backgroundImage = '';
+            sessionAvatar.textContent = avatarInitial(session?.displayName || '?');
+        }
     }
+
+    if (accountEmail) accountEmail.textContent = session?.type === 'user' ? (session.email || '—') : '—';
+    if (accountMail) accountMail.textContent = session?.aquertyMail || '—';
+    if (accountGearBtn) accountGearBtn.disabled = !session;
+    if (accountSyncNowBtn) accountSyncNowBtn.disabled = session?.type !== 'user';
 
     if (sessionRole) {
         const displayRoles = rolesForDisplay(session);
@@ -445,6 +510,7 @@ function updateDesktopSessionUI(session) {
 }
 
 async function enterSession(session) {
+    if (accountPanel) accountPanel.hidden = true;
     currentSession = session;
     window.JAJSession = session;
     if (session?.type === 'user') rememberAccount(session);
@@ -523,6 +589,48 @@ function identityErrorMessage(error, fallback) {
     }
     return raw ? `${fallback} ${raw}` : fallback;
 }
+
+accountGearBtn?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (!accountPanel || !currentSession) return;
+    accountPanel.hidden = !accountPanel.hidden;
+});
+
+startSettingsLink?.addEventListener('click', () => {
+    accountPanel && (accountPanel.hidden = true);
+    window.openWindow?.('win-settings', 'task-settings');
+    window.toggleStartMenu?.(false);
+});
+
+startUpdatesLink?.addEventListener('click', () => {
+    accountPanel && (accountPanel.hidden = true);
+    window.dispatchEvent(new CustomEvent('aq:updates-open'));
+    window.toggleStartMenu?.(false);
+});
+
+accountSyncNowBtn?.addEventListener('click', async () => {
+    if (!window.AQCloudSync || currentSession?.type !== 'user') return;
+    accountSyncNowBtn.disabled = true;
+    const previous = accountSyncNowBtn.textContent;
+    accountSyncNowBtn.textContent = tr('Synchronisation…', 'Syncing…');
+    try {
+        const result = await window.AQCloudSync.syncNow();
+        if (result?.ok) {
+            updateAccountCloudUI({
+                text: tr('Cloud : synchronisé', 'Cloud: synced'),
+                state: 'synced',
+                lastSyncedAt: result.lastSyncedAt || Date.parse(result.updatedAt || '') || Date.now()
+            });
+        }
+    } finally {
+        accountSyncNowBtn.textContent = previous;
+        accountSyncNowBtn.disabled = false;
+    }
+});
+
+window.addEventListener('aq:cloud-status', (event) => {
+    updateAccountCloudUI(event.detail || {});
+});
 
 guestBtn?.addEventListener('click', async () => {
     if (busy) return;

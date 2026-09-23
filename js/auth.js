@@ -451,7 +451,8 @@ function formatAccountSyncTime(value) {
 
 function updateAccountCloudUI(detail = {}) {
     if (accountCloud) {
-        accountCloud.textContent = detail.text || tr('Hors ligne', 'Offline');
+        const raw = detail.text || tr('Hors ligne', 'Offline');
+        accountCloud.textContent = String(raw).replace(/^Cloud\s*:\s*/i, '');
         accountCloud.dataset.state = detail.state || '';
     }
     if (accountLastSync) {

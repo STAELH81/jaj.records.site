@@ -157,6 +157,11 @@ function presenceText(person) {
         : tr('○ Hors ligne', '○ Offline');
 }
 
+function syncMessageNotifications(summary) {
+    if (!Array.isArray(summary.notifications)) return;
+    window.AQNotifications?.reconcile('myspace', summary.notifications.map(item => ({ id: `message:${item.id}`, target: item.senderId, title: 'AQ-MySpace', body: tr('Nouveau message privé', 'New private message') })));
+}
+
 function updateUnreadBadge(count = 0) {
     const safe = Math.max(0, Number(count) || 0);
     ms.unreadCount = safe;
@@ -283,7 +288,10 @@ async function refreshUnreadSummary({ notify = false } = {}) {
 
     try {
         const previous = ms.unreadCount;
+        const sessionId = ms.session?.id;
         const summary = await requestGET('chat_summary');
+        if (sessionId !== window.JAJSession?.id) return;
+        syncMessageNotifications(summary);
         ms.unreadBySender = summary.bySender || {};
         updateUnreadBadge(summary.unreadCount || 0);
 
@@ -313,8 +321,11 @@ async function pollFriendRequests({ notify = true } = {}) {
     }
 
     try {
+        const sessionId = ms.session?.id;
         const data = await requestGET('friend_requests');
+        if (sessionId !== window.JAJSession?.id) return;
         const requests = Array.isArray(data.requests) ? data.requests : [];
+        window.AQNotifications?.reconcile('friends', requests.map(request => ({ id: `friend:${request.id}`, target: `friend_${request.id}`, title: tr('Demande d’ami', 'Friend request'), body: request.senderName || 'AQ-MySpace' })));
         const nextIds = new Set(requests.map((request) => request.id).filter(Boolean));
 
         if (ms.friendRequestsInitialized && notify) {
@@ -767,6 +778,7 @@ async function loadMessages() {
             requestGET('chat_summary').catch(() => ({ unreadCount: ms.unreadCount, bySender: ms.unreadBySender }))
         ]);
         if (!isCurrentView(viewEpoch, 'messages')) return;
+        syncMessageNotifications(summary);
         ms.chatContacts = Array.isArray(data.contacts) ? data.contacts : [];
         ms.unreadBySender = summary.bySender || {};
         updateUnreadBadge(summary.unreadCount || 0);
@@ -2313,6 +2325,11 @@ document.querySelectorAll('.myspace-nav-btn').forEach((button) => {
 });
 
 window.addEventListener('jaj:session-changed', async (event) => {
+    ms.viewEpoch += 1;
+    ms.session = event.detail || null;
+    ms.unreadCount = 0;
+    ms.unreadBySender = {};
+    ms.notificationPeer = null;
     await stopChatRealtime();
     ms.chatPeerId = null;
     ms.chatContacts = [];
@@ -2334,10 +2351,22 @@ window.addEventListener('aq:myspace-open', async () => {
     await refreshSelfAvatar();
     await sendPresenceHeartbeat();
     await refreshUnreadSummary({ notify: false });
-    refreshCurrentView();
+    if (ms.notificationPeer) {
+        const peer = ms.notificationPeer;
+        ms.notificationPeer = null;
+        await loadMessages();
+        await openChat(peer);
+    } else refreshCurrentView();
+});
+
+window.addEventListener('aq:notification-messages', event => {
+    ms.tab = 'messages';
+    ms.notificationPeer = event.detail;
+    window.openWindow?.('win-myspace', 'task-myspace');
 });
 
 window.addEventListener('aq:friends-changed', () => {
+    void pollFriendRequests({ notify: false });
     if (document.getElementById('win-myspace')?.style.display !== 'block') return;
     if (ms.tab === 'messages') loadMessages();
     if (ms.tab === 'friends') loadFriends();

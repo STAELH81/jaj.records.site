@@ -3394,6 +3394,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
 
     function mailRenderList() {
+        window.AQNotifications?.reconcile('mail', mailData.filter(m => m.folder === 'inbox' && m.unread && m.kind !== 'friend_request').map(m => ({ id: `mail:${m.id}`, target: m.id, title: 'AQ-Mail', body: m.subject || tUI().mailNoSubject })));
         const list = mailGetVisibleList();
         mailListEl.innerHTML = '';
 
@@ -3546,6 +3547,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
                     return [];
                 })
             ]);
+            if (address !== getAquertySessionMail()) return;
             mailData = [
                 ...friendRequests,
                 ...(Array.isArray(data.messages) ? data.messages : [])
@@ -3575,11 +3577,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         const m = mailData.find(x => x.id === id);
         if (!m) return;
         if (m.unread) {
+            if (m.kind !== 'friend_request') {
+                try { await mailAPI('POST', { action: 'mark_read', id }); } catch (_) { return; }
+            }
             m.unread = false;
             mailRenderList();
-            if (m.kind !== 'friend_request') {
-                try { await mailAPI('POST', { action: 'mark_read', id }); } catch (_) {}
-            }
         }
         mailRenderView(m);
         addSystemLog(`Mail: ouvert ${id}`);
@@ -3725,11 +3727,12 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     mailRenderView();
     loadMail(true);
     setInterval(() => {
-        if (document.getElementById('win-mail')?.style.display === 'block') {
+        if (isMailAccountReady()) {
             loadMail(true);
         }
     }, 15000);
     window.AQMail = {
+        open: async id => { await loadMail(true); mailFolder = 'inbox'; mailSearchEl.value = ''; mailRenderFolders(); mailRenderList(); await mailOpen(id); },
         refresh: () => loadMail(true),
         address: () => getAquertySessionMail()
     };

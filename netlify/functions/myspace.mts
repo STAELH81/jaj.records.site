@@ -184,7 +184,7 @@ async function unreadSummaryForUser(userId: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("myspace_messages")
-    .select("sender_id,created_at")
+    .select("id,sender_id,created_at")
     .eq("recipient_id", userId)
     .is("read_at", null)
     .order("created_at", { ascending: false })
@@ -202,6 +202,7 @@ async function unreadSummaryForUser(userId: string) {
   return {
     unreadCount: (data || []).length,
     bySender,
+    notifications: (data || []).map(row => ({ id: row.id, senderId: row.sender_id, createdAt: row.created_at })),
   };
 }
 

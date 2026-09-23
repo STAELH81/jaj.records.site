@@ -1,0 +1,16 @@
+#aq-notifications { position: fixed; z-index: 100000; right: 8px; bottom: 48px; width: min(430px, calc(100vw - 16px)); max-height: calc(100dvh - 70px); background: #c0c0c0; color: #111; border: 2px outset #eee; box-shadow: 3px 3px #0008; font: 12px Tahoma, sans-serif; }
+#aq-notifications[hidden] { display: none; }
+.aq-notification-toolbar { display: flex; gap: 5px; padding: 6px; flex-wrap: wrap; }
+.aq-notification-counts { margin: 8px; }
+.aq-notification-list { margin: 6px; max-height: calc(100dvh - 250px); overflow: auto; background: white; border: 2px inset #eee; }
+.aq-notification-list > p { padding: 14px; }
+.aq-notification { display: flex; align-items: center; gap: 6px; padding: 8px; border-bottom: 1px solid #bbb; }
+.aq-notification.unread { background: #edf1ff; border-left: 4px solid navy; }
+.aq-notification-open { flex: 1; min-width: 0; display: grid; gap: 5px; text-align: left; background: transparent; border: 0; color: inherit; cursor: pointer; font: inherit; overflow-wrap: anywhere; }
+.aq-notification-open small { color: #555; }
+.aq-notification-footer { display: block; padding: 6px 8px; }
+.aq-app-badge { display: inline-block; background: navy; color: white; padding: 1px 4px; border: 1px outset white; margin-left: 4px; font: bold 11px Tahoma, sans-serif; }
+.aq-app-badge[hidden] { display: none; }
+#tray-notifications-btn { width: auto; min-width: 32px; font-weight: bold; }
+#mobile-notifications-btn { display: none; }
+body.mobile-mode #mobile-notifications-btn { display: block; position: fixed; z-index: 99999; right: 8px; top: 8px; padding: 7px; }

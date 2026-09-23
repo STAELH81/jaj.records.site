@@ -3573,6 +3573,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
     }
 
     async function mailOpen(id) {
+        const openingAccount = window.JAJSession?.id;
         mailSelectedId = id;
         const m = mailData.find(x => x.id === id);
         if (!m) return;
@@ -3580,6 +3581,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             if (m.kind !== 'friend_request') {
                 try { await mailAPI('POST', { action: 'mark_read', id }); } catch (_) { return; }
             }
+            if (openingAccount !== window.JAJSession?.id) return;
             m.unread = false;
             mailRenderList();
         }
@@ -3713,8 +3715,11 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         }
     });
     window.addEventListener('jaj:session-changed', () => {
+        mailData = [];
         mailLoadedAddress = '';
         mailSelectedId = null;
+        mailRenderList();
+        mailRenderView();
         updateMailAccountStrip();
         loadMail(true);
     });

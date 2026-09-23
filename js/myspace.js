@@ -2331,9 +2331,9 @@ window.addEventListener('jaj:session-changed', async (event) => {
     ms.unreadBySender = {};
     ms.notificationPeer = null;
     await stopChatRealtime();
+    if (event.detail !== window.JAJSession) return;
     ms.chatPeerId = null;
     ms.chatContacts = [];
-    ms.session = event.detail || null;
     ms.selfAvatarData = '';
     ms.friendRequestsInitialized = false;
     ms.knownFriendRequestIds = new Set();

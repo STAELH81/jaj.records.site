@@ -1624,42 +1624,6 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
         activePopupTimer = setTimeout(closeSystemPopup, 7000);
     }
 
-    function showAQUpdateCenterPreview() {
-        closeSystemPopup();
-        const container = document.getElementById('system-popup-container');
-        if (!container) return;
-
-        const popup = document.createElement('div');
-        popup.className = 'system-popup';
-        popup.innerHTML = `
-            <div class="system-popup-title">
-                <span>AQ Update</span>
-                <button class="retro-btn" style="padding:0 5px;" aria-label="Fermer">X</button>
-            </div>
-            <div class="system-popup-body">
-                <div class="popup-icon">↻</div>
-                <div>
-                    <strong>${getCurrentLanguage() === 'en' ? 'Update Center' : 'Centre de mises à jour'}</strong>
-                    <div style="margin-top:4px;">
-                        ${getCurrentLanguage() === 'en'
-                            ? 'AQ-NEO is up to date. The full update center will live here.'
-                            : 'AQ-NEO est à jour. Le centre de mises à jour complet sera accessible ici.'}
-                    </div>
-                </div>
-            </div>
-            <div class="system-popup-actions">
-                <button class="retro-btn">OK</button>
-            </div>
-        `;
-
-        const buttons = popup.querySelectorAll('button');
-        buttons.forEach((button) => button.addEventListener('click', closeSystemPopup));
-        container.appendChild(popup);
-        activePopupTimer = setTimeout(closeSystemPopup, 9000);
-    }
-
-    window.addEventListener('aq:updates-open', showAQUpdateCenterPreview);
-
     function getPopupDelayRange() {
         if (appSettings.popupFrequency === 'low') return { min: 45000, max: 75000 };
         if (appSettings.popupFrequency === 'high') return { min: 12000, max: 24000 };

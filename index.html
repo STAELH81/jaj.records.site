@@ -597,6 +597,108 @@
         </div>
     </div>
 
+<div class="window aq-account-window" id="win-account" style="display:none;width:620px;height:520px;top:55px;left:260px;">
+    <div class="title-bar">
+        <span>Mon compte AQ</span>
+        <div class="window-controls">
+            <button class="retro-btn window-minimize-btn" type="button" aria-label="Réduire" onclick="toggleWindow('win-account','task-account')">_</button>
+            <button class="retro-btn window-close-btn" type="button" aria-label="Fermer" onclick="closeWindow('win-account','task-account')">X</button>
+        </div>
+    </div>
+    <div class="window-content aq-account-window-content">
+        <div id="aq-account-window-status" class="aq-account-window-status" role="status" aria-live="polite"></div>
+
+        <section class="aq-account-section aq-account-identity-section">
+            <div class="aq-account-section-title">Identité AQ-NEO</div>
+            <div class="aq-account-profile-layout">
+                <div class="aq-account-avatar-column">
+                    <div id="aq-account-avatar-preview" class="aq-account-avatar-preview">?</div>
+                    <input id="aq-account-avatar-input" type="file" accept="image/png,image/jpeg,image/webp">
+                    <button id="aq-account-avatar-remove" class="retro-btn" type="button">Retirer la photo</button>
+                    <small>Photo système uniquement · séparée de MySpace et des pages artistes.</small>
+                </div>
+                <div class="aq-account-profile-fields">
+                    <label>Nom affiché
+                        <input id="aq-account-display-name" type="text" maxlength="40">
+                    </label>
+                    <div class="aq-account-readonly-row"><span>AQ-Mail</span><strong id="aq-account-window-mail">—</strong></div>
+                    <div class="aq-account-readonly-row"><span>Rôle(s)</span><strong id="aq-account-window-roles">—</strong></div>
+                    <div class="aq-account-readonly-row"><span>Compte créé</span><strong id="aq-account-window-created">—</strong></div>
+                    <button id="aq-account-profile-save" class="retro-btn aq-primary-btn" type="button">Enregistrer le profil</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="aq-account-section">
+            <div class="aq-account-section-title">Connexion</div>
+            <div class="aq-account-form-grid">
+                <label>Nouvel e-mail
+                    <input id="aq-account-email-input" type="email" autocomplete="email">
+                </label>
+                <label>Mot de passe actuel
+                    <input id="aq-account-email-password" type="password" autocomplete="current-password">
+                </label>
+                <div></div>
+                <button id="aq-account-email-save" class="retro-btn" type="button">Changer l’e-mail</button>
+            </div>
+            <div class="aq-account-divider"></div>
+            <div class="aq-account-form-grid">
+                <label>Mot de passe actuel
+                    <input id="aq-account-current-password" type="password" autocomplete="current-password">
+                </label>
+                <label>Nouveau mot de passe
+                    <input id="aq-account-new-password" type="password" minlength="8" autocomplete="new-password">
+                </label>
+                <label>Confirmer
+                    <input id="aq-account-confirm-password" type="password" minlength="8" autocomplete="new-password">
+                </label>
+                <button id="aq-account-password-save" class="retro-btn" type="button">Changer le mot de passe</button>
+            </div>
+        </section>
+
+        <section class="aq-account-section">
+            <div class="aq-account-section-title">Cloud AQ-NEO</div>
+            <div class="aq-account-cloud-grid">
+                <div><span>État</span><strong id="aq-account-window-cloud">Hors ligne</strong></div>
+                <div><span>Dernière synchro</span><strong id="aq-account-window-last-sync">Jamais</strong></div>
+                <div><span>Synchronisé</span><strong>Fond d’écran · thème · langue · icônes · AQ-Player</strong></div>
+            </div>
+            <button id="aq-account-window-sync" class="retro-btn" type="button">Synchroniser maintenant</button>
+        </section>
+    </div>
+</div>
+
+<div class="window aq-update-window" id="win-updates" style="display:none;width:600px;height:460px;top:70px;left:300px;">
+    <div class="title-bar">
+        <span>AQ Update</span>
+        <div class="window-controls">
+            <button class="retro-btn window-minimize-btn" type="button" aria-label="Réduire" onclick="toggleWindow('win-updates','task-updates')">_</button>
+            <button class="retro-btn window-close-btn" type="button" aria-label="Fermer" onclick="closeWindow('win-updates','task-updates')">X</button>
+        </div>
+    </div>
+    <div class="window-content aq-update-content">
+        <div class="aq-update-hero">
+            <div class="aq-update-icon">↻</div>
+            <div>
+                <div class="aq-update-title">Centre de mises à jour AQ-NEO</div>
+                <div id="aq-update-summary">Vérification de la version…</div>
+            </div>
+        </div>
+        <div class="aq-update-info-grid">
+            <div><span>Version installée</span><strong id="aq-update-current-version">—</strong></div>
+            <div><span>Dernière version</span><strong id="aq-update-latest-version">—</strong></div>
+            <div><span>Canal</span><strong id="aq-update-channel">Stable</strong></div>
+            <div><span>Dernière vérification</span><strong id="aq-update-last-check">Jamais</strong></div>
+        </div>
+        <div class="aq-update-actions">
+            <button id="aq-update-check-btn" class="retro-btn aq-primary-btn" type="button">Rechercher des mises à jour</button>
+            <button id="aq-update-reload-btn" class="retro-btn" type="button" hidden>Installer / recharger</button>
+        </div>
+        <div class="aq-update-section-title">Nouveautés</div>
+        <div id="aq-update-changelog" class="aq-update-changelog"></div>
+    </div>
+</div>
+
 <div class="window" id="win-publisher" style="display:none;top:45px;left:160px;">
     <div class="title-bar"><span>Artist Publisher</span><div class="window-controls">
         <button class="retro-btn window-minimize-btn" type="button" aria-label="Réduire" onclick="toggleWindow('win-publisher','task-publisher')">_</button>
@@ -615,6 +717,8 @@
         <div class="task-item active" id="task-tempus" style="display: none;" onclick="toggleWindow('win-tempus', 'task-tempus')">Sécurité - tempus_pe...</div>
         <div class="task-item active" id="task-trash" style="display: none;" onclick="toggleWindow('win-trash', 'task-trash')">Corbeille</div>
         <div class="task-item active" id="task-settings" style="display: none;" onclick="toggleWindow('win-settings', 'task-settings')">Panneau de config...</div>
+        <div class="task-item active" id="task-account" style="display: none;" onclick="toggleWindow('win-account', 'task-account')">Mon compte AQ</div>
+        <div class="task-item active" id="task-updates" style="display: none;" onclick="toggleWindow('win-updates', 'task-updates')">AQ Update</div>
         <div class="task-item active" id="task-logs" style="display: none;" onclick="toggleWindow('win-logs', 'task-logs')">Visionneur de logs</div>
         <div class="task-item active" id="task-acc" style="display: none;" onclick="toggleWindow('win-acc', 'task-acc')">AQ-ACC</div>
         <div class="task-item active" id="task-ms" style="display: none;" onclick="toggleWindow('win-ms', 'task-ms')">AQ-Mines</div>
@@ -676,16 +780,6 @@
                 </div>
             </div>
             <button id="aq-account-gear-btn" class="start-session-gear" type="button" title="Mon compte AQ" aria-label="Mon compte AQ">⚙</button>
-        </div>
-        <div id="aq-account-panel" class="start-account-panel" hidden>
-            <div class="start-account-panel-title">Mon compte AQ</div>
-            <div class="start-account-row"><span>E-mail</span><strong id="aq-account-email">—</strong></div>
-            <div class="start-account-row"><span>AQ-Mail</span><strong id="aq-account-mail">—</strong></div>
-            <div class="start-account-row"><span>Cloud</span><strong id="aq-account-cloud">Hors ligne</strong></div>
-            <div class="start-account-row"><span>Dernière synchro</span><strong id="aq-account-last-sync">Jamais</strong></div>
-            <div class="start-account-actions">
-                <button id="aq-account-sync-now" class="retro-btn" type="button">Synchroniser maintenant</button>
-            </div>
         </div>
     </div>
     <div class="start-menu-section publisher-entry" hidden><button class="retro-btn" type="button" onclick="openWindow('win-publisher','task-publisher');toggleStartMenu(false);">Artist Publisher</button></div>

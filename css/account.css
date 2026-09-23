@@ -1373,3 +1373,317 @@ body.global-dark .mail-account-strip {
         object-position: center;
     }
 }
+
+
+/* --- AQ Account window + AQ Update --- */
+.aq-account-window-content,
+.aq-update-content {
+    box-sizing: border-box;
+    height: calc(100% - 2px);
+    overflow: auto;
+    padding: 10px;
+    background: #ece9d8;
+    color: #111;
+    font: 11px Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+.aq-account-window-status {
+    min-height: 16px;
+    margin-bottom: 8px;
+    padding: 5px 7px;
+    border: 1px solid #aca899;
+    background: #fff;
+    color: #444;
+}
+
+.aq-account-window-status.success {
+    border-color: #6ca56c;
+    background: #ecffeb;
+    color: #245b24;
+}
+
+.aq-account-window-status.error {
+    border-color: #c56c6c;
+    background: #fff0f0;
+    color: #8c1616;
+}
+
+.aq-account-section {
+    margin-bottom: 10px;
+    border: 1px solid #7f9db9;
+    background: #fff;
+}
+
+.aq-account-section-title,
+.aq-update-section-title {
+    padding: 4px 7px;
+    border-bottom: 1px solid #7f9db9;
+    background: linear-gradient(to right, #316ac5, #7aa7e8);
+    color: #fff;
+    font-weight: bold;
+}
+
+.aq-account-profile-layout {
+    display: grid;
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px;
+}
+
+.aq-account-avatar-column {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.aq-account-avatar-preview {
+    width: 104px;
+    height: 104px;
+    margin: 0 auto 4px;
+    display: grid;
+    place-items: center;
+    border: 2px inset #d4d0c8;
+    background: #dfe7f3;
+    color: #1c4f9b;
+    font-size: 40px;
+    font-weight: bold;
+}
+
+.aq-account-avatar-column input[type="file"] {
+    width: 100%;
+    font-size: 9px;
+}
+
+.aq-account-avatar-column small {
+    color: #666;
+    line-height: 1.35;
+}
+
+.aq-account-profile-fields,
+.aq-account-form-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.aq-account-profile-fields label,
+.aq-account-form-grid label {
+    display: grid;
+    gap: 3px;
+    font-weight: bold;
+}
+
+.aq-account-profile-fields input,
+.aq-account-form-grid input {
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 4px 5px;
+    border: 2px inset #d4d0c8;
+    background: #fff;
+    color: #111;
+    font: 11px Tahoma, Arial, sans-serif;
+}
+
+.aq-account-readonly-row,
+.aq-account-cloud-grid > div,
+.aq-update-info-grid > div {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 8px;
+    align-items: baseline;
+}
+
+.aq-account-readonly-row span,
+.aq-account-cloud-grid span,
+.aq-update-info-grid span {
+    color: #555;
+}
+
+.aq-account-readonly-row strong,
+.aq-account-cloud-grid strong,
+.aq-update-info-grid strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.aq-account-form-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+    padding: 10px;
+}
+
+.aq-account-divider {
+    height: 1px;
+    margin: 0 10px;
+    background: #d6d2c3;
+}
+
+.aq-account-cloud-grid {
+    display: grid;
+    gap: 5px;
+    padding: 10px 10px 6px;
+}
+
+.aq-account-section > #aq-account-window-sync {
+    margin: 0 10px 10px;
+}
+
+.aq-primary-btn {
+    font-weight: bold;
+}
+
+.aq-update-hero {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 12px;
+    border: 1px solid #7f9db9;
+    background: linear-gradient(#f8fbff, #e5efff);
+}
+
+.aq-update-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #6b86aa;
+    background: #dbe9ff;
+    color: #174a9c;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.aq-update-title {
+    margin-bottom: 4px;
+    color: #174a9c;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+#aq-update-summary[data-state="current"] {
+    color: #246324;
+}
+
+#aq-update-summary[data-state="available"] {
+    color: #9b5b00;
+    font-weight: bold;
+}
+
+#aq-update-summary[data-state="error"] {
+    color: #8c1616;
+}
+
+.aq-update-info-grid {
+    display: grid;
+    gap: 5px;
+    margin-bottom: 10px;
+    padding: 9px;
+    border: 1px solid #aca899;
+    background: #fff;
+}
+
+.aq-update-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.aq-update-changelog {
+    min-height: 145px;
+    max-height: 210px;
+    overflow: auto;
+    padding: 8px;
+    border: 2px inset #d4d0c8;
+    background: #fff;
+}
+
+.aq-update-notes {
+    margin: 0 0 10px;
+    padding-left: 20px;
+}
+
+.aq-update-notes li {
+    margin-bottom: 4px;
+}
+
+.aq-update-history-title {
+    margin: 8px 0 5px;
+    color: #174a9c;
+    font-weight: bold;
+}
+
+.aq-update-history {
+    border-top: 1px solid #ddd;
+}
+
+.aq-update-history-row {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) 82px;
+    gap: 6px;
+    padding: 4px 2px;
+    border-bottom: 1px solid #eee;
+}
+
+.aq-update-history-row > span:last-child {
+    color: #666;
+    text-align: right;
+}
+
+body.global-dark .aq-account-window-content,
+body.global-dark .aq-update-content {
+    background: #202938;
+    color: #edf3ff;
+}
+
+body.global-dark .aq-account-section,
+body.global-dark .aq-update-info-grid,
+body.global-dark .aq-update-changelog,
+body.global-dark .aq-account-window-status {
+    border-color: #53657f;
+    background: #17202d;
+    color: #edf3ff;
+}
+
+body.global-dark .aq-account-profile-fields input,
+body.global-dark .aq-account-form-grid input {
+    border-color: #53657f;
+    background: #111927;
+    color: #fff;
+}
+
+body.global-dark .aq-account-readonly-row span,
+body.global-dark .aq-account-cloud-grid span,
+body.global-dark .aq-update-info-grid span,
+body.global-dark .aq-account-avatar-column small {
+    color: #b8c4d7;
+}
+
+body.global-dark .aq-update-hero {
+    border-color: #53657f;
+    background: linear-gradient(#27364c, #1c293b);
+}
+
+@media (max-width: 700px) {
+    .aq-account-profile-layout,
+    .aq-account-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aq-account-readonly-row,
+    .aq-account-cloud-grid > div,
+    .aq-update-info-grid > div {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+
+    .aq-update-history-row {
+        grid-template-columns: 50px 1fr;
+    }
+
+    .aq-update-history-row > span:last-child {
+        grid-column: 2;
+        text-align: left;
+    }
+}

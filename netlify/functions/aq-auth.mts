@@ -33,13 +33,52 @@ function serializeUser(user: any) {
   return {
     id: user.id,
     email: user.email,
+    createdAt: user?.createdAt || user?.created_at || user?.confirmedAt || user?.confirmed_at || null,
     roles: normalizeRoles(user?.roles || user?.app_metadata?.roles || user?.appMetadata?.roles),
     user_metadata: {
       full_name: metadata.full_name || metadata.display_name || "",
       display_name: metadata.display_name || metadata.full_name || "",
       aquerty_mail: metadata.aquerty_mail || "",
+      aq_avatar: metadata.aq_avatar || "",
     },
   };
+}
+
+
+function cleanDisplayName(value: unknown) {
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+}
+
+function cleanAvatar(value: unknown) {
+  const avatar = String(value ?? "").trim();
+  if (!avatar) return "";
+  const match = avatar.match(/^data:image\/(png|jpeg|webp);base64,([a-zA-Z0-9+/=]+)$/);
+  if (!match) throw new Error("invalid_avatar");
+  const estimatedBytes = Math.floor(match[2].length * 3 / 4);
+  if (estimatedBytes > 160 * 1024) throw new Error("avatar_too_large");
+  return avatar;
+}
+
+async function requireSessionUser() {
+  const sessionUser = await getUser();
+  if (!sessionUser) {
+    throw Object.assign(new Error("login_required"), { status: 401 });
+  }
+  return sessionUser;
+}
+
+async function verifyCurrentPassword(sessionUser: any, password: unknown) {
+  const currentPassword = String(password ?? "");
+  const email = String(sessionUser?.email || "").trim();
+  if (!email || !currentPassword) {
+    throw Object.assign(new Error("current_password_required"), { status: 400 });
+  }
+
+  try {
+    await login(email, currentPassword);
+  } catch {
+    throw Object.assign(new Error("current_password_invalid"), { status: 401 });
+  }
 }
 
 export default async (request: Request, _context: Context) => {
@@ -123,6 +162,77 @@ export default async (request: Request, _context: Context) => {
         { error: "signup_failed", message: String(error?.message || error || "") },
         { status: 400 },
       );
+    }
+  }
+
+  if (action === "update_profile") {
+    try {
+      const sessionUser = await requireSessionUser();
+      const live = await liveUser(sessionUser);
+      const metadata = live?.user_metadata || live?.userMetadata || {};
+      const displayName = cleanDisplayName(body?.displayName);
+      const avatar = cleanAvatar(body?.avatar);
+
+      if (!displayName) {
+        return json({ error: "display_name_required" }, { status: 400 });
+      }
+
+      const updated = await admin.updateUser(sessionUser.id, {
+        user_metadata: {
+          ...metadata,
+          full_name: displayName,
+          display_name: displayName,
+          aq_avatar: avatar,
+        },
+      });
+
+      return json({ ok: true, authenticated: true, user: serializeUser(updated) });
+    } catch (error: any) {
+      const code = String(error?.message || "profile_update_failed");
+      const status = Number(error?.status) || (
+        code === "avatar_too_large" ? 413 :
+        code === "invalid_avatar" || code === "display_name_required" ? 400 :
+        code === "login_required" ? 401 : 400
+      );
+      return json({ error: code, message: code }, { status });
+    }
+  }
+
+  if (action === "change_email") {
+    try {
+      const sessionUser = await requireSessionUser();
+      await verifyCurrentPassword(sessionUser, body?.currentPassword);
+
+      const email = String(body?.email || "").trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        return json({ error: "invalid_email" }, { status: 400 });
+      }
+
+      const updated = await admin.updateUser(sessionUser.id, { email });
+      return json({ ok: true, authenticated: true, user: serializeUser(updated) });
+    } catch (error: any) {
+      const code = String(error?.message || "email_update_failed");
+      const status = Number(error?.status) || (code === "current_password_invalid" ? 401 : 400);
+      return json({ error: code, message: code }, { status });
+    }
+  }
+
+  if (action === "change_password") {
+    try {
+      const sessionUser = await requireSessionUser();
+      await verifyCurrentPassword(sessionUser, body?.currentPassword);
+
+      const password = String(body?.password || "");
+      if (password.length < 8) {
+        return json({ error: "password_too_short" }, { status: 400 });
+      }
+
+      const updated = await admin.updateUser(sessionUser.id, { password });
+      return json({ ok: true, authenticated: true, user: serializeUser(updated) });
+    } catch (error: any) {
+      const code = String(error?.message || "password_update_failed");
+      const status = Number(error?.status) || (code === "current_password_invalid" ? 401 : 400);
+      return json({ error: code, message: code }, { status });
     }
   }
 

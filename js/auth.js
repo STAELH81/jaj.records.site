@@ -59,6 +59,25 @@ const accountLastSync = document.getElementById('aq-account-last-sync');
 const accountSyncNowBtn = document.getElementById('aq-account-sync-now');
 const startSettingsLink = document.getElementById('aq-start-settings-link');
 const startUpdatesLink = document.getElementById('aq-start-updates-link');
+const accountWindowStatus = document.getElementById('aq-account-window-status');
+const accountWindowAvatarPreview = document.getElementById('aq-account-avatar-preview');
+const accountAvatarInput = document.getElementById('aq-account-avatar-input');
+const accountAvatarRemove = document.getElementById('aq-account-avatar-remove');
+const accountDisplayNameInput = document.getElementById('aq-account-display-name');
+const accountWindowMail = document.getElementById('aq-account-window-mail');
+const accountWindowRoles = document.getElementById('aq-account-window-roles');
+const accountWindowCreated = document.getElementById('aq-account-window-created');
+const accountProfileSave = document.getElementById('aq-account-profile-save');
+const accountEmailInput = document.getElementById('aq-account-email-input');
+const accountEmailPassword = document.getElementById('aq-account-email-password');
+const accountEmailSave = document.getElementById('aq-account-email-save');
+const accountCurrentPassword = document.getElementById('aq-account-current-password');
+const accountNewPassword = document.getElementById('aq-account-new-password');
+const accountConfirmPassword = document.getElementById('aq-account-confirm-password');
+const accountPasswordSave = document.getElementById('aq-account-password-save');
+const accountWindowCloud = document.getElementById('aq-account-window-cloud');
+const accountWindowLastSync = document.getElementById('aq-account-window-last-sync');
+const accountWindowSync = document.getElementById('aq-account-window-sync');
 
 let currentIdentityUser = null;
 let currentSession = null;
@@ -134,6 +153,15 @@ function applyAuthLanguage() {
     if (accountRows?.[2]) accountRows[2].textContent = 'Cloud';
     if (accountRows?.[3]) accountRows[3].textContent = tr('Dernière synchro', 'Last sync');
     if (accountSyncNowBtn) accountSyncNowBtn.textContent = tr('Synchroniser maintenant', 'Sync now');
+    const accountWin = document.getElementById('win-account');
+    if (accountWin) {
+        const title = accountWin.querySelector('.title-bar > span');
+        if (title) title.textContent = tr('Mon compte AQ', 'My AQ account');
+        const sectionTitles = accountWin.querySelectorAll('.aq-account-section-title');
+        if (sectionTitles[0]) sectionTitles[0].textContent = tr('Identité AQ-NEO', 'AQ-NEO identity');
+        if (sectionTitles[1]) sectionTitles[1].textContent = tr('Connexion', 'Sign-in');
+        if (sectionTitles[2]) sectionTitles[2].textContent = 'Cloud AQ-NEO';
+    }
 
     renderRecentAccounts();
     updateDesktopSessionUI(currentSession);
@@ -241,6 +269,7 @@ function sessionFromUser(user) {
         displayName: getDisplayName(user),
         aquertyMail: buildAquertyMail(user),
         accountAvatar: metadata.aq_avatar || metadata.avatar_url || metadata.avatar || '',
+        createdAt: user?.createdAt || user?.created_at || user?.confirmedAt || user?.confirmed_at || null,
         roles,
         isArtist,
         isAdmin,
@@ -449,6 +478,137 @@ function formatAccountSyncTime(value) {
     }
 }
 
+
+function setAccountWindowStatus(message = '', type = '') {
+    if (!accountWindowStatus) return;
+    accountWindowStatus.textContent = message;
+    accountWindowStatus.className = 'aq-account-window-status' + (type ? ` ${type}` : '');
+}
+
+function applyAccountAvatarPreview(avatar, name = currentSession?.displayName || '?') {
+    if (!accountWindowAvatarPreview) return;
+    const safeAvatar = String(avatar || '');
+    if (safeAvatar && (/^data:image\//i.test(safeAvatar) || /^https?:\/\//i.test(safeAvatar))) {
+        accountWindowAvatarPreview.textContent = '';
+        accountWindowAvatarPreview.style.backgroundImage = `url("${safeAvatar}")`;
+        accountWindowAvatarPreview.style.backgroundSize = 'cover';
+        accountWindowAvatarPreview.style.backgroundPosition = 'center';
+        accountWindowAvatarPreview.style.backgroundRepeat = 'no-repeat';
+    } else {
+        accountWindowAvatarPreview.style.backgroundImage = '';
+        accountWindowAvatarPreview.textContent = avatarInitial(name);
+    }
+}
+
+function formatAccountCreatedAt(value) {
+    if (!value) return '—';
+    try {
+        return new Intl.DateTimeFormat(isEnglish() ? 'en-GB' : 'fr-FR', {
+            dateStyle: 'long'
+        }).format(new Date(value));
+    } catch (_) {
+        return String(value);
+    }
+}
+
+function refreshAccountWindow() {
+    const session = currentSession;
+    const user = currentIdentityUser;
+    const isUser = session?.type === 'user';
+
+    if (accountDisplayNameInput) {
+        accountDisplayNameInput.value = session?.displayName || '';
+        accountDisplayNameInput.disabled = !isUser;
+    }
+    if (accountEmailInput) {
+        accountEmailInput.value = session?.email || '';
+        accountEmailInput.disabled = !isUser;
+    }
+    if (accountWindowMail) accountWindowMail.textContent = session?.aquertyMail || '—';
+    if (accountWindowRoles) {
+        const roles = rolesForDisplay(session);
+        accountWindowRoles.textContent = roles.map((role) => role.toUpperCase()).join(' + ') || '—';
+    }
+    if (accountWindowCreated) {
+        accountWindowCreated.textContent = formatAccountCreatedAt(
+            user?.createdAt || user?.created_at || session?.createdAt || null
+        );
+    }
+
+    applyAccountAvatarPreview(session?.accountAvatar || '', session?.displayName || '?');
+
+    [accountAvatarInput, accountAvatarRemove, accountProfileSave, accountEmailPassword,
+     accountEmailSave, accountCurrentPassword, accountNewPassword, accountConfirmPassword,
+     accountPasswordSave, accountWindowSync].forEach((el) => {
+        if (el) el.disabled = !isUser;
+    });
+
+    setAccountWindowStatus(
+        isUser
+            ? tr('Compte AQ-NEO connecté.', 'AQ-NEO account connected.')
+            : tr('Connecte-toi avec un compte AQ pour modifier ces informations.', 'Sign in with an AQ account to edit this information.'),
+        isUser ? 'success' : ''
+    );
+
+    const cloud = window.AQCloudSync?.getStatus?.() || {};
+    updateAccountCloudUI({
+        text: cloud.state === 'synced'
+            ? tr('Cloud : synchronisé', 'Cloud: synced')
+            : cloud.state === 'syncing'
+                ? tr('Cloud : synchronisation…', 'Cloud: syncing…')
+                : cloud.state === 'local'
+                    ? tr('Cloud : session locale', 'Cloud: local session')
+                    : tr('Cloud : hors ligne', 'Cloud: offline'),
+        state: cloud.state || '',
+        lastSyncedAt: cloud.lastSyncedAt || 0
+    });
+}
+
+async function fileToAccountAvatar(file) {
+    if (!file) return currentSession?.accountAvatar || '';
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+        throw new Error('invalid_avatar');
+    }
+    if (file.size > 4 * 1024 * 1024) {
+        throw new Error('avatar_source_too_large');
+    }
+
+    const bitmap = await createImageBitmap(file);
+    const size = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const scale = Math.max(size / bitmap.width, size / bitmap.height);
+    const width = bitmap.width * scale;
+    const height = bitmap.height * scale;
+    const x = (size - width) / 2;
+    const y = (size - height) / 2;
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(bitmap, x, y, width, height);
+
+    let quality = 0.86;
+    let dataUrl = canvas.toDataURL('image/webp', quality);
+    while (dataUrl.length > 190000 && quality > 0.5) {
+        quality -= 0.08;
+        dataUrl = canvas.toDataURL('image/webp', quality);
+    }
+    if (dataUrl.length > 220000) throw new Error('avatar_too_large');
+    return dataUrl;
+}
+
+async function applyUpdatedIdentityUser(user) {
+    currentIdentityUser = user || currentIdentityUser;
+    currentSession = sessionFromUser(currentIdentityUser);
+    window.JAJSession = currentSession;
+    rememberAccount(currentSession);
+    updateDesktopSessionUI(currentSession);
+    refreshAccountWindow();
+    renderRecentAccounts();
+    window.dispatchEvent(new CustomEvent('jaj:session-changed', { detail: currentSession }));
+}
+
 function updateAccountCloudUI(detail = {}) {
     if (accountCloud) {
         const raw = detail.text || tr('Hors ligne', 'Offline');
@@ -458,8 +618,20 @@ function updateAccountCloudUI(detail = {}) {
     if (accountLastSync) {
         accountLastSync.textContent = formatAccountSyncTime(detail.lastSyncedAt || 0);
     }
+    if (accountWindowCloud) {
+        accountWindowCloud.textContent = detail.text
+            ? String(detail.text).replace(/^Cloud\s*:\s*/i, '')
+            : tr('Hors ligne', 'Offline');
+        accountWindowCloud.dataset.state = detail.state || '';
+    }
+    if (accountWindowLastSync) {
+        accountWindowLastSync.textContent = formatAccountSyncTime(detail.lastSyncedAt || 0);
+    }
     if (accountSyncNowBtn) {
         accountSyncNowBtn.disabled = !currentSession || currentSession.type !== 'user' || detail.state === 'syncing';
+    }
+    if (accountWindowSync) {
+        accountWindowSync.disabled = !currentSession || currentSession.type !== 'user' || detail.state === 'syncing';
     }
 }
 
@@ -511,7 +683,6 @@ function updateDesktopSessionUI(session) {
 }
 
 async function enterSession(session) {
-    if (accountPanel) accountPanel.hidden = true;
     currentSession = session;
     window.JAJSession = session;
     if (session?.type === 'user') rememberAccount(session);
@@ -593,18 +764,18 @@ function identityErrorMessage(error, fallback) {
 
 accountGearBtn?.addEventListener('click', (event) => {
     event.stopPropagation();
-    if (!accountPanel || !currentSession) return;
-    accountPanel.hidden = !accountPanel.hidden;
+    if (!currentSession) return;
+    refreshAccountWindow();
+    window.openWindow?.('win-account', 'task-account');
+    window.toggleStartMenu?.(false);
 });
 
 startSettingsLink?.addEventListener('click', () => {
-    accountPanel && (accountPanel.hidden = true);
     window.openWindow?.('win-settings', 'task-settings');
     window.toggleStartMenu?.(false);
 });
 
 startUpdatesLink?.addEventListener('click', () => {
-    accountPanel && (accountPanel.hidden = true);
     window.dispatchEvent(new CustomEvent('aq:updates-open'));
     window.toggleStartMenu?.(false);
 });
@@ -628,6 +799,176 @@ accountSyncNowBtn?.addEventListener('click', async () => {
         accountSyncNowBtn.disabled = false;
     }
 });
+
+accountWindowSync?.addEventListener('click', async () => {
+    if (!window.AQCloudSync || currentSession?.type !== 'user') return;
+    const previous = accountWindowSync.textContent;
+    accountWindowSync.disabled = true;
+    accountWindowSync.textContent = tr('Synchronisation…', 'Syncing…');
+    setAccountWindowStatus(tr('Synchronisation du profil AQ-NEO…', 'Syncing AQ-NEO profile…'));
+    try {
+        const result = await window.AQCloudSync.syncNow();
+        if (result?.ok) {
+            updateAccountCloudUI({
+                text: tr('Cloud : synchronisé', 'Cloud: synced'),
+                state: 'synced',
+                lastSyncedAt: result.lastSyncedAt || Date.parse(result.updatedAt || '') || Date.now()
+            });
+            setAccountWindowStatus(tr('Profil synchronisé.', 'Profile synced.'), 'success');
+        } else {
+            setAccountWindowStatus(tr('Synchronisation indisponible.', 'Sync unavailable.'), 'error');
+        }
+    } catch (error) {
+        setAccountWindowStatus(tr('Erreur de synchronisation : ', 'Sync error: ') + error.message, 'error');
+    } finally {
+        accountWindowSync.textContent = previous;
+        accountWindowSync.disabled = false;
+    }
+});
+
+let pendingAccountAvatar = null;
+
+accountAvatarInput?.addEventListener('change', async () => {
+    const file = accountAvatarInput.files?.[0];
+    if (!file) return;
+    setAccountWindowStatus(tr('Préparation de la photo…', 'Preparing picture…'));
+    try {
+        pendingAccountAvatar = await fileToAccountAvatar(file);
+        applyAccountAvatarPreview(pendingAccountAvatar, accountDisplayNameInput?.value || currentSession?.displayName);
+        setAccountWindowStatus(tr('Photo prête à être enregistrée.', 'Picture ready to save.'), 'success');
+    } catch (error) {
+        pendingAccountAvatar = null;
+        accountAvatarInput.value = '';
+        const message = error.message === 'avatar_source_too_large'
+            ? tr('Image trop lourde (4 Mo max avant compression).', 'Image too large (4 MB max before compression).')
+            : tr('Impossible d’utiliser cette image.', 'Unable to use this image.');
+        setAccountWindowStatus(message, 'error');
+    }
+});
+
+accountAvatarRemove?.addEventListener('click', () => {
+    pendingAccountAvatar = '';
+    if (accountAvatarInput) accountAvatarInput.value = '';
+    applyAccountAvatarPreview('', accountDisplayNameInput?.value || currentSession?.displayName);
+    setAccountWindowStatus(tr('La photo sera retirée à l’enregistrement.', 'The picture will be removed when saved.'));
+});
+
+accountProfileSave?.addEventListener('click', async () => {
+    if (currentSession?.type !== 'user') return;
+    const displayName = accountDisplayNameInput?.value.trim() || '';
+    if (!displayName) {
+        setAccountWindowStatus(tr('Le nom affiché est obligatoire.', 'Display name is required.'), 'error');
+        return;
+    }
+
+    const previous = accountProfileSave.textContent;
+    accountProfileSave.disabled = true;
+    accountProfileSave.textContent = tr('Enregistrement…', 'Saving…');
+    try {
+        const result = await authApi('POST', {
+            action: 'update_profile',
+            displayName,
+            avatar: pendingAccountAvatar === null ? (currentSession.accountAvatar || '') : pendingAccountAvatar
+        });
+        if (result?.user) {
+            pendingAccountAvatar = null;
+            await applyUpdatedIdentityUser(result.user);
+            setAccountWindowStatus(tr('Profil AQ enregistré.', 'AQ profile saved.'), 'success');
+        }
+    } catch (error) {
+        const message = {
+            avatar_too_large: tr('Photo trop lourde.', 'Picture too large.'),
+            invalid_avatar: tr('Format de photo invalide.', 'Invalid picture format.')
+        }[error.message] || error.message;
+        setAccountWindowStatus(tr('Enregistrement impossible : ', 'Unable to save: ') + message, 'error');
+    } finally {
+        accountProfileSave.textContent = previous;
+        accountProfileSave.disabled = false;
+    }
+});
+
+accountEmailSave?.addEventListener('click', async () => {
+    if (currentSession?.type !== 'user') return;
+    const email = accountEmailInput?.value.trim() || '';
+    const currentPassword = accountEmailPassword?.value || '';
+    if (!email || !currentPassword) {
+        setAccountWindowStatus(tr('Entre le nouvel e-mail et ton mot de passe actuel.', 'Enter the new email and your current password.'), 'error');
+        return;
+    }
+
+    const previous = accountEmailSave.textContent;
+    accountEmailSave.disabled = true;
+    accountEmailSave.textContent = tr('Modification…', 'Changing…');
+    try {
+        const result = await authApi('POST', {
+            action: 'change_email',
+            email,
+            currentPassword
+        });
+        if (result?.user) {
+            if (accountEmailPassword) accountEmailPassword.value = '';
+            await applyUpdatedIdentityUser(result.user);
+            setAccountWindowStatus(
+                tr('E-mail modifié. Utilise cette nouvelle adresse à la prochaine connexion.', 'Email changed. Use the new address next time you sign in.'),
+                'success'
+            );
+        }
+    } catch (error) {
+        const message = error.message === 'current_password_invalid'
+            ? tr('Mot de passe actuel incorrect.', 'Current password is incorrect.')
+            : error.message === 'invalid_email'
+                ? tr('Adresse e-mail invalide.', 'Invalid email address.')
+                : error.message;
+        setAccountWindowStatus(tr('Modification impossible : ', 'Unable to change: ') + message, 'error');
+    } finally {
+        accountEmailSave.textContent = previous;
+        accountEmailSave.disabled = false;
+    }
+});
+
+accountPasswordSave?.addEventListener('click', async () => {
+    if (currentSession?.type !== 'user') return;
+    const currentPassword = accountCurrentPassword?.value || '';
+    const password = accountNewPassword?.value || '';
+    const confirmation = accountConfirmPassword?.value || '';
+
+    if (password.length < 8) {
+        setAccountWindowStatus(tr('Le nouveau mot de passe doit faire au moins 8 caractères.', 'The new password must be at least 8 characters.'), 'error');
+        return;
+    }
+    if (password !== confirmation) {
+        setAccountWindowStatus(tr('Les deux nouveaux mots de passe ne correspondent pas.', 'The new passwords do not match.'), 'error');
+        return;
+    }
+
+    const previous = accountPasswordSave.textContent;
+    accountPasswordSave.disabled = true;
+    accountPasswordSave.textContent = tr('Modification…', 'Changing…');
+    try {
+        const result = await authApi('POST', {
+            action: 'change_password',
+            currentPassword,
+            password
+        });
+        if (result?.user) {
+            if (accountCurrentPassword) accountCurrentPassword.value = '';
+            if (accountNewPassword) accountNewPassword.value = '';
+            if (accountConfirmPassword) accountConfirmPassword.value = '';
+            setAccountWindowStatus(tr('Mot de passe modifié.', 'Password changed.'), 'success');
+        }
+    } catch (error) {
+        const message = error.message === 'current_password_invalid'
+            ? tr('Mot de passe actuel incorrect.', 'Current password is incorrect.')
+            : error.message === 'password_too_short'
+                ? tr('Le nouveau mot de passe est trop court.', 'The new password is too short.')
+                : error.message;
+        setAccountWindowStatus(tr('Modification impossible : ', 'Unable to change: ') + message, 'error');
+    } finally {
+        accountPasswordSave.textContent = previous;
+        accountPasswordSave.disabled = false;
+    }
+});
+
 
 window.addEventListener('aq:cloud-status', (event) => {
     updateAccountCloudUI(event.detail || {});

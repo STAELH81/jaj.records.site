@@ -112,3 +112,9 @@
  .navigator-artist-hero h2 { font-size:23px; }
  .navigator-artist-release { flex-wrap:wrap; }
 }
+
+#aq-share-dialog { width:min(480px,calc(100vw - 32px)); box-sizing:border-box; background:#ece9d8; border:3px outset #c9c9bd; color:#203149; font:13px Tahoma,sans-serif; padding:18px; }
+#aq-share-dialog::backdrop { background:#10203088; }
+#aq-share-dialog form { text-align:right; }
+#aq-share-dialog input { box-sizing:border-box; width:100%; padding:8px; margin-bottom:12px; }
+#aq-share-dialog [role=status] { display:block; margin-top:12px; }

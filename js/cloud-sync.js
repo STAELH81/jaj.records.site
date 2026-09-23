@@ -9,6 +9,8 @@ let activeSession = null;
 let syncTimer = null;
 let syncing = false;
 let pendingAfterSync = false;
+let lastSyncedAt = 0;
+let currentCloudState = 'offline';
 
 const cloudStatusEl = document.getElementById('aq-cloud-status');
 
@@ -17,10 +19,22 @@ function tr(fr, en) {
 }
 
 function setCloudStatus(text, state = '') {
-    if (!cloudStatusEl) return;
-    cloudStatusEl.textContent = text;
-    if (state) cloudStatusEl.dataset.state = state;
-    else delete cloudStatusEl.dataset.state;
+    currentCloudState = state || 'offline';
+
+    if (cloudStatusEl) {
+        cloudStatusEl.textContent = text;
+        if (state) cloudStatusEl.dataset.state = state;
+        else delete cloudStatusEl.dataset.state;
+    }
+
+    window.dispatchEvent(new CustomEvent('aq:cloud-status', {
+        detail: {
+            text,
+            state: currentCloudState,
+            lastSyncedAt: lastSyncedAt || 0,
+            sessionType: activeSession?.type || null
+        }
+    }));
 }
 
 function clone(value) {
@@ -138,9 +152,10 @@ async function uploadSnapshot(snapshot = null) {
     try {
         const result = await apiRequest('PUT', current);
         writeLocalJSON(cacheKey(activeSession), current);
+        lastSyncedAt = Date.parse(result.updatedAt || '') || Date.now();
         setMeta(activeSession, {
             dirtyAt: 0,
-            lastSyncedAt: Date.parse(result.updatedAt || '') || Date.now()
+            lastSyncedAt
         });
         setCloudStatus(tr('Cloud : synchronisé', 'Cloud: synced'), 'synced');
         return result;
@@ -178,6 +193,7 @@ async function prepareGuestSession(session) {
     }
 
     activeSession = session;
+    lastSyncedAt = 0;
     setCloudStatus(tr('Cloud : session locale', 'Cloud: local session'), 'local');
 }
 
@@ -186,6 +202,7 @@ async function prepareUserSession(session) {
 
     const cache = readLocalJSON(cacheKey(session), null);
     const meta = getMeta(session);
+    lastSyncedAt = Number(meta.lastSyncedAt || 0);
 
     try {
         const result = await apiRequest('GET');
@@ -202,9 +219,10 @@ async function prepareUserSession(session) {
 
             applySnapshot(remote);
             writeLocalJSON(cacheKey(session), remote);
+            lastSyncedAt = remoteUpdatedAt || Date.now();
             setMeta(session, {
                 dirtyAt: 0,
-                lastSyncedAt: remoteUpdatedAt || Date.now()
+                lastSyncedAt
             });
             activeSession = session;
             setCloudStatus(tr('Cloud : synchronisé', 'Cloud: synced'), 'synced');
@@ -251,6 +269,7 @@ async function activate(session) {
     activeSession = null;
 
     if (!session) {
+        lastSyncedAt = 0;
         setCloudStatus(tr('Cloud : hors ligne', 'Cloud: offline'), '');
         return;
     }
@@ -281,6 +300,7 @@ function deactivate() {
     syncTimer = null;
     if (activeSession) cacheCurrentState(activeSession, false);
     activeSession = null;
+    lastSyncedAt = 0;
     setCloudStatus(tr('Cloud : hors ligne', 'Cloud: offline'), '');
 }
 
@@ -301,10 +321,38 @@ window.addEventListener('pagehide', () => {
     cacheCurrentState(activeSession, activeSession.type === 'user');
 });
 
+async function syncNow() {
+    if (!activeSession) return { ok: false, reason: 'no_session' };
+
+    if (activeSession.type === 'guest') {
+        cacheCurrentState(activeSession, false);
+        setCloudStatus(tr('Cloud : session locale', 'Cloud: local session'), 'local');
+        return { ok: true, localOnly: true, lastSyncedAt: 0 };
+    }
+
+    const result = await uploadSnapshot();
+    return {
+        ok: !!result,
+        updatedAt: result?.updatedAt || null,
+        lastSyncedAt: lastSyncedAt || 0
+    };
+}
+
+function getStatus() {
+    return {
+        state: currentCloudState,
+        lastSyncedAt: lastSyncedAt || 0,
+        sessionType: activeSession?.type || null,
+        syncing: !!syncing
+    };
+}
+
 window.AQCloudSync = {
     activate,
     flush,
+    syncNow,
     deactivate,
+    getStatus,
     getActiveSession: () => activeSession
 };
 

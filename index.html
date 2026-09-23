@@ -669,6 +669,22 @@
                 </div>
                 <div id="aq-session-summary" class="start-session-summary">Session : aucune</div>
                 <div id="aq-cloud-status" class="start-cloud-status" aria-live="polite">Cloud : hors ligne</div>
+                <div class="start-session-links">
+                    <button id="aq-start-settings-link" type="button">Settings</button>
+                    <span aria-hidden="true">·</span>
+                    <button id="aq-start-updates-link" type="button">Updates</button>
+                </div>
+            </div>
+            <button id="aq-account-gear-btn" class="start-session-gear" type="button" title="Mon compte AQ" aria-label="Mon compte AQ">⚙</button>
+        </div>
+        <div id="aq-account-panel" class="start-account-panel" hidden>
+            <div class="start-account-panel-title">Mon compte AQ</div>
+            <div class="start-account-row"><span>E-mail</span><strong id="aq-account-email">—</strong></div>
+            <div class="start-account-row"><span>AQ-Mail</span><strong id="aq-account-mail">—</strong></div>
+            <div class="start-account-row"><span>Cloud</span><strong id="aq-account-cloud">Hors ligne</strong></div>
+            <div class="start-account-row"><span>Dernière synchro</span><strong id="aq-account-last-sync">Jamais</strong></div>
+            <div class="start-account-actions">
+                <button id="aq-account-sync-now" class="retro-btn" type="button">Synchroniser maintenant</button>
             </div>
         </div>
     </div>

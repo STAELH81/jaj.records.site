@@ -535,6 +535,130 @@ body.aq-session-pending #lite-exit-fab {
     color: #dce8ff;
 }
 
+.start-session-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+    color: rgba(255,255,255,.78);
+    font-size: 8px;
+    font-weight: normal;
+}
+
+.start-session-links button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.start-session-links button:hover {
+    color: #fff4ad;
+}
+
+.start-session-gear {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    align-self: flex-start;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-top: 1px solid rgba(255,255,255,.9);
+    border-left: 1px solid rgba(255,255,255,.9);
+    border-right: 1px solid #1b3d83;
+    border-bottom: 1px solid #1b3d83;
+    border-radius: 2px;
+    background: rgba(18,61,142,.62);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.start-session-gear:hover:not(:disabled) {
+    background: rgba(255,255,255,.18);
+}
+
+.start-session-gear:disabled {
+    opacity: .4;
+    cursor: default;
+}
+
+.start-account-panel {
+    margin-top: 6px;
+    padding: 7px;
+    border-top: 1px solid rgba(255,255,255,.7);
+    border-left: 1px solid rgba(255,255,255,.7);
+    border-right: 1px solid rgba(13,42,94,.9);
+    border-bottom: 1px solid rgba(13,42,94,.9);
+    background: rgba(18,55,126,.86);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+    color: #fff;
+    font-weight: normal;
+}
+
+.start-account-panel[hidden] {
+    display: none;
+}
+
+.start-account-panel-title {
+    margin-bottom: 6px;
+    font-weight: bold;
+    font-size: 10px;
+}
+
+.start-account-row {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 6px;
+    align-items: baseline;
+    padding: 2px 0;
+    font-size: 8px;
+}
+
+.start-account-row span {
+    color: #dbe8ff;
+}
+
+.start-account-row strong {
+    min-width: 0;
+    overflow: hidden;
+    color: #fff;
+    font-weight: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.start-account-row strong[data-state="synced"] {
+    color: #dfffd5;
+}
+
+.start-account-row strong[data-state="syncing"] {
+    color: #fff2a8;
+}
+
+.start-account-row strong[data-state="error"] {
+    color: #ffd6d6;
+}
+
+.start-account-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 7px;
+}
+
+.start-account-actions .retro-btn {
+    font-size: 8px;
+}
+
+.start-session-avatar {
+    background-repeat: no-repeat;
+}
+
 .mail-account-strip {
     box-sizing: border-box;
     height: 18px;

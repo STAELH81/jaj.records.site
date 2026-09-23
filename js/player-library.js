@@ -92,7 +92,7 @@ function render() {
     root.replaceChildren();
     const allowed = !!userId() && state.loaded && !state.busy;
     const layout = el('div', '', 'aqpl-layout'), aside = el('aside', '', 'aqpl-nav'), main = el('div', '', 'aqpl-main');
-    const header = el('div', '', 'aqpl-heading'); header.append(el('strong', 'AQ-Player++'), el('span', tr('Ta musique. Tes sélections.', 'Your music. Your mixes.')));
+    const header = el('div', '', 'aqpl-heading'); header.append(el('strong', 'AQ-Player'), el('span', tr('Ta musique. Tes sélections.', 'Your music. Your mixes.')));
     const toolbar = el('div', '', 'aqpl-toolbar');
     toolbar.append(button(tr('Actualiser', 'Refresh'), () => void load(), !userId()));
     const notice = el('p', state.status, `aqpl-status${state.error ? ' error' : ''}`); notice.setAttribute('role', 'status');

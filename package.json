@@ -1,7 +1,7 @@
 {
   "name": "jaj-records-aq-neo",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "JAJ Records / Aquerty AQ-NEO web desktop",
   "dependencies": {
     "@netlify/blobs": "latest",
@@ -10,6 +10,8 @@
     "@supabase/supabase-js": "^2.117.0"
   },
   "scripts": {
+    "test:player-library": "node --test tests/player-library.test.mjs",
+    "test:player-library:ui": "node tests/player-library-ui.cjs",
     "test:notifications": "node tests/notifications-ui.cjs",
     "test:phase6c": "node tests/phase6c.cjs",
     "test:publisher": "node --test tests/publisher-api.test.mjs tests/publisher-media.test.mjs tests/publisher-lifecycle.test.mjs tests/artist-profiles.test.mjs",

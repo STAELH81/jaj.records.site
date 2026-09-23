@@ -2,6 +2,7 @@ import AQCatalog from './catalog.js';
 import { showSkinView, installSkinChooser } from './player-skin.js';
 
 let activeReleaseId = null;
+let activeQueue = null;
 let currentView = 'library';
 let libraryFilter = 'albums';
 
@@ -613,6 +614,7 @@ function buildSidebar() {
     const items = [
         { view: 'now', fr: 'Lecture en cours', en: 'Now Playing', hintFr: 'piste + pochette', hintEn: 'track + cover' },
         { view: 'library', fr: 'Bibliothèque média', en: 'Media Library', hintFr: 'albums, artistes', hintEn: 'albums, artists' },
+        { view: 'playlists', fr: 'Playlists & favoris', en: 'Playlists & favorites', hintFr: 'mes sélections, partage', hintEn: 'my mixes, sharing' },
         { view: 'visual', fr: 'Visualisations', en: 'Visualizations', hintFr: 'moteur visuel', hintEn: 'visual engine' }
     ];
 
@@ -787,10 +789,10 @@ function polishTransport() {
 }
 
 function showView(view) {
-    const safe = ['library', 'now', 'visual'].includes(view) ? view : 'library';
+    const safe = ['library', 'now', 'visual', 'playlists'].includes(view) ? view : 'library';
     currentView = safe;
 
-    const map = { library: ui.libraryView, now: ui.nowView, visual: ui.visualView };
+    const map = { library: ui.libraryView, now: ui.nowView, visual: ui.visualView, playlists: document.getElementById('aqmp-playlists-view') };
     document.querySelectorAll('#aqmp-stage > .aqmp-view').forEach(element => element.classList.remove('active'));
     map[safe]?.classList.add('active');
 
@@ -804,7 +806,11 @@ function showView(view) {
         back.style.display = safe === 'library' ? 'none' : '';
     }
 
-    if (safe === 'library') {
+    if (safe === 'playlists') {
+        ui.toolbarTitle.textContent = tr('Playlists & favoris', 'Playlists & favorites');
+        ui.toolbarContext.textContent = 'AQ-Player++';
+        window.dispatchEvent(new Event('aq:playlists-open'));
+    } else if (safe === 'library') {
         ui.toolbarTitle.textContent = tr('Bibliothèque média', 'Media Library');
         ui.toolbarContext.textContent = tr('JAJ Records // catalogue local', 'JAJ Records // local catalog');
         renderLibrary();
@@ -812,7 +818,7 @@ function showView(view) {
         const release = AQCatalog.getRelease(activeReleaseId);
         const artist = getReleaseArtist(release);
         ui.toolbarTitle.textContent = tr('Lecture en cours', 'Now Playing');
-        ui.toolbarContext.textContent = release ? `${artist.name} — ${release.title}` : '';
+        ui.toolbarContext.textContent = activeQueue?.name || (release ? `${artist.name} — ${release.title}` : '');
     } else {
         ui.toolbarTitle.textContent = tr('Visualisations', 'Visualizations');
         ui.toolbarContext.textContent = tr('Moteur procédural audio-réactif', 'Audio-reactive procedural engine');
@@ -874,7 +880,8 @@ function selectRelease(releaseId, options = {}) {
     const release = AQCatalog.getRelease(releaseId) || AQCatalog.getRelease(AQCatalog.defaultReleaseId);
     if (!release) return false;
 
-    const changed = activeReleaseId !== release.id;
+    const changed = !!activeQueue || activeReleaseId !== release.id;
+    activeQueue = null;
     if (resetPlayback && changed) clearPlaybackForReleaseSwitch();
     if (!applyPlayerTracks(release)) return false;
 
@@ -897,6 +904,7 @@ function releaseFromSettings() {
 }
 
 function syncReleaseFromSettings() {
+    if (activeQueue) return;
     const wanted = releaseFromSettings();
     if (!wanted) return;
     selectRelease(wanted, {
@@ -927,6 +935,14 @@ function initCatalogPlayer() {
 
     window.addEventListener('aq:catalog-updated', () => {
         renderLibraryTree(); renderLibrary();
+        if (activeQueue) {
+            // A withdrawn track must no longer be playable through a saved queue.
+            const valid = resolveQueue(activeQueue.refs);
+            if (valid.length !== myTracks.length || valid.some((track, index) => track.file !== myTracks[index]?.file || track.audioBase !== myTracks[index]?.audioBase)) {
+                clearPlaybackForReleaseSwitch(); activeQueue = null; syncReleaseFromSettings();
+            }
+            return;
+        }
         if (activeReleaseId && !AQCatalog.getRelease(activeReleaseId)) {
             selectRelease(AQCatalog.defaultReleaseId, { resetPlayback: true, persist: true });
             return;
@@ -935,10 +951,37 @@ function initCatalogPlayer() {
         if (typeof player !== 'undefined' && player.paused) syncReleaseFromSettings();
     });
     window.addEventListener('aq:language-changed', refreshLanguage);
-    window.addEventListener('jaj:session-changed', () => queueMicrotask(syncReleaseFromSettings));
+    window.addEventListener('jaj:session-changed', () => { if (activeQueue) clearPlaybackForReleaseSwitch(); activeQueue = null; queueMicrotask(syncReleaseFromSettings); });
+    window.addEventListener('aq:track-changed', () => {
+        if (!activeQueue) return;
+        const release = AQCatalog.getRelease(myTracks[currentTrackIndex]?.releaseId);
+        if (release) updateReleaseMetadata(release);
+    });
+}
+
+function resolveQueue(refs) {
+    return refs.map(ref => AQCatalog.toPlayerTracks(ref.releaseId).find(track => track.id === ref.trackId))
+        .filter(track => track && track.file && ['full', 'snippet'].includes(track.status));
+}
+
+function playQueue(refs, name, startRef = null) {
+    const tracks = resolveQueue(refs);
+    if (!tracks.length) return false;
+    clearPlaybackForReleaseSwitch();
+    activeQueue = { refs: structuredClone(refs), name };
+    myTracks = tracks;
+    renderPlaylist();
+    const index = startRef ? tracks.findIndex(track => track.id === startRef.trackId && track.releaseId === startRef.releaseId) : 0;
+    playTrackAtIndex(Math.max(0, index), false);
+    showView('now');
+    return true;
 }
 
 window.AQPlayerCatalog = {
+    playQueue,
+    isCustomQueue: () => !!activeQueue,
+    getCurrentTrack: () => typeof currentTrackIndex !== 'undefined' ? myTracks[currentTrackIndex] || null : null,
+    showPlaylists: () => showView('playlists'),
     selectRelease: (releaseId) => selectRelease(releaseId, { resetPlayback: true, persist: true }),
     getCurrentRelease: () => AQCatalog.getRelease(activeReleaseId),
     getCurrentReleaseId: () => activeReleaseId,

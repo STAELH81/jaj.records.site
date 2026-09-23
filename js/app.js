@@ -2356,7 +2356,7 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
 
     function savePlayerState() {
         const payload = {
-            currentTrackIndex,
+            currentTrackIndex: window.AQPlayerCatalog?.isCustomQueue?.() ? -1 : currentTrackIndex,
             currentTime: Number.isFinite(player.currentTime) ? player.currentTime : 0,
             volume: player.volume,
             isShuffleEnabled,
@@ -2654,11 +2654,13 @@ const SETTINGS_KEY = 'aquerty_settings_v1';
             el.classList.toggle('active', liIndex === index);
         });
         player.src = folder + track.file;
-        player.play();
+        const playingSource = player.src;
+        player.play().catch(error => { if (error.name !== 'AbortError' && player.src === playingSource) statusDisplay.innerText = getCurrentLanguage() === 'en' ? 'PLAYBACK UNAVAILABLE' : 'LECTURE INDISPONIBLE'; });
         statusDisplay.innerText = (getCurrentLanguage() === 'en' ? 'PLAYING: ' : 'LECTURE : ') + track.title.toUpperCase();
         addSystemLog(`Lecture piste: ${track.title}`);
         if (shouldNotify) triggerContextualPopup('playTrack');
         savePlayerState();
+        window.dispatchEvent(new CustomEvent('aq:track-changed', { detail: { releaseId: track.releaseId, trackId: track.id } }));
     }
 
     function nextTrack() {

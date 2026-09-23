@@ -1191,6 +1191,7 @@ async function loadFeed() {
         const textarea = document.createElement('textarea');
         textarea.maxLength = 800;
         textarea.placeholder = tr('Quoi de neuf sur AQ-NET ?', 'What’s new on AQ-NET?');
+        if (ms.playerShareDraft) { textarea.value = ms.playerShareDraft; ms.playerShareDraft = ''; }
 
         const actions = document.createElement('div');
         actions.className = 'myspace-actions';
@@ -1269,6 +1270,18 @@ function renderPost(post) {
     const body = document.createElement('div');
     body.className = 'myspace-post-body';
     body.textContent = post.text || '';
+    // Render only local playlist links as app actions; user text stays text.
+    for (const match of String(post.text || '').matchAll(/https?:\/\/[^\s<>]+/g)) {
+        try {
+            const url = new URL(match[0]);
+            const playlist = url.searchParams.get('aqPlaylist');
+            if (url.origin !== location.origin || !playlist || !/^[\w-]{1,120}\/[\w-]{1,120}$/.test(playlist)) continue;
+            const link = document.createElement('a');
+            link.href = url.href; link.textContent = tr(' ▶ Ouvrir la playlist', ' ▶ Open playlist');
+            link.addEventListener('click', event => { event.preventDefault(); window.AQPlayerLibrary?.openShared(playlist); });
+            body.appendChild(link);
+        } catch (_) { /* Not a playlist URL. */ }
+    }
 
     const foot = document.createElement('div');
     foot.className = 'myspace-post-foot';
@@ -2330,6 +2343,7 @@ window.addEventListener('jaj:session-changed', async (event) => {
     ms.unreadCount = 0;
     ms.unreadBySender = {};
     ms.notificationPeer = null;
+    ms.playerShareDraft = '';
     await stopChatRealtime();
     if (event.detail !== window.JAJSession) return;
     ms.chatPeerId = null;
@@ -2351,7 +2365,9 @@ window.addEventListener('aq:myspace-open', async () => {
     await refreshSelfAvatar();
     await sendPresenceHeartbeat();
     await refreshUnreadSummary({ notify: false });
-    if (ms.notificationPeer) {
+    if (ms.playerShareDraft) {
+        await loadFeed();
+    } else if (ms.notificationPeer) {
         const peer = ms.notificationPeer;
         ms.notificationPeer = null;
         await loadMessages();
@@ -2362,6 +2378,13 @@ window.addEventListener('aq:myspace-open', async () => {
 window.addEventListener('aq:notification-messages', event => {
     ms.tab = 'messages';
     ms.notificationPeer = event.detail;
+    window.openWindow?.('win-myspace', 'task-myspace');
+});
+
+window.addEventListener('aq:myspace-compose', event => {
+    if (!isLoggedIn()) return;
+    ms.playerShareDraft = String(event.detail || '').slice(0, 800);
+    ms.tab = 'feed';
     window.openWindow?.('win-myspace', 'task-myspace');
 });
 

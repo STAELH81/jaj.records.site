@@ -1,0 +1,27 @@
+#aqmp-playlists-view.active { display: block; overflow: auto; padding: 14px; box-sizing: border-box; background: linear-gradient(#f7fbff,#dce7f0); color: #203c58; }
+.aqpl-heading { padding: 13px 16px; border: 1px solid #8daaca; background: linear-gradient(110deg,#154d88,#418dcc); color: white; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.aqpl-heading strong { font-size: 20px; font-style: italic; }
+.aqpl-toolbar { display: flex; flex-wrap: wrap; gap: 5px; margin: 9px 0; align-items: center; }
+#aqmp-playlists-view .retro-btn { padding: 4px 8px; color: #173b63; font: 11px Tahoma,sans-serif; }
+#aqmp-playlists-view button:disabled { opacity: .5; }
+#aqmp-playlists-view input { min-width: 0; max-width: 100%; box-sizing: border-box; padding: 5px; border: 1px inset #91a7bf; font: 12px Tahoma,sans-serif; }
+.aqpl-status { min-height: 15px; color: #365a76; }
+.aqpl-status.error { color: #a32121; }
+.aqpl-layout { display: grid; grid-template-columns: 145px minmax(0,1fr); border: 1px solid #91abc3; background: #fff; }
+.aqpl-nav { padding: 8px; background: #e4eef7; border-right: 1px solid #91abc3; display: flex; flex-direction: column; gap: 5px; }
+.aqpl-nav button { text-align: left; overflow-wrap: anywhere; }
+#aqmp-playlists-view .aqpl-nav .selected { background: #235a8d; color: white; }
+.aqpl-create { display: grid; gap: 5px; margin-top: 10px; }
+.aqpl-main { padding: 12px; min-width: 0; }
+.aqpl-main h2 { margin: 0; overflow-wrap: anywhere; font-size: 18px; }
+.aqpl-meta { color: #60788d; }
+.aqpl-empty,.aqpl-guest { padding: 12px; border: 1px dashed #91abc3; }
+.aqpl-tracks { padding: 0; list-style: none; }
+.aqpl-tracks li { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 7px 0; border-bottom: 1px solid #d2dfe9; }
+.aqpl-tracks li > button:first-child { flex: 1; min-width: 110px; text-align: left; overflow-wrap: anywhere; }
+.aqpl-picker { margin-top: 14px; padding: 10px; border: 1px solid #91abc3; background: #f5f9fc; }
+.aqpl-picker > input { width: 100%; }
+.aqpl-results { max-height: 200px; overflow: auto; }
+.aqpl-result { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px; border-bottom: 1px solid #d2dfe9; }
+.aqpl-result span { overflow-wrap: anywhere; }
+@media(max-width:600px) { .aqpl-layout { grid-template-columns: 1fr; } .aqpl-nav { border-right: 0; border-bottom: 1px solid #91abc3; } .aqpl-heading { flex-direction: column; align-items: flex-start; } #aqmp-playlists-view.active { padding: 8px; } }

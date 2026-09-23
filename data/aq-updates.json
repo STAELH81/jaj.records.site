@@ -1,0 +1,35 @@
+{
+  "product": "Aquerty AQ-NEO",
+  "channel": "stable",
+  "latestVersion": "0.4.0",
+  "releasedAt": "2026-09-23T00:00:00.000Z",
+  "notes": [
+    "Nouveau panneau Mon compte AQ : avatar système, nom, e-mail et mot de passe.",
+    "Synchronisation cloud du profil AQ-NEO avec état et synchronisation manuelle.",
+    "Nouveau centre AQ Update accessible depuis le menu Aquerty.",
+    "AQ-MySpace : chat, amis, Top 8, mur, présence et musique de profil.",
+    "Nouvelle icône Artist Publisher et intégration AQ-NEO améliorée."
+  ],
+  "history": [
+    {
+      "version": "0.4.0",
+      "date": "2026-09-23",
+      "title": "Compte AQ & système connecté"
+    },
+    {
+      "version": "0.3.0",
+      "date": "2026-09-22",
+      "title": "AQ-MySpace social suite"
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-09-14",
+      "title": "AQ-Mail, Publisher & synchronisation"
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-09-12",
+      "title": "Migration JAJ Records / AQ-NEO"
+    }
+  ]
+}

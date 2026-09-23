@@ -40,6 +40,9 @@ function message(code) {
 }
 
 function status(code = '', error = false) {
+    if (allowed() && (error || ['published', 'unpublished', 'saved', 'deleted'].includes(code))) {
+        window.AQNotifications?.push({ id: `publisher:${state.draft?.id || 'draft'}:${code}:${state.draft?.revision || Date.now()}`, source: 'publisher', title: 'Artist Publisher', body: message(code) });
+    }
     state.message = code;
     state.error = error;
     const output = root.querySelector('#publisher-status');

@@ -160,6 +160,9 @@ async function checkForUpdates({ userInitiated = false } = {}) {
         const response = await fetch(UPDATE_MANIFEST_URL + '?t=' + Date.now(), { cache: 'no-store' });
         if (!response.ok) throw new Error('update_manifest_unavailable');
         manifest = await response.json();
+        if (compareVersions(manifest.latestVersion, installedVersion) > 0) {
+            window.AQNotifications?.push({ id: `update:${manifest.latestVersion}`, source: 'updates', title: 'AQ Update', body: tr(`AQ-NEO v${manifest.latestVersion} est disponible.`, `AQ-NEO v${manifest.latestVersion} is available.`) });
+        }
         localStorage.setItem(UPDATE_LAST_CHECK_KEY, String(Date.now()));
         renderState();
     } catch (error) {
@@ -196,9 +199,11 @@ reloadBtn?.addEventListener('click', () => {
 
 window.addEventListener('aq:updates-open', openUpdateCenter);
 window.addEventListener('aq:language-changed', renderState);
+window.addEventListener('jaj:session-changed', () => { void checkForUpdates(); });
 
 window.AQUpdate = {
     open: openUpdateCenter,
     check: checkForUpdates,
     getManifest: () => manifest
 };
+void checkForUpdates();

@@ -4,7 +4,7 @@
   "latestVersion": "0.5.0",
   "releasedAt": "2026-09-23T00:00:00.000Z",
   "notes": [
-    "AQ-Player++ : playlists et favoris sauvegardés sur le compte, lecture multi-albums.",
+    "AQ-Player : playlists et favoris sauvegardés sur le compte, lecture multi-albums.",
     "Partage de playlists par lien et brouillon MySpace, copie privée et retrait du partage.",
     "Centre de notifications AQ-NEO : historique, badges et ouverture des apps.",
     "Nouveau panneau Mon compte AQ : avatar système, nom, e-mail et mot de passe.",
@@ -17,7 +17,7 @@
     {
       "version": "0.5.0",
       "date": "2026-09-23",
-      "title": "AQ-Player++ : playlists, favoris et partage"
+      "title": "AQ-Player : playlists, favoris et partage"
     },
     {
       "version": "0.4.0",

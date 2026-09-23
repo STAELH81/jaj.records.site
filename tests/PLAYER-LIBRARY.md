@@ -1,4 +1,4 @@
-# AQ-Player++
+# AQ-Player
 
 Open **Playlists & favorites** in AQ-Player. Signed-in accounts can create, rename,
 reorder and delete playlists, add available catalog tracks, and save favorites.

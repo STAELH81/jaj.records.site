@@ -808,7 +808,7 @@ function showView(view) {
 
     if (safe === 'playlists') {
         ui.toolbarTitle.textContent = tr('Playlists & favoris', 'Playlists & favorites');
-        ui.toolbarContext.textContent = 'AQ-Player++';
+        ui.toolbarContext.textContent = 'AQ-Player';
         window.dispatchEvent(new Event('aq:playlists-open'));
     } else if (safe === 'library') {
         ui.toolbarTitle.textContent = tr('Bibliothèque média', 'Media Library');

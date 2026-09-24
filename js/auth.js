@@ -1,40 +1,5 @@
 import './cloud-sync.js';
 const AUTH_API_PATH = '/api/aq-auth';
-const IDENTITY_BROWSER_MODULE = 'https://esm.sh/@netlify/identity@2.0.0';
-
-let identityBrowserPromise = null;
-
-async function getBrowserIdentity() {
-    if (!identityBrowserPromise) {
-        identityBrowserPromise = import(IDENTITY_BROWSER_MODULE).catch((error) => {
-            console.warn('[JAJ Auth] browser Identity module unavailable', error);
-            identityBrowserPromise = null;
-            return null;
-        });
-    }
-    return identityBrowserPromise;
-}
-
-async function hydrateBrowserIdentity() {
-    const identity = await getBrowserIdentity();
-    if (!identity) return null;
-    try {
-        return await identity.hydrateSession();
-    } catch (error) {
-        console.warn('[JAJ Auth] browser Identity hydration failed', error);
-        return null;
-    }
-}
-
-async function logoutBrowserIdentity() {
-    const identity = await getBrowserIdentity();
-    if (!identity) return;
-    try {
-        await identity.logout();
-    } catch (error) {
-        console.warn('[JAJ Auth] browser Identity logout warning', error);
-    }
-}
 
 async function authApi(method = 'GET', payload = null) {
     const options = {
@@ -759,40 +724,13 @@ async function doLogin(email, password) {
     setStatus(tr('Connexion à AQ-NET…', 'Connecting to AQ-NET…'));
     try {
         await window.AQCloudSync?.flush?.();
-
-        // Netlify's documented SSR/custom-UI flow: authenticate in the
-        // Function first so the response writes nf_jwt/nf_refresh, then
-        // hydrate the browser Identity client from those cookies.
         const result = await authApi('POST', {
             action: 'login',
             email: email.trim(),
             password
         });
-
         currentIdentityUser = result?.user || null;
-        if (!currentIdentityUser) {
-            throw new Error(tr(
-                'Session AQ-NEO introuvable après connexion.',
-                'AQ-NEO session not found after sign-in.'
-            ));
-        }
-
-        // This must happen AFTER the server login. Failure to hydrate must not
-        // invalidate a login that the server has already accepted.
-        await hydrateBrowserIdentity();
-
-        // Refresh from the central auth endpoint when possible so the local
-        // user mirrors the cookie-backed server session, but keep the login
-        // result as the fallback to avoid false "session not found" errors.
-        try {
-            const verified = await authApi('GET');
-            if (verified?.authenticated && verified?.user) {
-                currentIdentityUser = verified.user;
-            }
-        } catch (error) {
-            console.warn('[JAJ Auth] post-login session verification warning', error);
-        }
-
+        if (!currentIdentityUser) throw new Error(tr('Session AQ-NEO introuvable après connexion.', 'AQ-NEO session not found after sign-in.'));
         const session = sessionFromUser(currentIdentityUser);
         renderRecentAccounts();
         setStatus(tr('Session ouverte.', 'Session opened.'), 'success');
@@ -1013,18 +951,10 @@ accountPasswordSave?.addEventListener('click', async () => {
             password
         });
         if (result?.user) {
-            // change_password re-authenticates on the server with the new
-            // password and writes fresh cookies; hydrate those cookies instead
-            // of starting a second, competing browser login flow.
-            await hydrateBrowserIdentity();
             if (accountCurrentPassword) accountCurrentPassword.value = '';
             if (accountNewPassword) accountNewPassword.value = '';
             if (accountConfirmPassword) accountConfirmPassword.value = '';
-            await applyUpdatedIdentityUser(result.user);
-            setAccountWindowStatus(
-                tr('Mot de passe modifié et session AQ-NEO renouvelée.', 'Password changed and AQ-NEO session renewed.'),
-                'success'
-            );
+            setAccountWindowStatus(tr('Mot de passe modifié.', 'Password changed.'), 'success');
         }
     } catch (error) {
         const message = error.message === 'current_password_invalid'
@@ -1107,7 +1037,6 @@ signupForm?.addEventListener('submit', async (event) => {
 
         if (result?.authenticated && result?.user) {
             currentIdentityUser = result.user;
-            await hydrateBrowserIdentity();
             const session = sessionFromUser(currentIdentityUser);
             renderRecentAccounts();
             setStatus(tr('Compte créé.', 'Account created.'), 'success');
@@ -1139,10 +1068,7 @@ logoutBtn?.addEventListener('click', async () => {
     setBusy(true);
     try {
         await window.AQCloudSync?.flush?.();
-        await Promise.allSettled([
-            authApi('POST', { action: 'logout' }),
-            logoutBrowserIdentity()
-        ]);
+        await authApi('POST', { action: 'logout' });
     } catch (error) {
         console.warn('[JAJ Auth] logout warning', error);
     } finally {
@@ -1159,56 +1085,16 @@ logoutBtn?.addEventListener('click', async () => {
     }
 });
 
-async function refreshServerSession({ syncCurrentSession = true } = {}) {
+async function initializeIdentity() {
     try {
         const result = await authApi('GET');
         currentIdentityUser = result?.authenticated ? (result.user || null) : null;
-
-        if (!currentIdentityUser) return null;
-
-        const session = sessionFromUser(currentIdentityUser);
-        if (
-            syncCurrentSession &&
-            currentSession?.type === 'user' &&
-            currentSession.id === session.id
-        ) {
-            currentSession = session;
-            window.JAJSession = session;
-            rememberAccount(session);
-            updateDesktopSessionUI(session);
-            renderRecentAccounts();
-            window.dispatchEvent(new CustomEvent('jaj:session-changed', { detail: session }));
-        }
-
-        return session;
     } catch (error) {
-        console.warn('[JAJ Auth] server session refresh failed', error);
-        return null;
+        // Guest mode remains fully usable if Identity isn't enabled or AQ Auth is unavailable.
+        console.info('[JAJ Auth] Identity unavailable in this environment', error);
+        currentIdentityUser = null;
     }
-}
 
-async function invalidateServerSession(message = '') {
-    if (currentSession?.type !== 'user') return;
-
-    window.AQCloudSync?.deactivate?.();
-    currentIdentityUser = null;
-    currentSession = null;
-    window.JAJSession = null;
-    updateDesktopSessionUI(null);
-    renderRecentAccounts();
-    window.dispatchEvent(new CustomEvent('jaj:session-changed', { detail: null }));
-    showWelcome(message || tr(
-        'Ta session AQ-NEO a expiré. Reconnecte-toi pour continuer.',
-        'Your AQ-NEO session expired. Sign in again to continue.'
-    ));
-}
-
-async function initializeIdentity() {
-    // Hydrate the browser client from Netlify's HttpOnly session cookies. This
-    // also starts the package's automatic access-token refresh timer.
-    await hydrateBrowserIdentity();
-    const session = await refreshServerSession({ syncCurrentSession: false });
-    if (!session) currentIdentityUser = null;
     renderRecentAccounts();
 }
 
@@ -1222,13 +1108,8 @@ function waitForBoot() {
 window.AQAuth = {
     showWelcome,
     getSession: () => currentSession,
-    getIdentityUser: () => currentIdentityUser,
-    refreshServerSession,
-    invalidateServerSession
+    getIdentityUser: () => currentIdentityUser
 };
-
-// App-level API failures must never destroy the global AQ-NEO session.
-// Only an explicit logout / account switch is allowed to clear currentSession.
 
 window.addEventListener('aq:language-changed', applyAuthLanguage);
 applyAuthLanguage();

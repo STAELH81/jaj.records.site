@@ -441,67 +441,6 @@ async function refreshSelfAvatar() {
     }
 }
 
-function sessionExpiredMessage() {
-    return tr(
-        'Ta session AQ-NEO a expiré. Reconnecte-toi pour continuer.',
-        'Your AQ-NEO session expired. Sign in again to continue.'
-    );
-}
-
-async function recoverServerSession() {
-    if (!isLoggedIn()) return false;
-
-    const expectedUserId = ms.session?.id || '';
-    const refresh = window.AQAuth?.refreshServerSession;
-    if (typeof refresh !== 'function') return false;
-
-    const session = await refresh({ syncCurrentSession: true });
-    const recovered = session?.type === 'user' && session.id === expectedUserId;
-
-    if (recovered) {
-        ms.session = window.JAJSession || session;
-        updateSessionChrome();
-        return true;
-    }
-
-    // Never log the whole desktop out from an app-level auth miss.
-    // A protected MySpace request may race a token refresh; keep AQ-NEO alive
-    // and let this app report its own temporary authentication error.
-    return false;
-}
-
-async function fetchJSONWithSession(input, options = {}, retryAuth = true) {
-    const response = await fetch(input, options);
-    const data = await response.json().catch(() => ({}));
-
-    if (response.status === 401 && data.error === 'login_required' && isLoggedIn()) {
-        if (retryAuth && await recoverServerSession()) {
-            return fetchJSONWithSession(input, options, false);
-        }
-
-        // Do not destroy the whole AQ-NEO session just because one MySpace
-        // endpoint returned 401. Confirm centrally first: if AQ Auth still
-        // sees the same user, this is a MySpace/API sync problem, not a real
-        // logout. This prevents the reconnect loop.
-        const expectedUserId = ms.session?.id || '';
-        const centralSession = await window.AQAuth?.refreshServerSession?.({ syncCurrentSession: true });
-        if (centralSession?.type === 'user' && centralSession.id === expectedUserId) {
-            throw new Error(tr(
-                'MySpace n’arrive pas encore à synchroniser la session AQ-NET. Réessaie dans un instant.',
-                'MySpace could not sync the AQ-NET session yet. Try again in a moment.'
-            ));
-        }
-
-        throw new Error(tr(
-            'MySpace n’a pas pu valider la session AQ-NET. Ta session AQ-NEO reste ouverte ; réessaie dans un instant.',
-            'MySpace could not validate the AQ-NET session. Your AQ-NEO session stays open; try again in a moment.'
-        ));
-    }
-
-    if (!response.ok) throw new Error(data.error || 'request_failed');
-    return data;
-}
-
 async function requestGET(view, params = {}) {
     const url = new URL(MYSPACE_API, window.location.origin);
     url.searchParams.set('view', view);
@@ -510,16 +449,18 @@ async function requestGET(view, params = {}) {
             url.searchParams.set(key, String(value));
         }
     });
-
-    return fetchJSONWithSession(url, {
+    const response = await fetch(url, {
         credentials: 'same-origin',
         cache: 'no-store',
         headers: { 'Accept': 'application/json' }
     });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'request_failed');
+    return data;
 }
 
 async function requestPOST(action, payload = {}) {
-    return fetchJSONWithSession(MYSPACE_API, {
+    const response = await fetch(MYSPACE_API, {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
@@ -528,14 +469,20 @@ async function requestPOST(action, payload = {}) {
         },
         body: JSON.stringify({ action, ...payload })
     });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'request_failed');
+    return data;
 }
 
 async function requestChatToken() {
-    return fetchJSONWithSession('/api/myspace-chat-token', {
+    const response = await fetch('/api/myspace-chat-token', {
         credentials: 'same-origin',
         cache: 'no-store',
         headers: { 'Accept': 'application/json' }
     });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'chat_token_failed');
+    return data;
 }
 
 async function stopChatRealtime() {

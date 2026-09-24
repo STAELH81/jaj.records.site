@@ -1,5 +1,4 @@
-import { admin, login, logout, signup, verifyRequestOrigin } from "@netlify/identity";
-import { getSessionUser } from "./_shared/identity-session.mts";
+import { admin, getUser, login, logout, signup, verifyRequestOrigin } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
 
 function json(data: unknown, init: ResponseInit = {}) {
@@ -61,7 +60,7 @@ function cleanAvatar(value: unknown) {
 }
 
 async function requireSessionUser() {
-  const sessionUser = await getSessionUser();
+  const sessionUser = await getUser();
   if (!sessionUser) {
     throw Object.assign(new Error("login_required"), { status: 401 });
   }
@@ -84,7 +83,7 @@ async function verifyCurrentPassword(sessionUser: any, password: unknown) {
 
 export default async (request: Request, _context: Context) => {
   if (request.method === "GET") {
-    const sessionUser = await getSessionUser();
+    const sessionUser = await getUser();
     if (!sessionUser) {
       return json({ authenticated: false, user: null });
     }
@@ -228,34 +227,11 @@ export default async (request: Request, _context: Context) => {
         return json({ error: "password_too_short" }, { status: 400 });
       }
 
-      // Change the actual Netlify Identity credential, then immediately
-      // establish a fresh browser session with the new password. This both
-      // verifies that the credential update really took effect and refreshes
-      // nf_jwt / nf_refresh so protected AQ APIs keep seeing the same user.
-      await admin.updateUser(sessionUser.id, { password });
-
-      const email = String(sessionUser?.email || "").trim();
-      if (!email) {
-        return json({ error: "password_reauth_failed" }, { status: 500 });
-      }
-
-      let refreshedUser: any;
-      try {
-        refreshedUser = await login(email, password);
-      } catch (error) {
-        console.error("[AQ Auth] password changed but re-authentication failed", error);
-        return json({ error: "password_reauth_failed" }, { status: 500 });
-      }
-
-      const user = await liveUser(refreshedUser);
-      return json({ ok: true, authenticated: true, user: serializeUser(user) });
+      const updated = await admin.updateUser(sessionUser.id, { password });
+      return json({ ok: true, authenticated: true, user: serializeUser(updated) });
     } catch (error: any) {
       const code = String(error?.message || "password_update_failed");
-      const status = Number(error?.status) || (
-        code === "current_password_invalid" ? 401 :
-        code === "password_reauth_failed" ? 500 :
-        400
-      );
+      const status = Number(error?.status) || (code === "current_password_invalid" ? 401 : 400);
       return json({ error: code, message: code }, { status });
     }
   }

@@ -26,19 +26,6 @@ async function hydrateBrowserIdentity() {
     }
 }
 
-async function loginBrowserIdentity(email, password) {
-    const identity = await getBrowserIdentity();
-    if (!identity) return null;
-    try {
-        const user = await identity.login(String(email || '').trim(), String(password || ''));
-        await identity.hydrateSession().catch(() => null);
-        return user || null;
-    } catch (error) {
-        console.warn('[JAJ Auth] browser Identity login failed', error);
-        return null;
-    }
-}
-
 async function logoutBrowserIdentity() {
     const identity = await getBrowserIdentity();
     if (!identity) return;
@@ -1120,6 +1107,7 @@ signupForm?.addEventListener('submit', async (event) => {
 
         if (result?.authenticated && result?.user) {
             currentIdentityUser = result.user;
+            await hydrateBrowserIdentity();
             const session = sessionFromUser(currentIdentityUser);
             renderRecentAccounts();
             setStatus(tr('Compte créé.', 'Account created.'), 'success');

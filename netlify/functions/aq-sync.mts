@@ -1,5 +1,6 @@
 import { getStore, getDeployStore } from "@netlify/blobs";
-import { getUser, verifyRequestOrigin } from "@netlify/identity";
+import { verifyRequestOrigin } from "@netlify/identity";
+import { getSessionUser } from "./_shared/identity-session.mts";
 import type { Config, Context } from "@netlify/functions";
 
 declare const Netlify: any;
@@ -48,7 +49,7 @@ function sanitizeSnapshot(value: any) {
 }
 
 export default async (request: Request, _context: Context) => {
-  const user = await getUser();
+  const user = await getSessionUser();
   if (!user) {
     return json({ error: "unauthorized" }, { status: 401 });
   }

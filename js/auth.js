@@ -1085,16 +1085,53 @@ logoutBtn?.addEventListener('click', async () => {
     }
 });
 
-async function initializeIdentity() {
+async function refreshServerSession({ syncCurrentSession = true } = {}) {
     try {
         const result = await authApi('GET');
         currentIdentityUser = result?.authenticated ? (result.user || null) : null;
-    } catch (error) {
-        // Guest mode remains fully usable if Identity isn't enabled or AQ Auth is unavailable.
-        console.info('[JAJ Auth] Identity unavailable in this environment', error);
-        currentIdentityUser = null;
-    }
 
+        if (!currentIdentityUser) return null;
+
+        const session = sessionFromUser(currentIdentityUser);
+        if (
+            syncCurrentSession &&
+            currentSession?.type === 'user' &&
+            currentSession.id === session.id
+        ) {
+            currentSession = session;
+            window.JAJSession = session;
+            rememberAccount(session);
+            updateDesktopSessionUI(session);
+            renderRecentAccounts();
+            window.dispatchEvent(new CustomEvent('jaj:session-changed', { detail: session }));
+        }
+
+        return session;
+    } catch (error) {
+        console.warn('[JAJ Auth] server session refresh failed', error);
+        return null;
+    }
+}
+
+async function invalidateServerSession(message = '') {
+    if (currentSession?.type !== 'user') return;
+
+    window.AQCloudSync?.deactivate?.();
+    currentIdentityUser = null;
+    currentSession = null;
+    window.JAJSession = null;
+    updateDesktopSessionUI(null);
+    renderRecentAccounts();
+    window.dispatchEvent(new CustomEvent('jaj:session-changed', { detail: null }));
+    showWelcome(message || tr(
+        'Ta session AQ-NEO a expiré. Reconnecte-toi pour continuer.',
+        'Your AQ-NEO session expired. Sign in again to continue.'
+    ));
+}
+
+async function initializeIdentity() {
+    const session = await refreshServerSession({ syncCurrentSession: false });
+    if (!session) currentIdentityUser = null;
     renderRecentAccounts();
 }
 
@@ -1108,8 +1145,14 @@ function waitForBoot() {
 window.AQAuth = {
     showWelcome,
     getSession: () => currentSession,
-    getIdentityUser: () => currentIdentityUser
+    getIdentityUser: () => currentIdentityUser,
+    refreshServerSession,
+    invalidateServerSession
 };
+
+window.addEventListener('jaj:session-invalid', (event) => {
+    void invalidateServerSession(event.detail?.message || '');
+});
 
 window.addEventListener('aq:language-changed', applyAuthLanguage);
 applyAuthLanguage();

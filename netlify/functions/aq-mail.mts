@@ -1,3 +1,4 @@
+import { withMigrationMaintenance } from './_shared/migration-maintenance.mjs';
 import { getStore } from "@netlify/blobs";
 import { admin, getUser, verifyRequestOrigin } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
@@ -130,7 +131,7 @@ async function ownContext() {
   return { sessionUser, live, mail: aquertyMailFor(live) };
 }
 
-export default async (request: Request, _context: Context) => {
+const migrationGuardedHandler = async (request: Request, _context: Context) => {
   const store = getMailStore();
   const own = await ownContext();
   if (!own) return json({ error: "login_required" }, { status: 401 });
@@ -240,6 +241,8 @@ export default async (request: Request, _context: Context) => {
 
   return json({ error: "unknown_action" }, { status: 400 });
 };
+
+export default withMigrationMaintenance(migrationGuardedHandler);
 
 export const config: Config = {
   path: "/api/aq-mail",

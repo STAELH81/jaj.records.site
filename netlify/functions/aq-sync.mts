@@ -1,3 +1,4 @@
+import { withMigrationMaintenance } from './_shared/migration-maintenance.mjs';
 import { getStore, getDeployStore } from "@netlify/blobs";
 import { getUser, verifyRequestOrigin } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
@@ -47,7 +48,7 @@ function sanitizeSnapshot(value: any) {
   return snapshot;
 }
 
-export default async (request: Request, _context: Context) => {
+const migrationGuardedHandler = async (request: Request, _context: Context) => {
   const user = await getUser();
   if (!user) {
     return json({ error: "unauthorized" }, { status: 401 });
@@ -95,6 +96,8 @@ export default async (request: Request, _context: Context) => {
     headers: { Allow: "GET, PUT" },
   });
 };
+
+export default withMigrationMaintenance(migrationGuardedHandler);
 
 export const config: Config = {
   path: "/api/aq-sync",

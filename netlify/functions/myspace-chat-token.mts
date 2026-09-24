@@ -1,3 +1,4 @@
+import { withMigrationMaintenance } from './_shared/migration-maintenance.mjs';
 import { getUser } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
 
@@ -70,7 +71,7 @@ async function signJwt(
   return `${unsignedToken}.${base64url(new Uint8Array(signature))}`;
 }
 
-export default async (_request: Request, _context: Context) => {
+const migrationGuardedHandler = async (_request: Request, _context: Context) => {
   const sessionUser = await getUser();
 
   if (!sessionUser?.id) {
@@ -110,6 +111,8 @@ export default async (_request: Request, _context: Context) => {
     supabasePublishableKey,
   });
 };
+
+export default withMigrationMaintenance(migrationGuardedHandler);
 
 export const config: Config = {
   path: "/api/myspace-chat-token",

@@ -1,3 +1,4 @@
+import { withMigrationMaintenance } from './_shared/migration-maintenance.mjs';
 import { getDeployStore, getStore } from "@netlify/blobs";
 import { admin, getUser, verifyRequestOrigin } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
@@ -101,7 +102,7 @@ async function allocateId(store: any, user: any, isAdmin: boolean) {
   throw new Error(isAdmin ? "admin_id_pool_full" : "user_id_pool_full");
 }
 
-export default async (request: Request, _context: Context) => {
+const migrationGuardedHandler = async (request: Request, _context: Context) => {
   const store = getAccStore();
   const sessionUser = await getUser();
 
@@ -199,6 +200,8 @@ export default async (request: Request, _context: Context) => {
     email: live.email,
   });
 };
+
+export default withMigrationMaintenance(migrationGuardedHandler);
 
 export const config: Config = {
   path: "/api/acc-auth",

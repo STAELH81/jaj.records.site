@@ -16,9 +16,11 @@
     "test:phase6c": "node tests/phase6c.cjs",
     "test:publisher": "node --test tests/publisher-api.test.mjs tests/publisher-media.test.mjs tests/publisher-lifecycle.test.mjs tests/artist-profiles.test.mjs",
     "test:publisher:ui": "node tests/publisher-ui.cjs",
-    "test:artists:ui": "node tests/artist-profiles-ui.cjs"
+    "test:artists:ui": "node tests/artist-profiles-ui.cjs",
+    "test:account-migration": "node --experimental-test-module-mocks --test tests/account-migration*.test.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^26.6.2",
     "playwright": "1.62.1"
   }

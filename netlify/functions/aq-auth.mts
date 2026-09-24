@@ -1,3 +1,4 @@
+import { withMigrationMaintenance } from './_shared/migration-maintenance.mjs';
 import { admin, getUser, login, logout, signup, verifyRequestOrigin } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
 
@@ -81,7 +82,7 @@ async function verifyCurrentPassword(sessionUser: any, password: unknown) {
   }
 }
 
-export default async (request: Request, _context: Context) => {
+const migrationGuardedHandler = async (request: Request, _context: Context) => {
   if (request.method === "GET") {
     const sessionUser = await getUser();
     if (!sessionUser) {
@@ -247,6 +248,8 @@ export default async (request: Request, _context: Context) => {
 
   return json({ error: "unknown_action" }, { status: 400 });
 };
+
+export default withMigrationMaintenance(migrationGuardedHandler);
 
 export const config: Config = {
   path: "/api/aq-auth",

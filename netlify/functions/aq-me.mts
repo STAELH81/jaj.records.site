@@ -1,3 +1,4 @@
+import { withMigrationMaintenance } from './_shared/migration-maintenance.mjs';
 import { admin, getUser } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
 
@@ -7,7 +8,7 @@ function roleList(value: unknown) {
     : [];
 }
 
-export default async (_request: Request, _context: Context) => {
+const migrationGuardedHandler = async (_request: Request, _context: Context) => {
   const sessionUser = await getUser();
 
   if (!sessionUser) {
@@ -35,6 +36,8 @@ export default async (_request: Request, _context: Context) => {
     { headers: { "Cache-Control": "no-store" } }
   );
 };
+
+export default withMigrationMaintenance(migrationGuardedHandler);
 
 export const config: Config = {
   path: "/api/aq-me"

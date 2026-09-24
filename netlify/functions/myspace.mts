@@ -1,3 +1,4 @@
+import { withMigrationMaintenance } from './_shared/migration-maintenance.mjs';
 import { getDeployStore, getStore } from "@netlify/blobs";
 import { admin, getUser, verifyRequestOrigin } from "@netlify/identity";
 import type { Config, Context } from "@netlify/functions";
@@ -447,7 +448,7 @@ async function avatarForUser(store: any, userId: unknown) {
   }
 }
 
-export default async (request: Request, _context: Context) => {
+const migrationGuardedHandler = async (request: Request, _context: Context) => {
   const store = getMyspaceStore();
   const url = new URL(request.url);
   const sessionUser = await getUser();
@@ -1221,6 +1222,8 @@ export default async (request: Request, _context: Context) => {
 
   return json({ error: "unknown_action" }, { status: 400 });
 };
+
+export default withMigrationMaintenance(migrationGuardedHandler);
 
 export const config: Config = {
   path: "/api/myspace",

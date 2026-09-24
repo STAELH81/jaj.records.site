@@ -1,5 +1,6 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
-import { admin, getUser, verifyRequestOrigin } from "@netlify/identity";
+import { admin, verifyRequestOrigin } from "@netlify/identity";
+import { getSessionUser } from "./_shared/identity-session.mts";
 import type { Config, Context } from "@netlify/functions";
 import { createClient } from "@supabase/supabase-js";
 
@@ -450,7 +451,7 @@ async function avatarForUser(store: any, userId: unknown) {
 export default async (request: Request, _context: Context) => {
   const store = getMyspaceStore();
   const url = new URL(request.url);
-  const sessionUser = await getUser();
+  const sessionUser = await getSessionUser();
 
   if (request.method === "GET") {
     const view = url.searchParams.get("view") || "feed";

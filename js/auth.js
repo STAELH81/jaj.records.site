@@ -1227,9 +1227,8 @@ window.AQAuth = {
     invalidateServerSession
 };
 
-window.addEventListener('jaj:session-invalid', (event) => {
-    void invalidateServerSession(event.detail?.message || '');
-});
+// App-level API failures must never destroy the global AQ-NEO session.
+// Only an explicit logout / account switch is allowed to clear currentSession.
 
 window.addEventListener('aq:language-changed', applyAuthLanguage);
 applyAuthLanguage();

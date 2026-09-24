@@ -441,6 +441,54 @@ async function refreshSelfAvatar() {
     }
 }
 
+function sessionExpiredMessage() {
+    return tr(
+        'Ta session AQ-NEO a expiré. Reconnecte-toi pour continuer.',
+        'Your AQ-NEO session expired. Sign in again to continue.'
+    );
+}
+
+async function recoverServerSession() {
+    if (!isLoggedIn()) return false;
+
+    const expectedUserId = ms.session?.id || '';
+    const refresh = window.AQAuth?.refreshServerSession;
+    if (typeof refresh !== 'function') return false;
+
+    const session = await refresh({ syncCurrentSession: true });
+    const recovered = session?.type === 'user' && session.id === expectedUserId;
+
+    if (recovered) {
+        ms.session = window.JAJSession || session;
+        updateSessionChrome();
+        return true;
+    }
+
+    window.dispatchEvent(new CustomEvent('jaj:session-invalid', {
+        detail: { message: sessionExpiredMessage() }
+    }));
+    return false;
+}
+
+async function fetchJSONWithSession(input, options = {}, retryAuth = true) {
+    const response = await fetch(input, options);
+    const data = await response.json().catch(() => ({}));
+
+    if (response.status === 401 && data.error === 'login_required' && isLoggedIn()) {
+        if (retryAuth && await recoverServerSession()) {
+            return fetchJSONWithSession(input, options, false);
+        }
+
+        window.dispatchEvent(new CustomEvent('jaj:session-invalid', {
+            detail: { message: sessionExpiredMessage() }
+        }));
+        throw new Error(sessionExpiredMessage());
+    }
+
+    if (!response.ok) throw new Error(data.error || 'request_failed');
+    return data;
+}
+
 async function requestGET(view, params = {}) {
     const url = new URL(MYSPACE_API, window.location.origin);
     url.searchParams.set('view', view);
@@ -449,18 +497,16 @@ async function requestGET(view, params = {}) {
             url.searchParams.set(key, String(value));
         }
     });
-    const response = await fetch(url, {
+
+    return fetchJSONWithSession(url, {
         credentials: 'same-origin',
         cache: 'no-store',
         headers: { 'Accept': 'application/json' }
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || 'request_failed');
-    return data;
 }
 
 async function requestPOST(action, payload = {}) {
-    const response = await fetch(MYSPACE_API, {
+    return fetchJSONWithSession(MYSPACE_API, {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
@@ -469,20 +515,14 @@ async function requestPOST(action, payload = {}) {
         },
         body: JSON.stringify({ action, ...payload })
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || 'request_failed');
-    return data;
 }
 
 async function requestChatToken() {
-    const response = await fetch('/api/myspace-chat-token', {
+    return fetchJSONWithSession('/api/myspace-chat-token', {
         credentials: 'same-origin',
         cache: 'no-store',
         headers: { 'Accept': 'application/json' }
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || 'chat_token_failed');
-    return data;
 }
 
 async function stopChatRealtime() {

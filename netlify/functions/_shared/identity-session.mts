@@ -1,20 +1,48 @@
-import { getUser, refreshSession } from "@netlify/identity";
+import { admin, getUser, refreshSession } from "@netlify/identity";
+
+function userIdFromAccessToken(token: string | null) {
+  if (!token) return "";
+  try {
+    const segment = token.split(".")[1];
+    if (!segment) return "";
+    const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded));
+    return String(payload?.sub || payload?.user_id || "").trim();
+  } catch {
+    return "";
+  }
+}
 
 /**
- * Return the current Netlify Identity user while also giving an expired
- * access token a chance to recover from nf_refresh.
+ * Resolve the current Identity user without turning a normal token refresh
+ * into a one-request logout.
  *
- * Server-side getUser() validates the current nf_jwt as-is. When that token
- * expires, it can return null even though the browser still has a valid
- * refresh cookie. refreshSession() renews the cookies through the Netlify
- * runtime, after which getUser() can resolve the same account again.
+ * refreshSession() writes refreshed cookies on the response, but the current
+ * request still contains the old cookie. If we immediately call getUser()
+ * again in the same invocation, that call can still return null. When refresh
+ * succeeds we use the returned access token to resolve the same live Identity
+ * user for the current request, while the browser receives the fresh cookies
+ * for following requests.
  */
 export async function getSessionUser() {
-  try {
-    await refreshSession();
-  } catch {
-    // No session / invalid refresh token: getUser() below will return null.
-  }
+  const current = await getUser();
+  if (current) return current;
 
-  return await getUser();
+  try {
+    const token = await refreshSession();
+    const userId = userIdFromAccessToken(token);
+
+    if (userId) {
+      try {
+        return await admin.getUser(userId);
+      } catch {
+        // Fall through to a final normal lookup.
+      }
+    }
+
+    return await getUser();
+  } catch {
+    return null;
+  }
 }

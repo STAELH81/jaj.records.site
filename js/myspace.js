@@ -464,9 +464,9 @@ async function recoverServerSession() {
         return true;
     }
 
-    window.dispatchEvent(new CustomEvent('jaj:session-invalid', {
-        detail: { message: sessionExpiredMessage() }
-    }));
+    // Never log the whole desktop out from an app-level auth miss.
+    // A protected MySpace request may race a token refresh; keep AQ-NEO alive
+    // and let this app report its own temporary authentication error.
     return false;
 }
 
@@ -492,10 +492,10 @@ async function fetchJSONWithSession(input, options = {}, retryAuth = true) {
             ));
         }
 
-        window.dispatchEvent(new CustomEvent('jaj:session-invalid', {
-            detail: { message: sessionExpiredMessage() }
-        }));
-        throw new Error(sessionExpiredMessage());
+        throw new Error(tr(
+            'MySpace n’a pas pu valider la session AQ-NET. Ta session AQ-NEO reste ouverte ; réessaie dans un instant.',
+            'MySpace could not validate the AQ-NET session. Your AQ-NEO session stays open; try again in a moment.'
+        ));
     }
 
     if (!response.ok) throw new Error(data.error || 'request_failed');

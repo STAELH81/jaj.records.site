@@ -1,5 +1,53 @@
 import './cloud-sync.js';
 const AUTH_API_PATH = '/api/aq-auth';
+const IDENTITY_BROWSER_MODULE = 'https://esm.sh/@netlify/identity@2.0.0';
+
+let identityBrowserPromise = null;
+
+async function getBrowserIdentity() {
+    if (!identityBrowserPromise) {
+        identityBrowserPromise = import(IDENTITY_BROWSER_MODULE).catch((error) => {
+            console.warn('[JAJ Auth] browser Identity module unavailable', error);
+            identityBrowserPromise = null;
+            return null;
+        });
+    }
+    return identityBrowserPromise;
+}
+
+async function hydrateBrowserIdentity() {
+    const identity = await getBrowserIdentity();
+    if (!identity) return null;
+    try {
+        return await identity.hydrateSession();
+    } catch (error) {
+        console.warn('[JAJ Auth] browser Identity hydration failed', error);
+        return null;
+    }
+}
+
+async function loginBrowserIdentity(email, password) {
+    const identity = await getBrowserIdentity();
+    if (!identity) return null;
+    try {
+        const user = await identity.login(String(email || '').trim(), String(password || ''));
+        await identity.hydrateSession().catch(() => null);
+        return user || null;
+    } catch (error) {
+        console.warn('[JAJ Auth] browser Identity login failed', error);
+        return null;
+    }
+}
+
+async function logoutBrowserIdentity() {
+    const identity = await getBrowserIdentity();
+    if (!identity) return;
+    try {
+        await identity.logout();
+    } catch (error) {
+        console.warn('[JAJ Auth] browser Identity logout warning', error);
+    }
+}
 
 async function authApi(method = 'GET', payload = null) {
     const options = {
@@ -724,11 +772,32 @@ async function doLogin(email, password) {
     setStatus(tr('Connexion à AQ-NET…', 'Connecting to AQ-NET…'));
     try {
         await window.AQCloudSync?.flush?.();
-        const result = await authApi('POST', {
-            action: 'login',
-            email: email.trim(),
-            password
-        });
+
+        // Establish the Netlify Identity session in the browser first. This
+        // gives AQ-NEO a live browser session + automatic token refresh timer,
+        // instead of relying only on the server-set cookies from /api/aq-auth.
+        const browserUser = await loginBrowserIdentity(email, password);
+
+        let result;
+        if (browserUser) {
+            result = await authApi('GET');
+        } else {
+            // Keep the existing server-side login as a fallback if the browser
+            // Identity module cannot load for any reason.
+            result = await authApi('POST', {
+                action: 'login',
+                email: email.trim(),
+                password
+            });
+            await hydrateBrowserIdentity();
+        }
+
+        if (!result?.authenticated && browserUser) {
+            // One extra server probe after browser login makes sure protected
+            // Functions see the freshly written nf_jwt cookie.
+            result = await authApi('GET');
+        }
+
         currentIdentityUser = result?.user || null;
         if (!currentIdentityUser) throw new Error(tr('Session AQ-NEO introuvable après connexion.', 'AQ-NEO session not found after sign-in.'));
         const session = sessionFromUser(currentIdentityUser);
@@ -951,6 +1020,9 @@ accountPasswordSave?.addEventListener('click', async () => {
             password
         });
         if (result?.user) {
+            // Re-establish the browser Identity session with the new password
+            // so the refresh timer and browser auth state use the new credential.
+            await loginBrowserIdentity(currentSession?.email || result.user.email, password);
             if (accountCurrentPassword) accountCurrentPassword.value = '';
             if (accountNewPassword) accountNewPassword.value = '';
             if (accountConfirmPassword) accountConfirmPassword.value = '';
@@ -1072,7 +1144,10 @@ logoutBtn?.addEventListener('click', async () => {
     setBusy(true);
     try {
         await window.AQCloudSync?.flush?.();
-        await authApi('POST', { action: 'logout' });
+        await Promise.allSettled([
+            authApi('POST', { action: 'logout' }),
+            logoutBrowserIdentity()
+        ]);
     } catch (error) {
         console.warn('[JAJ Auth] logout warning', error);
     } finally {
@@ -1134,6 +1209,9 @@ async function invalidateServerSession(message = '') {
 }
 
 async function initializeIdentity() {
+    // Hydrate the browser client from Netlify's HttpOnly session cookies. This
+    // also starts the package's automatic access-token refresh timer.
+    await hydrateBrowserIdentity();
     const session = await refreshServerSession({ syncCurrentSession: false });
     if (!session) currentIdentityUser = null;
     renderRecentAccounts();

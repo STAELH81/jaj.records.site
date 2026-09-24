@@ -479,6 +479,19 @@ async function fetchJSONWithSession(input, options = {}, retryAuth = true) {
             return fetchJSONWithSession(input, options, false);
         }
 
+        // Do not destroy the whole AQ-NEO session just because one MySpace
+        // endpoint returned 401. Confirm centrally first: if AQ Auth still
+        // sees the same user, this is a MySpace/API sync problem, not a real
+        // logout. This prevents the reconnect loop.
+        const expectedUserId = ms.session?.id || '';
+        const centralSession = await window.AQAuth?.refreshServerSession?.({ syncCurrentSession: true });
+        if (centralSession?.type === 'user' && centralSession.id === expectedUserId) {
+            throw new Error(tr(
+                'MySpace n’arrive pas encore à synchroniser la session AQ-NET. Réessaie dans un instant.',
+                'MySpace could not sync the AQ-NET session yet. Try again in a moment.'
+            ));
+        }
+
         window.dispatchEvent(new CustomEvent('jaj:session-invalid', {
             detail: { message: sessionExpiredMessage() }
         }));

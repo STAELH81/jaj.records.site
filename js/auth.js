@@ -773,33 +773,39 @@ async function doLogin(email, password) {
     try {
         await window.AQCloudSync?.flush?.();
 
-        // Establish the Netlify Identity session in the browser first. This
-        // gives AQ-NEO a live browser session + automatic token refresh timer,
-        // instead of relying only on the server-set cookies from /api/aq-auth.
-        const browserUser = await loginBrowserIdentity(email, password);
-
-        let result;
-        if (browserUser) {
-            result = await authApi('GET');
-        } else {
-            // Keep the existing server-side login as a fallback if the browser
-            // Identity module cannot load for any reason.
-            result = await authApi('POST', {
-                action: 'login',
-                email: email.trim(),
-                password
-            });
-            await hydrateBrowserIdentity();
-        }
-
-        if (!result?.authenticated && browserUser) {
-            // One extra server probe after browser login makes sure protected
-            // Functions see the freshly written nf_jwt cookie.
-            result = await authApi('GET');
-        }
+        // Netlify's documented SSR/custom-UI flow: authenticate in the
+        // Function first so the response writes nf_jwt/nf_refresh, then
+        // hydrate the browser Identity client from those cookies.
+        const result = await authApi('POST', {
+            action: 'login',
+            email: email.trim(),
+            password
+        });
 
         currentIdentityUser = result?.user || null;
-        if (!currentIdentityUser) throw new Error(tr('Session AQ-NEO introuvable après connexion.', 'AQ-NEO session not found after sign-in.'));
+        if (!currentIdentityUser) {
+            throw new Error(tr(
+                'Session AQ-NEO introuvable après connexion.',
+                'AQ-NEO session not found after sign-in.'
+            ));
+        }
+
+        // This must happen AFTER the server login. Failure to hydrate must not
+        // invalidate a login that the server has already accepted.
+        await hydrateBrowserIdentity();
+
+        // Refresh from the central auth endpoint when possible so the local
+        // user mirrors the cookie-backed server session, but keep the login
+        // result as the fallback to avoid false "session not found" errors.
+        try {
+            const verified = await authApi('GET');
+            if (verified?.authenticated && verified?.user) {
+                currentIdentityUser = verified.user;
+            }
+        } catch (error) {
+            console.warn('[JAJ Auth] post-login session verification warning', error);
+        }
+
         const session = sessionFromUser(currentIdentityUser);
         renderRecentAccounts();
         setStatus(tr('Session ouverte.', 'Session opened.'), 'success');
@@ -1020,9 +1026,10 @@ accountPasswordSave?.addEventListener('click', async () => {
             password
         });
         if (result?.user) {
-            // Re-establish the browser Identity session with the new password
-            // so the refresh timer and browser auth state use the new credential.
-            await loginBrowserIdentity(currentSession?.email || result.user.email, password);
+            // change_password re-authenticates on the server with the new
+            // password and writes fresh cookies; hydrate those cookies instead
+            // of starting a second, competing browser login flow.
+            await hydrateBrowserIdentity();
             if (accountCurrentPassword) accountCurrentPassword.value = '';
             if (accountNewPassword) accountNewPassword.value = '';
             if (accountConfirmPassword) accountConfirmPassword.value = '';

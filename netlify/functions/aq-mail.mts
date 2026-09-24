@@ -1,5 +1,6 @@
 import { getStore } from "@netlify/blobs";
-import { admin, getUser, verifyRequestOrigin } from "@netlify/identity";
+import { admin, verifyRequestOrigin } from "@netlify/identity";
+import { getSessionUser } from "./_shared/identity-session.mts";
 import type { Config, Context } from "@netlify/functions";
 
 declare const Netlify: any;
@@ -124,7 +125,7 @@ async function writeMailbox(store: any, mail: string, messages: any[]) {
 }
 
 async function ownContext() {
-  const sessionUser = await getUser();
+  const sessionUser = await getSessionUser();
   if (!sessionUser) return null;
   const live = await liveIdentity(sessionUser);
   return { sessionUser, live, mail: aquertyMailFor(live) };

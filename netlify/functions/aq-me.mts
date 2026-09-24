@@ -1,4 +1,5 @@
-import { admin, getUser } from "@netlify/identity";
+import { admin } from "@netlify/identity";
+import { getSessionUser } from "./_shared/identity-session.mts";
 import type { Config, Context } from "@netlify/functions";
 
 function roleList(value: unknown) {
@@ -8,7 +9,7 @@ function roleList(value: unknown) {
 }
 
 export default async (_request: Request, _context: Context) => {
-  const sessionUser = await getUser();
+  const sessionUser = await getSessionUser();
 
   if (!sessionUser) {
     return Response.json(

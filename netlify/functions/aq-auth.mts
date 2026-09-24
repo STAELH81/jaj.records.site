@@ -1,4 +1,5 @@
-import { admin, getUser, login, logout, signup, verifyRequestOrigin } from "@netlify/identity";
+import { admin, login, logout, signup, verifyRequestOrigin } from "@netlify/identity";
+import { getSessionUser } from "./_shared/identity-session.mts";
 import type { Config, Context } from "@netlify/functions";
 
 function json(data: unknown, init: ResponseInit = {}) {
@@ -60,7 +61,7 @@ function cleanAvatar(value: unknown) {
 }
 
 async function requireSessionUser() {
-  const sessionUser = await getUser();
+  const sessionUser = await getSessionUser();
   if (!sessionUser) {
     throw Object.assign(new Error("login_required"), { status: 401 });
   }
@@ -83,7 +84,7 @@ async function verifyCurrentPassword(sessionUser: any, password: unknown) {
 
 export default async (request: Request, _context: Context) => {
   if (request.method === "GET") {
-    const sessionUser = await getUser();
+    const sessionUser = await getSessionUser();
     if (!sessionUser) {
       return json({ authenticated: false, user: null });
     }

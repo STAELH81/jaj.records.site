@@ -1,5 +1,6 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
-import { admin, getUser, verifyRequestOrigin } from "@netlify/identity";
+import { admin, verifyRequestOrigin } from "@netlify/identity";
+import { getSessionUser } from "./_shared/identity-session.mts";
 import type { Config, Context } from "@netlify/functions";
 
 declare const Netlify: any;
@@ -103,7 +104,7 @@ async function allocateId(store: any, user: any, isAdmin: boolean) {
 
 export default async (request: Request, _context: Context) => {
   const store = getAccStore();
-  const sessionUser = await getUser();
+  const sessionUser = await getSessionUser();
 
   if (!sessionUser) {
     if (request.method === "GET") {

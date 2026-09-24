@@ -1,4 +1,4 @@
-import { getUser } from "@netlify/identity";
+import { getSessionUser } from "./_shared/identity-session.mts";
 import type { Config, Context } from "@netlify/functions";
 
 declare const Netlify: {
@@ -71,7 +71,7 @@ async function signJwt(
 }
 
 export default async (_request: Request, _context: Context) => {
-  const sessionUser = await getUser();
+  const sessionUser = await getSessionUser();
 
   if (!sessionUser?.id) {
     return json({ error: "login_required" }, { status: 401 });

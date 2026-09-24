@@ -954,7 +954,11 @@ accountPasswordSave?.addEventListener('click', async () => {
             if (accountCurrentPassword) accountCurrentPassword.value = '';
             if (accountNewPassword) accountNewPassword.value = '';
             if (accountConfirmPassword) accountConfirmPassword.value = '';
-            setAccountWindowStatus(tr('Mot de passe modifié.', 'Password changed.'), 'success');
+            await applyUpdatedIdentityUser(result.user);
+            setAccountWindowStatus(
+                tr('Mot de passe modifié et session AQ-NEO renouvelée.', 'Password changed and AQ-NEO session renewed.'),
+                'success'
+            );
         }
     } catch (error) {
         const message = error.message === 'current_password_invalid'
